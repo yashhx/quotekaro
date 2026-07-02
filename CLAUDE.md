@@ -43,13 +43,25 @@ Three real shop visits taught us:
 2. What owners actually liked, unprompted: the **pipeline view** — all quotes with pending/won/lost status.
 3. A micro-shop owner suggested the tool may fit **traders** (middlemen) better than shops.
 
-**Current direction (pivot in progress):** tracker-first.
-- Pipeline (pending/won/lost, follow-ups) becomes the HOME screen.
-- The 4-step quote wizard gets demoted to one of two entry paths.
-- Add a "+ Log a quote" quick form — customer, part, amount, status — fillable in under 30 seconds (for quotes made elsewhere, e.g. Excel).
+**Current direction (tracker-first) — SHIPPED (2026-07):**
+- The FAB opens a chooser: "Log a quote" (quick, primary path) vs "New quotation" (the full costing wizard, now the second path). Quotes tab is labeled **Pipeline**.
+- `QuickLog` component — customer, WhatsApp number, part, amount, qty, status, follow-up date, note; fillable in under 30s. Has a "Paste" box that runs `parseEnquiry()` to prefill customer/amount/qty/phone from a pasted WhatsApp/enquiry message. Logged quotes carry `source:"logged"`.
+- **Follow-ups:** quotes have a `followUp` timestamp. `followState(q)` returns overdue/today/upcoming for pending quotes. Home shows a "follow-ups due" card; Pipeline has a Follow-ups filter, per-card badges, an inline date editor, and a one-tap "Chase on WhatsApp" button (`waFollowText` + `waLink`, defaults bare 10-digit numbers to +91).
+- **Analytics** (`Analytics` + `Donut` + `buildBuckets`): range toggle 7d/30d/all; KPI grid (quoted / sent / won value / pending value); win-rate donut; adaptive value-trend bars with won-portion overlay; money funnel (won/pending/lost); top-customers bars. Reached from the Home hero "7 days" tile.
+- **Excel/CSV pipeline I/O** (SheetJS lazy-loaded from CDN, same pattern as jsPDF): export `.xlsx`/`.csv`, import `.xlsx`/`.xls`/`.csv`. `rowToQuote()` maps loose column names (synonyms, comma amounts, dd/mm/yyyy or Excel-serial dates, spaced phones). CSV export needs no library so data can always get out.
+- **Schema is now `quotekaro:v5`.** Quote objects gained `phone`, `followUp`, `source` (and `note` on logged quotes). Bump the key again if you add fields.
 - Target price being tested in the field: ₹1,000/month. Target user hypothesis: traders first, small shops second.
 
-**Do NOT build unless explicitly asked:** supplier marketplace (a demo section labeled CONCEPT exists in Setup — keep it labeled), CAD file parsing/geometry costing, real backend/payments/SMS, live Excel add-ins. (Excel FILE import — reading an .xlsx to log a quote — is a plausible later feature.)
+**Do NOT build unless explicitly asked:** supplier marketplace (a demo section labeled CONCEPT exists in Setup — keep it labeled), CAD file parsing/geometry costing, real payments/SMS, live Excel add-ins. Excel is real file import/export, not a live add-in.
+
+## WhatsApp backend (two-way) — SHIPPED, opt-in (2026-07)
+The app is STILL fully client-side by default and deploys as a static PWA. A serverless layer adds real two-way WhatsApp when configured; when the functions are absent (e.g. `dist/` drag-drop or Vite dev) the app degrades to exactly the old behaviour.
+- **Netlify Functions** in `netlify/functions/`: `whatsapp-webhook.js` (Meta verify + inbound receive; captures text/image/document), `enquiries.js` (app polls this; GET list / POST `{id}` to mark handled), `whatsapp-send.js` (Cloud API send: text or template), `whatsapp-media.js` (proxies inbound image/document bytes to the browser using the token). Config in `netlify.toml`. Incoming card renders image inline + document as a download chip.
+- **Storage:** Netlify Blobs (`@netlify/blobs`, store name `"enquiries"`). No external DB/account.
+- **Provider:** Meta WhatsApp Cloud API direct. Swap a reseller (Interakt/Gupshup/WATI/Twilio) by editing only the `fetch()` in `whatsapp-send.js` + parsing in `whatsapp-webhook.js`.
+- **Env vars** (Netlify, see `.env.example`): `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`. Full runbook in `WHATSAPP_SETUP.md`.
+- **Frontend hooks** (in App.jsx, above the storage shim / in App component): `fetchEnquiries` / `markEnquiryHandled` / `sendWhatsApp` against `/.netlify/functions`; a 30s poll effect (declared above early returns — Rules of Hooks); inbound shows under Pipeline > "Incoming on WhatsApp" with one-tap `logEnquiry` (runs `parseEnquiry`, quote gets `source:"whatsapp"`). Backend-absent is detected by a non-JSON/failed response, so nothing breaks offline.
+- **Deploy caveat:** functions can't be drag-dropped — needs git-connected Netlify or `netlify deploy`. Outbound to customers still primarily uses `wa.me` links (owner's own number); the send function is for automation/templates. Payments (Razorpay) and cloud auth/sync were offered but NOT built.
 
 ## Conventions & gotchas (bugs we already paid for)
 - **Rules of Hooks:** every hook must sit above any early `return` in a component. A hooks-after-loading-return bug already crashed this app once.

@@ -8,6 +8,28 @@ const storage = {
   delete: async (k) => { localStorage.removeItem(k); return { key: k, deleted: true }; },
 };
 
+/* Optional WhatsApp backend (Netlify Functions). Absent on static / drag-drop deploys,
+   in which case every call resolves to "not available" and the app behaves fully offline. */
+const WA_API = "/.netlify/functions";
+async function fetchEnquiries() {
+  try {
+    const r = await fetch(WA_API + "/enquiries", { headers: { accept: "application/json" } });
+    const ct = r.headers.get("content-type") || "";
+    if (!r.ok || !ct.includes("application/json")) return null; // functions not deployed (e.g. Vite dev serves index.html)
+    const d = await r.json();
+    return d && d.enabled ? (d.enquiries || []) : null;
+  } catch { return null; }
+}
+async function markEnquiryHandled(id) {
+  try { await fetch(WA_API + "/enquiries", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id }) }); } catch {}
+}
+async function sendWhatsApp(to, text) {
+  try {
+    const r = await fetch(WA_API + "/whatsapp-send", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ to, text }) });
+    return r.ok;
+  } catch { return false; }
+}
+
 
 /* ================================================================
    QuoteKaro v4 - white + forest green
@@ -266,13 +288,70 @@ const I = {
   logout: (p) => (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" {...p}><path d="M14 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-2M9 12h11m0 0-3-3m3 3-3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>),
   crown: (p) => (<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M3 7l4 4 5-6 5 6 4-4-2 12H5L3 7Z"/></svg>),
   phone2: (p) => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" {...p}><rect x="6.5" y="2.5" width="11" height="19" rx="2.5" stroke="currentColor" strokeWidth="1.8"/><path d="M10.5 18.5h3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
+  search: (p) => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" {...p}><circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8"/><path d="m20 20-3.6-3.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
+  cal: (p) => (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" {...p}><rect x="3.5" y="5" width="17" height="15.5" rx="2.5" stroke="currentColor" strokeWidth="1.7"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>),
+  sheet: (p) => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" {...p}><rect x="4" y="3.5" width="16" height="17" rx="2.5" stroke="currentColor" strokeWidth="1.7"/><path d="M4 9h16M4 14.5h16M9.5 9v11.5M14.5 9v11.5" stroke="currentColor" strokeWidth="1.5"/></svg>),
+  down: (p) => (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" {...p}><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19.5h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>),
+  up: (p) => (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" {...p}><path d="M12 20V9m0 0 4 4m-4-4-4 4M5 4.5h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>),
+  bell: (p) => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" {...p}><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"/><path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg>),
+  pen: (p) => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" {...p}><path d="M4 20h4L18.5 9.5a2 2 0 0 0 0-2.8l-1.2-1.2a2 2 0 0 0-2.8 0L4 16v4Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"/></svg>),
 };
 
 /* ---------------- helpers ---------------- */
 const inr = (n, d = 0) => "₹" + Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: d, maximumFractionDigits: d });
 const uid = () => Math.random().toString(36).slice(2, 9);
-const KEY = "quotekaro:v4";
+const KEY = "quotekaro:v5";
 const AUTH_KEY = "quotekaro:auth:v1";
+
+/* ---- date + number helpers ---- */
+const DAY = 86400000;
+const num = (v) => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g, "")); return isNaN(n) ? 0 : n; };
+const startOfDay = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const fdateShort = (t) => new Date(t).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+const isoDate = (t) => { const d = new Date(t); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+/* parse a loosely-formatted date cell (ISO, dd/mm/yyyy, dd-mm-yy, Excel serial) into ms, or null */
+const parseDate = (v) => {
+  if (v == null || v === "") return null;
+  if (typeof v === "number" && v > 20000 && v < 90000) return Math.round((v - 25569) * DAY); /* Excel serial */
+  const s = String(v).trim();
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
+  if (iso) return new Date(+iso[1], +iso[2] - 1, +iso[3]).getTime();
+  const dmy = /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/.exec(s);
+  if (dmy) { let y = +dmy[3]; if (y < 100) y += 2000; return new Date(y, +dmy[2] - 1, +dmy[1]).getTime(); }
+  const t = Date.parse(s); return isNaN(t) ? null : t;
+};
+/* follow-up state for a live (pending) quote: overdue | today | upcoming | null */
+const followState = (q) => {
+  if (!q.followUp || q.status !== "pending") return null;
+  const today = startOfDay(Date.now()), fu = startOfDay(q.followUp);
+  return fu < today ? "overdue" : fu === today ? "today" : "upcoming";
+};
+
+/* ---- WhatsApp helpers ---- */
+const waLink = (phone, text) => {
+  const p = (phone || "").replace(/\D/g, "");
+  const digits = p && p.length === 10 ? "91" + p : p; /* default to +91 for bare 10-digit numbers */
+  return "https://wa.me/" + digits + "?text=" + encodeURIComponent(text);
+};
+const waFollowText = (q, shop) =>
+  `Hi, this is ${shop}.\n` +
+  `Just following up on our quotation for *${q.part}*` + (q.qty ? ` (${q.qty} pcs)` : "") + `.\n` +
+  `Quoted ${inr(q.total)}. Please let us know if we can proceed or if any change is needed.\nThank you.`;
+/* very light parser: pull a name / part / amount out of a pasted WhatsApp/enquiry message */
+const parseEnquiry = (raw) => {
+  const text = String(raw || "");
+  const out = { customer: "", part: "", total: "", qty: "", phone: "" };
+  const amt = /(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d+)?)/i.exec(text) || /([\d,]{4,})(?:\s*(?:only|\/-|rupees))/i.exec(text);
+  if (amt) out.total = amt[1].replace(/,/g, "");
+  const q = /(\d{1,6})\s*(?:pcs|pc|nos|no\.?|pieces|qty)/i.exec(text);
+  if (q) out.qty = q[1];
+  const ph = /(?:\+?91[\-\s]?)?([6-9]\d{9})\b/.exec(text.replace(/[\-\s]/g, (m) => m === " " ? " " : ""));
+  const ph2 = /([6-9]\d{9})/.exec(text.replace(/\D/g, " "));
+  if (ph) out.phone = ph[1]; else if (ph2) out.phone = ph2[1];
+  const firstLine = text.split(/\n/).map((l) => l.trim()).filter(Boolean)[0] || "";
+  if (firstLine && firstLine.length < 50) out.customer = firstLine.replace(/[:*]/g, "").trim();
+  return out;
+};
 
 /* Subscription plans - prices are demo; wire real Razorpay/UPI at the marked hook before charging. */
 const PLANS = [
@@ -315,9 +394,14 @@ const seedData = () => {
       { id: "c", name: "Alu 6061", rate: 300 }, { id: "d", name: "Brass", rate: 560 },
     ],
     quotes: [
-      { id: uid(), at: now - 2 * day, status: "won", customer: "Apex Hydraulics", part: "Gland Nut - 60mm", qty: 200, pricePc: 174.39, total: 34878 },
-      { id: uid(), at: now - 0.2 * day, status: "pending", customer: "Krishna Pumps", part: "Bush Ø42", qty: 500, pricePc: 61.2, total: 30600 },
-      { id: uid(), at: now - 6 * day, status: "lost", customer: "Om Forgings", part: 'Flange 6"', qty: 120, pricePc: 412.5, total: 49500 },
+      { id: uid(), at: now - 2 * day, status: "won", customer: "Apex Hydraulics", phone: "9810012345", part: "Gland Nut - 60mm", qty: 200, pricePc: 174.39, total: 34878, followUp: null, source: "wizard" },
+      { id: uid(), at: now - 0.2 * day, status: "pending", customer: "Krishna Pumps", phone: "9829098290", part: "Bush Ø42", qty: 500, pricePc: 61.2, total: 30600, followUp: now + 2 * day, source: "wizard" },
+      { id: uid(), at: now - 6 * day, status: "lost", customer: "Om Forgings", phone: "", part: 'Flange 6"', qty: 120, pricePc: 412.5, total: 49500, followUp: null, source: "wizard" },
+      { id: uid(), at: now - 4 * day, status: "pending", customer: "Bharat Traders", phone: "9911223344", part: "MS Hex Bar lot", qty: 0, pricePc: 0, total: 128000, followUp: now - 1 * day, source: "logged" },
+      { id: uid(), at: now - 9 * day, status: "won", customer: "Singh Auto Parts", phone: "9876500011", part: "Spacer Ø18 (repeat)", qty: 1000, pricePc: 22.5, total: 22500, followUp: null, source: "logged" },
+      { id: uid(), at: now - 13 * day, status: "pending", customer: "Verma Enterprises", phone: "9700011122", part: "SS 304 fittings", qty: 0, pricePc: 0, total: 76500, followUp: now, source: "excel" },
+      { id: uid(), at: now - 40 * day, status: "won", customer: "Apex Hydraulics", phone: "9810012345", part: "End Cap - batch", qty: 300, pricePc: 96, total: 28800, followUp: null, source: "wizard" },
+      { id: uid(), at: now - 52 * day, status: "lost", customer: "Om Forgings", phone: "", part: "Shaft turning job", qty: 60, pricePc: 780, total: 46800, followUp: null, source: "logged" },
     ],
   };
 };
@@ -444,6 +528,83 @@ async function downloadQuotePDF(q, data) {
 
   doc.save(num + ".pdf");
   return true;
+}
+
+/* ---------------- Excel / CSV pipeline I/O ----------------
+   SheetJS is loaded from CDN at runtime (same pattern as jsPDF). CSV export
+   works with no library at all so a shop can always get its data out. */
+let _xlsxPromise = null;
+function loadXLSX() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (_xlsxPromise) return _xlsxPromise;
+  _xlsxPromise = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    s.onload = () => resolve(window.XLSX);
+    s.onerror = () => reject(new Error("cdn"));
+    document.head.appendChild(s);
+  });
+  return _xlsxPromise;
+}
+
+const SHEET_COLS = ["Date", "Customer", "Phone", "Part", "Qty", "Rate/pc", "Total", "Status", "Follow-up"];
+const quoteToRow = (q) => ({
+  Date: isoDate(q.at), Customer: q.customer, Phone: q.phone || "", Part: q.part,
+  Qty: q.qty || "", "Rate/pc": q.pricePc ? +Number(q.pricePc).toFixed(2) : "", Total: q.total || "",
+  Status: q.status, "Follow-up": q.followUp ? isoDate(q.followUp) : "",
+});
+
+const csvCell = (v) => { const s = String(v == null ? "" : v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+function exportQuotesCSV(quotes) {
+  const rows = quotes.map(quoteToRow);
+  const body = [SHEET_COLS, ...rows.map((r) => SHEET_COLS.map((c) => r[c]))].map((r) => r.map(csvCell).join(",")).join("\r\n");
+  const blob = new Blob(["﻿" + body], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = "QuoteKaro-pipeline.csv"; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+async function exportQuotesXLSX(quotes) {
+  const XLSX = await loadXLSX();
+  const ws = XLSX.utils.json_to_sheet(quotes.map(quoteToRow), { header: SHEET_COLS });
+  ws["!cols"] = [{ wch: 12 }, { wch: 22 }, { wch: 14 }, { wch: 24 }, { wch: 7 }, { wch: 10 }, { wch: 12 }, { wch: 9 }, { wch: 12 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Pipeline");
+  XLSX.writeFile(wb, "QuoteKaro-pipeline.xlsx");
+}
+
+/* map a spreadsheet row (any column casing / synonyms) to a quote */
+const pickCol = (row, keys) => {
+  const map = {}; Object.keys(row).forEach((k) => (map[String(k).toLowerCase().trim()] = row[k]));
+  for (const key of keys) { const v = map[key]; if (v !== undefined && String(v).trim() !== "") return v; }
+  return "";
+};
+const rowToQuote = (row) => {
+  const customer = String(pickCol(row, ["customer", "client", "party", "name", "company", "buyer"])).trim();
+  const part = String(pickCol(row, ["part", "item", "product", "description", "part name", "job"])).trim();
+  if (!customer && !part) return null;
+  const total = num(pickCol(row, ["total", "amount", "value", "quote amount", "grand total"]));
+  const qty = num(pickCol(row, ["qty", "quantity", "pcs", "nos", "pieces"]));
+  const rate = num(pickCol(row, ["rate/pc", "rate", "price/pc", "unit price", "rate per pc"]));
+  let status = String(pickCol(row, ["status", "stage", "outcome"]) || "pending").toLowerCase().trim();
+  status = ["won", "lost", "pending"].includes(status) ? status
+    : status.startsWith("w") || status.includes("order") || status.includes("confirm") ? "won"
+    : status.startsWith("l") || status.includes("reject") ? "lost" : "pending";
+  const phone = String(pickCol(row, ["phone", "mobile", "whatsapp", "contact", "number"])).replace(/[^\d]/g, "");
+  const at = parseDate(pickCol(row, ["date", "created", "quoted on", "quote date"])) || Date.now();
+  const followUp = parseDate(pickCol(row, ["follow-up", "followup", "follow up", "next follow-up"]));
+  return {
+    id: uid(), at, status, customer: customer || "(no name)", part: part || "(no part)", phone,
+    qty: qty || 0, pricePc: rate || (qty ? total / qty : 0), total: total || rate * qty || 0,
+    followUp: followUp || null, source: "excel",
+  };
+};
+async function parseSheetFile(file) {
+  const XLSX = await loadXLSX();
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: "array", cellDates: false });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+  return rows.map(rowToQuote).filter(Boolean);
 }
 
 /* ---------------- count-up ---------------- */
@@ -613,8 +774,24 @@ export default function App() {
   const [step, setStep] = useState(1);
   const [doneQuote, setDoneQuote] = useState(null);
   const [quotesFilter, setQuotesFilter] = useState("all");
+  const [fabOpen, setFabOpen] = useState(false);
+  const [enquiries, setEnquiries] = useState([]); // inbound WhatsApp messages (backend only)
   const [account, setAccount] = useState(undefined); // undefined = loading, null = logged out, object = logged in
   const saveT = useRef(null);
+
+  /* poll the WhatsApp backend for incoming enquiries (no-op when not deployed).
+     Declared with the other hooks, above any early return, per Rules of Hooks. */
+  useEffect(() => {
+    let alive = true, t;
+    const poll = async () => {
+      const list = await fetchEnquiries();
+      if (!alive) return;
+      if (list) setEnquiries(list);
+      t = setTimeout(poll, 30000);
+    };
+    poll();
+    return () => { alive = false; clearTimeout(t); };
+  }, []);
 
   /* load account (auth) */
   useEffect(() => {
@@ -675,15 +852,39 @@ export default function App() {
     return (<div className="qk-root"><style>{CSS}</style><div className="app"><Auth onAuthed={saveAccount} /></div></div>);
 
   const startQuote = () => {
-    setDraft({ customer: "", part: "", qty: "", materialId: "", rawKg: "", machineId: data.machines[0]?.id || "",
+    setFabOpen(false);
+    setDraft({ customer: "", phone: "", part: "", qty: "", materialId: "", rawKg: "", machineId: data.machines[0]?.id || "",
       cycleMin: "", manualMin: "", setupMin: "", toolingPc: 5, overheadPct: data.settings.overheadPct, marginPct: data.settings.marginPct });
     setStep(1); setDoneQuote(null); setTab("new");
   };
+  const startLog = () => { setFabOpen(false); setTab("log"); };
   const saveQuote = (c) => {
-    const q = { id: uid(), at: Date.now(), status: "pending", customer: draft.customer, part: draft.part, qty: +draft.qty, pricePc: c.pricePc, total: c.total };
+    const q = { id: uid(), at: Date.now(), status: "pending", customer: draft.customer, phone: (draft.phone || "").replace(/\D/g, ""),
+      part: draft.part, qty: +draft.qty, pricePc: c.pricePc, total: c.total, followUp: null, source: "wizard" };
     setData({ ...data, quotes: [q, ...data.quotes] }); setDoneQuote(q);
   };
+  const saveLogged = (q) => { setData({ ...data, quotes: [q, ...data.quotes] }); setTab("quotes"); setQuotesFilter("all"); ping("Quote logged"); };
+  const importQuotes = (rows) => { setData({ ...data, quotes: [...rows, ...data.quotes] }); ping(rows.length + " quote" + (rows.length === 1 ? "" : "s") + " imported"); };
+  /* turn an inbound WhatsApp enquiry into a pending pipeline quote */
+  const logEnquiry = (enq) => {
+    const p = parseEnquiry(enq.text || "");
+    const phone = String(enq.from || p.phone || "").replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+    const bits = [];
+    if (enq.type === "image") bits.push("[Photo on WhatsApp]");
+    if (enq.type === "document") bits.push("[Doc: " + (enq.filename || "file") + "]");
+    if (enq.text) bits.push(enq.text);
+    const q = { id: uid(), at: enq.at || Date.now(), status: "pending",
+      customer: enq.name || p.customer || "WhatsApp lead", phone,
+      part: enq.type === "document" && enq.filename ? enq.filename : "(from WhatsApp)", qty: num(p.qty), pricePc: 0, total: num(p.total),
+      followUp: null, source: "whatsapp", note: bits.join(" ") };
+    setData((d) => ({ ...d, quotes: [q, ...d.quotes] }));
+    setEnquiries((list) => list.filter((x) => x.id !== enq.id));
+    markEnquiryHandled(enq.id);
+    setTab("quotes"); setQuotesFilter("all"); ping("Enquiry added to pipeline");
+  };
+  const dismissEnquiry = (enq) => { setEnquiries((list) => list.filter((x) => x.id !== enq.id)); markEnquiryHandled(enq.id); ping("Enquiry dismissed"); };
   const setStatus = (id, status) => setData({ ...data, quotes: data.quotes.map((q) => (q.id === id ? { ...q, status } : q)) });
+  const updateQuote = (id, patch) => setData({ ...data, quotes: data.quotes.map((q) => (q.id === id ? { ...q, ...patch } : q)) });
   const delQuote = (id) => setData({ ...data, quotes: data.quotes.filter((q) => q.id !== id) });
   const goQuotes = (f) => { setQuotesFilter(f || "all"); setTab("quotes"); };
 
@@ -692,8 +893,9 @@ export default function App() {
       <div className="app">
         {toast && <div className="toast">{toast}</div>}
 
-        {tab === "home" && <Home data={data} account={account} onNew={startQuote} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} />}
-        {tab === "quotes" && <Quotes data={data} setStatus={setStatus} delQuote={delQuote} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} />}
+        {tab === "home" && <Home data={data} account={account} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} />}
+        {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} />}
+        {tab === "log" && <QuickLog data={data} onSave={saveLogged} onExit={() => setTab("home")} ping={ping} />}
         {tab === "setup" && <Setup data={data} setData={setData} ping={ping} account={account} goSubscribe={() => setTab("subscribe")} onLogout={logout} />}
         {tab === "help" && <Help data={data} ping={ping} />}
         {tab === "analytics" && <Analytics data={data} onBack={() => setTab("home")} goQuotes={goQuotes} />}
@@ -702,12 +904,33 @@ export default function App() {
           onExit={() => setTab("home")} onSave={saveQuote} doneQuote={doneQuote} ping={ping}
           onFinish={() => { setTab("home"); setDoneQuote(null); }} />)}
 
-        {tab !== "new" && tab !== "analytics" && tab !== "subscribe" && (
+        {/* FAB chooser - quick log (tracker-first) vs full costing quote */}
+        {fabOpen && (
+          <div onClick={() => setFabOpen(false)} style={{ position: "absolute", inset: 0, zIndex: 60, background: "rgba(16,26,20,.42)", backdropFilter: "blur(3px)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+            <div className="anim-in" onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: "26px 26px 0 0", padding: "22px 18px calc(20px + env(safe-area-inset-bottom))", boxShadow: "0 -20px 50px -20px rgba(21,94,24,.4)" }}>
+              <div style={{ width: 40, height: 4, borderRadius: 3, background: "var(--line2)", margin: "0 auto 16px" }} />
+              <div className="microlbl" style={{ marginLeft: 2 }}>ADD TO PIPELINE</div>
+              <div className="h-disp" style={{ fontSize: 21, fontWeight: 700, margin: "3px 0 16px 2px" }}>How do you want to add it?</div>
+              <button className="press" onClick={startLog} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 18, background: "linear-gradient(135deg,#1B7A20,#2E9E33)", color: "#fff", marginBottom: 10, boxShadow: "var(--sh-m)" }}>
+                <span style={{ width: 42, height: 42, borderRadius: 13, background: "rgba(255,255,255,.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><I.bolt /></span>
+                <span style={{ flex: 1 }}><span style={{ display: "block", fontWeight: 700, fontSize: 16 }}>Log a quote</span><span style={{ fontSize: 12.5, color: "rgba(255,255,255,.85)" }}>Made it in Excel or on call? Add it in 30 seconds.</span></span>
+                <I.chev />
+              </button>
+              <button className="press" onClick={startQuote} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 18, background: "#fff", border: "1.5px solid var(--line2)", boxShadow: "var(--sh-s)" }}>
+                <span style={{ width: 42, height: 42, borderRadius: 13, background: "var(--grn-100)", color: "var(--grn-d)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><I.chart /></span>
+                <span style={{ flex: 1 }}><span style={{ display: "block", fontWeight: 700, fontSize: 16 }}>New quotation</span><span style={{ fontSize: 12.5, color: "var(--dim)" }}>Full costing wizard - material, machine, margin.</span></span>
+                <I.chev style={{ color: "var(--faint)" }} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {tab !== "new" && tab !== "analytics" && tab !== "subscribe" && tab !== "log" && (
           <nav className="navbar" ref={navRef}>
             <div className="nav-pill" style={pillStyle} />
             <button ref={setNavRef("home")} className={"nav-it " + (tab === "home" ? "on" : "")} onClick={() => setTab("home")}><I.home /><span>Home</span></button>
-            <button ref={setNavRef("quotes")} className={"nav-it " + (tab === "quotes" ? "on" : "")} onClick={() => setTab("quotes")}><I.list /><span>Quotes</span></button>
-            <button className="fab press" onClick={startQuote} aria-label="New quotation"><I.plus /></button>
+            <button ref={setNavRef("quotes")} className={"nav-it " + (tab === "quotes" ? "on" : "")} onClick={() => setTab("quotes")}><I.list /><span>Pipeline</span></button>
+            <button className="fab press" onClick={() => setFabOpen(true)} aria-label="Add a quote"><I.plus /></button>
             <button ref={setNavRef("setup")} className={"nav-it " + (tab === "setup" ? "on" : "")} onClick={() => setTab("setup")}><I.gear /><span>Setup</span></button>
             <button ref={setNavRef("help")} className={"nav-it " + (tab === "help" ? "on" : "")} onClick={() => setTab("help")}><I.help /><span>Help</span></button>
           </nav>
@@ -718,7 +941,7 @@ export default function App() {
 }
 
 /* ================= HOME ================= */
-function Home({ data, account, onNew, goQuotes, openAnalytics, goSetup, goSubscribe }) {
+function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, goSetup, goSubscribe }) {
   /* animated hero lines - flow speed tracks scroll velocity */
   const flowRefs = useRef([]);
   useEffect(() => {
@@ -753,6 +976,9 @@ function Home({ data, account, onNew, goQuotes, openAnalytics, goSetup, goSubscr
   });
   const max = Math.max(1, ...days);
   const recent = data.quotes.slice(0, 3);
+  const dueList = data.quotes.filter((q) => { const st = followState(q); return st === "overdue" || st === "today"; })
+    .sort((a, b) => a.followUp - b.followUp);
+  const pendingValue = data.quotes.filter((q) => q.status === "pending").reduce((s, q) => s + q.total, 0);
 
   return (
     <div className="scr"><div className="pagepad">
@@ -799,9 +1025,28 @@ function Home({ data, account, onNew, goQuotes, openAnalytics, goSetup, goSubscr
         </div>
       </div>
 
-      <button className="btn btn-grn press anim-in st2" style={{ width: "100%", padding: 18 }} onClick={onNew}>
-        <I.plus style={{ width: 19 }} /> New quotation
-      </button>
+      <div className="anim-in st2" style={{ display: "grid", gridTemplateColumns: "1.35fr 1fr", gap: 10 }}>
+        <button className="btn btn-grn press" style={{ padding: 17 }} onClick={onLog}><I.bolt /> Log a quote</button>
+        <button className="btn btn-ghost press" style={{ padding: 17 }} onClick={onNew}><I.plus style={{ width: 17 }} /> Full quote</button>
+      </div>
+
+      {dueList.length > 0 && (
+        <button onClick={() => goQuotes("pending")} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "var(--amber-bg)", border: "1px solid #F0DCB8" }}>
+          <span style={{ width: 40, height: 40, borderRadius: 12, background: "#fff", color: "var(--amber)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><I.bell /></span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", fontWeight: 700, fontSize: 15, color: "var(--amber)" }}>{dueList.length} follow-up{dueList.length === 1 ? "" : "s"} due</span>
+            <span style={{ display: "block", fontSize: 13, color: "#7A5510", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{dueList.slice(0, 2).map((q) => q.customer).join(", ")}{dueList.length > 2 ? " +" + (dueList.length - 2) + " more" : ""}</span>
+          </span>
+          <I.chev style={{ color: "var(--amber)" }} />
+        </button>
+      )}
+
+      {pendingValue > 0 && (
+        <button onClick={() => goQuotes("pending")} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "15px 16px", borderRadius: 18, background: "var(--soft)", border: "1px solid var(--line)" }}>
+          <span style={{ fontSize: 14, color: "var(--dim)", fontWeight: 600 }}>Open pipeline value <span style={{ fontSize: 12, color: "var(--faint)", fontWeight: 400 }}>(pending)</span></span>
+          <b className="mono" style={{ color: "var(--grn-d)", fontSize: 16 }}>{inr(pendingValue)}</b>
+        </button>
+      )}
 
       <div className="anim-in st3" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "26px 0 10px" }}>
         <span className="eyebrow">Recent quotes</span>
@@ -839,6 +1084,104 @@ function Home({ data, account, onNew, goQuotes, openAnalytics, goSetup, goSubscr
 }
 const statBtn = { all: "unset", boxSizing: "border-box", cursor: "pointer", flex: 1, background: "rgba(255,255,255,.13)", border: "1px solid rgba(255,255,255,.18)", borderRadius: 16, padding: "13px 10px", textAlign: "center" };
 
+/* ================= QUICK LOG (tracker-first 30-second entry) ================= */
+function QuickLog({ data, onSave, onExit, ping }) {
+  const [f, setF] = useState({ customer: "", phone: "", part: "", total: "", qty: "", status: "pending", followUp: "", note: "" });
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [paste, setPaste] = useState("");
+  const upd = (k, v) => setF((s) => ({ ...s, [k]: v }));
+  const ok = f.customer.trim() && num(f.total) > 0;
+
+  const applyPaste = () => {
+    const p = parseEnquiry(paste);
+    setF((s) => ({ ...s, customer: p.customer || s.customer, phone: p.phone || s.phone, total: p.total || s.total, qty: p.qty || s.qty }));
+    setPasteOpen(false); setPaste(""); ping("Filled from message - check the fields");
+  };
+  const save = () => {
+    if (!ok) return;
+    const total = num(f.total), qty = num(f.qty);
+    onSave({
+      id: uid(), at: Date.now(), status: f.status, customer: f.customer.trim(), phone: f.phone.replace(/\D/g, ""),
+      part: f.part.trim() || "(no part)", qty, pricePc: qty ? total / qty : 0, total,
+      followUp: f.followUp ? new Date(f.followUp).getTime() : null, source: "logged", note: f.note.trim() || "",
+    });
+  };
+
+  return (
+    <>
+      <div className="scr"><div className="pagepad" style={{ paddingBottom: 130 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <button className="iconbtn press" onClick={onExit}><I.back /></button>
+          <div style={{ flex: 1 }}>
+            <div className="microlbl">QUICK ENTRY</div>
+            <div className="h-disp" style={{ fontSize: 23, fontWeight: 700 }}>Log a quote</div>
+          </div>
+          <button className="btn btn-sm btn-soft press" onClick={() => setPasteOpen(!pasteOpen)}><I.wa /> Paste</button>
+        </div>
+
+        {pasteOpen && (
+          <div className="card anim-in" style={{ padding: 14, marginBottom: 16, border: "1.5px solid #CFE9D1" }}>
+            <div className="lbl" style={{ color: "var(--grn-d)", marginBottom: 4 }}>Paste a WhatsApp / enquiry message</div>
+            <span className="hint">We'll try to pull out the customer, amount, quantity and number. Always check before saving.</span>
+            <textarea className="input" style={{ minHeight: 90, resize: "vertical", fontFamily: "var(--sans)" }} placeholder="Paste the customer's message here..." value={paste} onChange={(e) => setPaste(e.target.value)} />
+            <button className="btn btn-grn btn-sm press" style={{ width: "100%", marginTop: 10 }} onClick={applyPaste} disabled={!paste.trim()}>Fill the form</button>
+          </div>
+        )}
+
+        <label className="lbl">Customer</label>
+        <input className="input" placeholder="e.g. Bharat Traders" value={f.customer} onChange={(e) => upd("customer", e.target.value)} />
+        <div style={{ height: 14 }} />
+
+        <label className="lbl">WhatsApp number <span style={{ fontWeight: 400, color: "var(--faint)", fontSize: 13 }}>(optional)</span></label>
+        <div className="phone-field">
+          <span className="cc">+91</span>
+          <input type="tel" inputMode="numeric" placeholder="98xxxxxxxx" value={f.phone} onChange={(e) => upd("phone", e.target.value.replace(/\D/g, "").slice(0, 10))} />
+        </div>
+        <div style={{ height: 14 }} />
+
+        <label className="lbl">Part / item <span style={{ fontWeight: 400, color: "var(--faint)", fontSize: 13 }}>(optional)</span></label>
+        <input className="input" placeholder="e.g. MS Hex Bar lot" value={f.part} onChange={(e) => upd("part", e.target.value)} />
+        <div style={{ height: 14 }} />
+
+        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 12 }}>
+          <div>
+            <label className="lbl">Quote amount</label>
+            <div className="suffix-wrap"><input className="input mono" type="number" inputMode="decimal" placeholder="128000" value={f.total} onChange={(e) => upd("total", e.target.value)} /><span className="sfx">₹ TOTAL</span></div>
+          </div>
+          <div>
+            <label className="lbl">Qty <span style={{ fontWeight: 400, color: "var(--faint)", fontSize: 12 }}>(opt)</span></label>
+            <div className="suffix-wrap"><input className="input mono" type="number" inputMode="numeric" placeholder="—" value={f.qty} onChange={(e) => upd("qty", e.target.value)} /><span className="sfx">PCS</span></div>
+          </div>
+        </div>
+        {num(f.total) > 0 && num(f.qty) > 0 && (
+          <div style={{ fontSize: 12.5, color: "var(--dim)", margin: "8px 0 0 2px" }} className="mono">= {inr(num(f.total) / num(f.qty), 2)} / pc</div>
+        )}
+        <div style={{ height: 16 }} />
+
+        <label className="lbl">Status</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          {[["pending", "Pending", "pend"], ["won", "Won", "won"], ["lost", "Lost", "lost"]].map(([k, l]) => (
+            <button key={k} className={"fpill press " + (f.status === k ? "on" : "")} style={{ flex: 1 }} onClick={() => upd("status", k)}>{l}</button>
+          ))}
+        </div>
+        <div style={{ height: 16 }} />
+
+        <label className="lbl">Follow-up date <span style={{ fontWeight: 400, color: "var(--faint)", fontSize: 13 }}>(optional)</span></label>
+        <span className="hint">Set a date to chase this quote - it shows up on your Home screen when due.</span>
+        <input className="input mono" type="date" value={f.followUp} onChange={(e) => upd("followUp", e.target.value)} />
+        <div style={{ height: 14 }} />
+
+        <label className="lbl">Note <span style={{ fontWeight: 400, color: "var(--faint)", fontSize: 13 }}>(optional)</span></label>
+        <input className="input" placeholder="e.g. wants delivery by month-end" value={f.note} onChange={(e) => upd("note", e.target.value)} />
+      </div></div>
+
+      <div className="runbar" style={{ background: "#fff", border: "1px solid var(--line)", padding: 10 }}>
+        <button className="btn btn-grn press" style={{ width: "100%" }} onClick={save} disabled={!ok}><I.check2 /> Save to pipeline</button>
+      </div>
+    </>
+  );
+}
+
 /* ================= WIZARD ================= */
 function Wizard({ data, draft, setDraft, step, setStep, onExit, onSave, doneQuote, onFinish, ping }) {
   const c = calcQuote(draft, data);
@@ -866,6 +1209,12 @@ function Wizard({ data, draft, setDraft, step, setStep, onExit, onSave, doneQuot
           <div key="s1" className="anim-in">
             <label className="lbl">Customer</label>
             <input className="input" placeholder="e.g. Apex Hydraulics" value={draft.customer} onChange={(e) => upd("customer", e.target.value)} />
+            <div style={{ height: 16 }} />
+            <label className="lbl">WhatsApp number <span style={{ fontWeight: 400, color: "var(--faint)", fontSize: 13 }}>(optional)</span></label>
+            <div className="phone-field">
+              <span className="cc">+91</span>
+              <input type="tel" inputMode="numeric" placeholder="98xxxxxxxx" value={draft.phone || ""} onChange={(e) => upd("phone", e.target.value.replace(/\D/g, "").slice(0, 10))} />
+            </div>
             <div style={{ height: 16 }} />
             <label className="lbl">Part name</label>
             <input className="input" placeholder="e.g. Gland Nut - 60mm" value={draft.part} onChange={(e) => upd("part", e.target.value)} />
@@ -991,7 +1340,7 @@ function Success({ q, data, onFinish, ping }) {
       <div className="wa-prev anim-in st4" style={{ textAlign: "left" }}>{msg}</div>
       <div className="anim-in st5" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 16 }}>
         <button className="btn btn-ghost press" onClick={copy}><I.copy /> Copy text</button>
-        <a className="btn btn-grn press" style={{ textDecoration: "none" }} href={"https://wa.me/?text=" + encodeURIComponent(msg)} target="_blank" rel="noreferrer"><I.wa /> WhatsApp</a>
+        <a className="btn btn-grn press" style={{ textDecoration: "none" }} href={waLink(q.phone, msg)} target="_blank" rel="noreferrer"><I.wa /> {q.phone ? "Send on WhatsApp" : "WhatsApp"}</a>
       </div>
       <button className="btn btn-ghost press anim-in st6" style={{ width: "100%", marginTop: 10 }} onClick={pdf}><I.pdf /> Download PDF quotation</button>
       <button className="btn btn-soft press anim-in st7" style={{ width: "100%", marginTop: 10 }} onClick={onFinish}>Done - back to home</button>
@@ -1000,154 +1349,355 @@ function Success({ q, data, onFinish, ping }) {
   );
 }
 
-/* ================= QUOTES ================= */
-function Quotes({ data, setStatus, delQuote, ping, filter, setFilter }) {
+/* ================= QUOTES / PIPELINE ================= */
+function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, filter, setFilter, onLog, enquiries = [], logEnquiry, dismissEnquiry }) {
   const [open, setOpen] = useState(null);
-  const list = data.quotes.filter((q) => filter === "all" || q.status === filter);
+  const [q, setQ] = useState("");
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef(null);
   const fdate = (t) => new Date(t).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+
+  const dueCount = data.quotes.filter((x) => { const s = followState(x); return s === "overdue" || s === "today"; }).length;
+  const term = q.trim().toLowerCase();
+  const list = data.quotes
+    .filter((x) => filter === "all" || (filter === "due" ? (followState(x) === "overdue" || followState(x) === "today") : x.status === filter))
+    .filter((x) => !term || (x.customer + " " + x.part).toLowerCase().includes(term));
+
+  const doExport = async (kind) => {
+    if (!data.quotes.length) return ping("No quotes to export yet");
+    if (kind === "csv") { exportQuotesCSV(data.quotes); return ping("CSV downloaded"); }
+    setBusy(true); ping("Building Excel...");
+    try { await exportQuotesXLSX(data.quotes); ping("Excel downloaded"); }
+    catch { exportQuotesCSV(data.quotes); ping("Saved as CSV (Excel needs internet)"); }
+    finally { setBusy(false); }
+  };
+  const onFile = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    setBusy(true); ping("Reading file...");
+    try {
+      const rows = await parseSheetFile(file);
+      if (!rows.length) ping("No quotes found - need a Customer or Part column");
+      else importQuotes(rows);
+    } catch { ping("Could not read that file - use .xlsx or .csv"); }
+    finally { setBusy(false); }
+  };
 
   return (
     <div className="scr"><div className="pagepad">
-      <div className="anim-in" style={{ marginBottom: 16 }}>
-        <span className="eyebrow">Pipeline</span>
-        <div className="h-disp" style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>Quotes</div>
-      </div>
-      <div className="anim-in st1" style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        {["all", "pending", "won", "lost"].map((k) => (<button key={k} className={"fpill press " + (filter === k ? "on" : "")} onClick={() => setFilter(k)}>{k[0].toUpperCase() + k.slice(1)}</button>))}
-      </div>
-      {list.length === 0 && (<div className="card-tint anim-in st2" style={{ padding: 30, textAlign: "center", color: "var(--dim)", fontSize: 14.5 }}>Nothing here yet - tap <b style={{ color: "var(--grn-d)" }}>+</b> to make your first quotation.</div>)}
-      {list.map((q, i) => (
-        <div key={q.id} className={"card anim-in st" + Math.min(8, i + 2)} style={{ padding: "16px 16px", marginBottom: 10 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setOpen(open === q.id ? null : q.id)}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 15.5 }}>{q.customer}</div>
-              <div style={{ fontSize: 13.5, color: "var(--dim)", marginTop: 2 }}>{q.part} · {q.qty} pcs · {fdate(q.at)}</div>
-            </div>
-            <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 12 }}>
-              <div className="mono" style={{ fontWeight: 600, fontSize: 15.5 }}>{inr(q.total)}</div>
-              <span className={"pill " + (q.status === "won" ? "won" : q.status === "lost" ? "lost" : "pend")} style={{ marginTop: 4 }}><i className="dot" />{q.status.toUpperCase()}</span>
-            </div>
-          </div>
-          {open === q.id && (
-            <div className="anim-in" style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-              {q.status !== "won" && <button className="btn btn-sm btn-soft press" onClick={() => { setStatus(q.id, "won"); ping("Marked as Won 🎉"); }}>Mark Won</button>}
-              {q.status !== "lost" && <button className="btn btn-sm btn-ghost press" onClick={() => { setStatus(q.id, "lost"); ping("Marked as Lost"); }}>Mark Lost</button>}
-              {q.status !== "pending" && <button className="btn btn-sm btn-ghost press" onClick={() => { setStatus(q.id, "pending"); ping("Reopened"); }}>Reopen</button>}
-              <button className="btn btn-sm btn-ghost press" onClick={async () => { ping("Preparing PDF..."); try { await downloadQuotePDF(q, data); ping("PDF downloaded"); } catch { ping("PDF needs internet"); } }}><I.pdf /> PDF</button>
-              <button className="btn btn-sm btn-ghost press" onClick={async () => { try { await navigator.clipboard.writeText(waText(q, data.shopName, data.settings.validityDays)); ping("Message copied"); } catch { ping("Copy failed"); } }}><I.copy /></button>
-              <button className="btn btn-sm btn-ghost press" style={{ color: "var(--red)" }} onClick={() => { delQuote(q.id); ping("Deleted"); }}><I.trash /></button>
-            </div>
-          )}
+      <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={onFile} style={{ display: "none" }} />
+      <div className="anim-in" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+        <div><span className="eyebrow">Pipeline</span><div className="h-disp" style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>All quotes</div></div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="iconbtn press" title="Import from Excel/CSV" disabled={busy} onClick={() => fileRef.current?.click()}><I.up /></button>
+          <button className="iconbtn press" title="Export Excel" disabled={busy} onClick={() => doExport("xlsx")}><I.sheet /></button>
         </div>
-      ))}
+      </div>
+
+      {/* incoming WhatsApp enquiries (only present when the backend is deployed) */}
+      {enquiries.length > 0 && (
+        <div className="anim-in" style={{ marginBottom: 18 }}>
+          <span className="eyebrow" style={{ display: "flex", alignItems: "center", gap: 7, color: "#128C4B" }}><I.wa /> Incoming on WhatsApp · {enquiries.length}</span>
+          {enquiries.map((e) => (
+            <div key={e.id} className="card" style={{ padding: "14px 15px", marginTop: 10, border: "1px solid #CBEAD2", background: "#F3FBF4" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>{e.name || ("+" + e.from)}</div>
+                <span className="mono" style={{ fontSize: 11.5, color: "var(--faint)" }}>{fdateShort(e.at)}</span>
+              </div>
+              {e.type === "image" && e.mediaId && (
+                <a href={WA_API + "/whatsapp-media?id=" + encodeURIComponent(e.mediaId)} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: 8 }}>
+                  <img src={WA_API + "/whatsapp-media?id=" + encodeURIComponent(e.mediaId)} alt="WhatsApp attachment" loading="lazy"
+                    style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 12, border: "1px solid #CBEAD2", display: "block" }} />
+                </a>
+              )}
+              {e.type === "document" && e.mediaId && (
+                <a className="press" href={WA_API + "/whatsapp-media?id=" + encodeURIComponent(e.mediaId)} target="_blank" rel="noreferrer"
+                  style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "11px 12px", border: "1px solid #CBEAD2", borderRadius: 12, background: "#fff", textDecoration: "none" }}>
+                  <span style={{ color: "var(--grn-d)", flexShrink: 0 }}><I.pdf /></span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 600, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.filename || "Document"}</span>
+                  <span style={{ color: "var(--faint)", flexShrink: 0 }}><I.down /></span>
+                </a>
+              )}
+              {(e.text || e.type !== "text") && (
+                <div style={{ fontSize: 13.5, color: e.text ? "var(--dim)" : "var(--faint)", margin: "8px 0 12px", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+                  {e.text || (e.type === "image" ? "Photo, no caption" : e.type === "document" ? "Document, no message" : "")}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button className="btn btn-sm btn-soft press" onClick={() => logEnquiry(e)}><I.bolt /> Log as quote</button>
+                <a className="btn btn-sm btn-ghost press" style={{ textDecoration: "none" }} href={waLink(e.from, "")} target="_blank" rel="noreferrer"><I.wa /> Reply</a>
+                <button className="btn btn-sm btn-ghost press" style={{ color: "var(--red)" }} onClick={() => dismissEnquiry(e)}><I.trash /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* search */}
+      <div className="anim-in st1 suffix-wrap" style={{ marginBottom: 12 }}>
+        <input className="input" style={{ paddingLeft: 42 }} placeholder="Search customer or part..." value={q} onChange={(e) => setQ(e.target.value)} />
+        <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--faint)" }}><I.search /></span>
+      </div>
+
+      {/* filters */}
+      <div className="anim-in st1" style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+        {["all", "pending", "won", "lost"].map((k) => (<button key={k} className={"fpill press " + (filter === k ? "on" : "")} onClick={() => setFilter(k)}>{k[0].toUpperCase() + k.slice(1)}</button>))}
+        <button className={"fpill press " + (filter === "due" ? "on" : "")} style={dueCount && filter !== "due" ? { borderColor: "#F0DCB8", color: "var(--amber)" } : undefined} onClick={() => setFilter("due")}>Follow-ups{dueCount ? " · " + dueCount : ""}</button>
+      </div>
+
+      {list.length === 0 && (
+        <div className="card-tint anim-in st2" style={{ padding: 28, textAlign: "center", color: "var(--dim)", fontSize: 14.5 }}>
+          {term || filter !== "all" ? "No quotes match." : <>Nothing here yet.<br /><button className="btn btn-soft btn-sm press" style={{ marginTop: 14 }} onClick={onLog}><I.bolt /> Log your first quote</button></>}
+        </div>
+      )}
+
+      {list.map((q, i) => {
+        const fs = followState(q);
+        const pill = q.status === "won" ? "won" : q.status === "lost" ? "lost" : "pend";
+        return (
+          <div key={q.id} className={"card anim-in st" + Math.min(8, i + 2)} style={{ padding: "16px 16px", marginBottom: 10, borderColor: fs === "overdue" ? "#F0DCB8" : undefined }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setOpen(open === q.id ? null : q.id)}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 15.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.customer}</div>
+                <div style={{ fontSize: 13.5, color: "var(--dim)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.part}{q.qty ? " · " + q.qty + " pcs" : ""} · {fdate(q.at)}</div>
+                {fs && (
+                  <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, fontFamily: "var(--mono)", padding: "3px 9px", borderRadius: 999, background: fs === "overdue" ? "var(--red-bg)" : fs === "today" ? "var(--amber-bg)" : "var(--soft)", color: fs === "overdue" ? "var(--red)" : fs === "today" ? "var(--amber)" : "var(--dim)" }}>
+                    <I.bell style={{ width: 12, height: 12 }} /> {fs === "overdue" ? "OVERDUE " + fdate(q.followUp) : fs === "today" ? "FOLLOW UP TODAY" : "FOLLOW " + fdate(q.followUp)}
+                  </div>
+                )}
+              </div>
+              <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 12 }}>
+                <div className="mono" style={{ fontWeight: 600, fontSize: 15.5 }}>{inr(q.total)}</div>
+                <span className={"pill " + pill} style={{ marginTop: 4 }}><i className="dot" />{q.status.toUpperCase()}</span>
+              </div>
+            </div>
+            {open === q.id && (
+              <div className="anim-in" style={{ marginTop: 14 }}>
+                {/* WhatsApp chase - front and centre for pending quotes */}
+                {q.status === "pending" && (
+                  <a className="btn btn-grn btn-sm press" style={{ width: "100%", textDecoration: "none", marginBottom: 10 }}
+                    href={waLink(q.phone, waFollowText(q, data.shopName))} target="_blank" rel="noreferrer">
+                    <I.wa /> {q.phone ? "Chase on WhatsApp" : "Follow up on WhatsApp"}
+                  </a>
+                )}
+                {/* follow-up date setter */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <span style={{ color: "var(--dim)", flexShrink: 0 }}><I.cal /></span>
+                  <input className="input mono" style={{ padding: "9px 11px", fontSize: 14 }} type="date" value={q.followUp ? isoDate(q.followUp) : ""}
+                    onChange={(e) => { updateQuote(q.id, { followUp: e.target.value ? new Date(e.target.value).getTime() : null }); ping(e.target.value ? "Follow-up set" : "Follow-up cleared"); }} />
+                  {q.followUp && <button className="iconbtn press" style={{ width: 38, height: 38 }} onClick={() => { updateQuote(q.id, { followUp: null }); ping("Follow-up cleared"); }}><I.trash /></button>}
+                </div>
+                {q.note && <div style={{ fontSize: 13, color: "var(--dim)", background: "var(--soft)", borderRadius: 12, padding: "10px 12px", marginBottom: 10 }}>{q.note}</div>}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {q.status !== "won" && <button className="btn btn-sm btn-soft press" onClick={() => { setStatus(q.id, "won"); ping("Marked as Won 🎉"); }}>Mark Won</button>}
+                  {q.status !== "lost" && <button className="btn btn-sm btn-ghost press" onClick={() => { setStatus(q.id, "lost"); ping("Marked as Lost"); }}>Mark Lost</button>}
+                  {q.status !== "pending" && <button className="btn btn-sm btn-ghost press" onClick={() => { setStatus(q.id, "pending"); ping("Reopened"); }}>Reopen</button>}
+                  {q.phone && <a className="btn btn-sm btn-ghost press" style={{ textDecoration: "none" }} href={"tel:+91" + q.phone}><I.phone /></a>}
+                  <button className="btn btn-sm btn-ghost press" onClick={async () => { ping("Preparing PDF..."); try { await downloadQuotePDF(q, data); ping("PDF downloaded"); } catch { ping("PDF needs internet"); } }}><I.pdf /> PDF</button>
+                  <button className="btn btn-sm btn-ghost press" onClick={async () => { try { await navigator.clipboard.writeText(waText(q, data.shopName, data.settings.validityDays)); ping("Message copied"); } catch { ping("Copy failed"); } }}><I.copy /></button>
+                  <button className="btn btn-sm btn-ghost press" style={{ color: "var(--red)" }} onClick={() => { delQuote(q.id); ping("Deleted"); }}><I.trash /></button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {data.quotes.length > 0 && (
+        <div className="card-tint anim-in" style={{ padding: "14px 16px", marginTop: 6, display: "flex", gap: 10, alignItems: "center" }}>
+          <span style={{ color: "var(--grn)", flexShrink: 0 }}><I.sheet /></span>
+          <div style={{ flex: 1, fontSize: 13, color: "var(--dim)" }}>Move your pipeline in and out of Excel.</div>
+          <button className="btn btn-sm btn-ghost press" disabled={busy} onClick={() => doExport("csv")} style={{ padding: "8px 12px" }}><I.down style={{ width: 15 }} /> CSV</button>
+        </div>
+      )}
     </div></div>
   );
 }
 
-/* ================= ANALYTICS (opens from 7-days) ================= */
-function Analytics({ data, onBack, goQuotes }) {
-  const day = 86400000;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const days = [...Array(7)].map((_, i) => {
-    const d0 = new Date(today); d0.setDate(d0.getDate() - (6 - i));
-    const d1 = new Date(d0); d1.setDate(d1.getDate() + 1);
-    const qs = data.quotes.filter((q) => q.at >= d0.getTime() && q.at < d1.getTime());
-    return {
-      label: d0.toLocaleDateString("en-IN", { weekday: "short" }),
-      date: d0.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
-      count: qs.length,
-      value: qs.reduce((s, q) => s + q.total, 0),
-      won: qs.filter((q) => q.status === "won").length,
-      lost: qs.filter((q) => q.status === "lost").length,
-      pending: qs.filter((q) => q.status === "pending").length,
-    };
+/* ================= ANALYTICS ================= */
+/* adaptive time buckets: 7d -> daily, 30d -> 5-day blocks, all -> monthly */
+function buildBuckets(quotes, range) {
+  const now = Date.now();
+  const bucketOf = (d0, d1, label) => {
+    const qs = quotes.filter((q) => q.at >= d0 && q.at < d1);
+    return { label, value: qs.reduce((s, q) => s + q.total, 0), count: qs.length,
+      won: qs.filter((q) => q.status === "won").reduce((s, q) => s + q.total, 0) };
+  };
+  if (range === "7")
+    return [...Array(7)].map((_, i) => { const d0 = startOfDay(now) - (6 - i) * DAY; return bucketOf(d0, d0 + DAY, new Date(d0).toLocaleDateString("en-IN", { weekday: "short" })); });
+  if (range === "30") {
+    const end = startOfDay(now) + DAY;
+    return [...Array(6)].map((_, i) => { const d1 = end - (5 - i) * 5 * DAY, d0 = d1 - 5 * DAY; return bucketOf(d0, d1, fdateShort(d0)); });
+  }
+  const cur = new Date(); cur.setDate(1); cur.setHours(0, 0, 0, 0);
+  return [...Array(6)].map((_, i) => {
+    const d0 = new Date(cur.getFullYear(), cur.getMonth() - (5 - i), 1).getTime();
+    const d1 = new Date(cur.getFullYear(), cur.getMonth() - (5 - i) + 1, 1).getTime();
+    return bucketOf(d0, d1, new Date(d0).toLocaleDateString("en-IN", { month: "short" }));
   });
-  const maxVal = Math.max(1, ...days.map((d) => d.value));
-  const totVal = days.reduce((s, d) => s + d.value, 0);
-  const totCount = days.reduce((s, d) => s + d.count, 0);
-  const totWon = days.reduce((s, d) => s + d.won, 0);
-  const totLost = days.reduce((s, d) => s + d.lost, 0);
-  const winRate = totWon + totLost ? Math.round((totWon / (totWon + totLost)) * 100) : null;
-  const best = days.reduce((a, b) => (b.value > a.value ? b : a), days[0]);
+}
+
+function Donut({ won, lost, pending }) {
+  const total = won + lost + pending;
+  const R = 52, C = 2 * Math.PI * R;
+  const segs = [["#228B22", won], ["#E0A53A", pending], ["#C0584F", lost]];
+  let acc = 0;
+  const rate = won + lost ? Math.round((won / (won + lost)) * 100) : null;
+  return (
+    <div style={{ position: "relative", width: 138, height: 138, flexShrink: 0 }}>
+      <svg width="138" height="138" viewBox="0 0 138 138">
+        <circle cx="69" cy="69" r={R} fill="none" stroke="var(--line)" strokeWidth="15" />
+        {total > 0 && segs.map(([c, v], i) => {
+          const frac = v / total, len = frac * C, off = acc; acc += len;
+          return <circle key={i} cx="69" cy="69" r={R} fill="none" stroke={c} strokeWidth="15" strokeLinecap="butt"
+            strokeDasharray={len + " " + (C - len)} strokeDashoffset={-off} transform="rotate(-90 69 69)"
+            style={{ transition: "stroke-dasharray .7s cubic-bezier(.2,.7,.3,1), stroke-dashoffset .7s cubic-bezier(.2,.7,.3,1)" }} />;
+        })}
+      </svg>
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+        <div className="h-disp mono" style={{ fontSize: 26, fontWeight: 700, color: "var(--grn-d)", lineHeight: 1 }}>{rate == null ? "-" : rate + "%"}</div>
+        <div style={{ fontSize: 10, fontWeight: 600, color: "var(--faint)", letterSpacing: ".1em", marginTop: 2 }}>WIN RATE</div>
+      </div>
+    </div>
+  );
+}
+
+function Analytics({ data, onBack, goQuotes }) {
+  const [range, setRange] = useState("30");
+  const from = range === "all" ? 0 : startOfDay(Date.now()) - (range === "7" ? 6 : 29) * DAY;
+  const scoped = data.quotes.filter((q) => q.at >= from);
+
+  const totVal = scoped.reduce((s, q) => s + q.total, 0);
+  const wonQ = scoped.filter((q) => q.status === "won"), lostQ = scoped.filter((q) => q.status === "lost"), pendQ = scoped.filter((q) => q.status === "pending");
+  const wonVal = wonQ.reduce((s, q) => s + q.total, 0), lostVal = lostQ.reduce((s, q) => s + q.total, 0), pendVal = pendQ.reduce((s, q) => s + q.total, 0);
+  const winRate = wonQ.length + lostQ.length ? Math.round((wonQ.length / (wonQ.length + lostQ.length)) * 100) : null;
+  const buckets = buildBuckets(scoped, range);
+  const maxVal = Math.max(1, ...buckets.map((b) => b.value));
+  const rangeLbl = range === "7" ? "Last 7 days" : range === "30" ? "Last 30 days" : "All time";
+
+  /* top customers by quoted value */
+  const byCust = {};
+  scoped.forEach((q) => { const k = q.customer || "(no name)"; (byCust[k] = byCust[k] || { value: 0, won: 0, n: 0 }); byCust[k].value += q.total; byCust[k].n += 1; if (q.status === "won") byCust[k].won += 1; });
+  const topCust = Object.entries(byCust).sort((a, b) => b[1].value - a[1].value).slice(0, 5);
+  const maxCust = Math.max(1, ...topCust.map(([, v]) => v.value));
 
   return (
     <div className="scr"><div className="pagepad">
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
         <button className="iconbtn press" onClick={onBack}><I.back /></button>
-        <div><div className="microlbl">LAST 7 DAYS</div><div className="h-disp" style={{ fontSize: 23, fontWeight: 700 }}>Your week</div></div>
+        <div><div className="microlbl">ANALYTICS</div><div className="h-disp" style={{ fontSize: 23, fontWeight: 700 }}>Your numbers</div></div>
       </div>
 
-      {/* summary trio */}
-      <div className="anim-in st1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
-        {[[inr(totVal), "QUOTED"], [totCount, "QUOTES"], [winRate == null ? "-" : winRate + "%", "WON"]].map(([v, l], i) => (
-          <div key={i} className="card" style={{ padding: "15px 12px", textAlign: "center" }}>
-            <div className="h-disp mono" style={{ fontSize: 20, fontWeight: 700, color: "var(--grn-d)" }}>{v}</div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--faint)", marginTop: 3 }}>{l}</div>
+      {/* range toggle */}
+      <div className="seg anim-in" style={{ marginBottom: 16 }}>
+        {[["7", "7 days"], ["30", "30 days"], ["all", "All time"]].map(([k, l]) => (
+          <button key={k} className={range === k ? "on" : ""} onClick={() => setRange(k)}>{l}</button>
+        ))}
+      </div>
+
+      {scoped.length === 0 ? (
+        <div className="card-tint anim-in st1" style={{ padding: 34, textAlign: "center", color: "var(--dim)", fontSize: 14.5 }}>No quotes in this period yet.</div>
+      ) : (<>
+
+      {/* KPI grid */}
+      <div className="anim-in st1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+        {[[inr(totVal), "TOTAL QUOTED", "var(--grn-d)"], [scoped.length + "", "QUOTES SENT", "var(--ink)"], [inr(wonVal), "VALUE WON", "#1B7A20"], [inr(pendVal), "PENDING VALUE", "var(--amber)"]].map(([v, l, c], i) => (
+          <div key={i} className="card" style={{ padding: "16px 14px" }}>
+            <div className="h-disp mono" style={{ fontSize: 21, fontWeight: 700, color: c, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{v}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--faint)", marginTop: 4, letterSpacing: ".05em" }}>{l}</div>
           </div>
         ))}
       </div>
 
-      {/* value-by-day bar chart */}
-      <div className="card anim-in st2" style={{ padding: "20px 18px 16px", marginBottom: 14 }}>
+      {/* donut: win rate + outcome counts */}
+      <div className="card anim-in st2" style={{ padding: "20px 18px", marginBottom: 14, display: "flex", alignItems: "center", gap: 18 }}>
+        <Donut won={wonQ.length} lost={lostQ.length} pending={pendQ.length} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="lbl" style={{ marginBottom: 10 }}>Outcome</div>
+          {[["#228B22", "Won", wonQ.length], ["#E0A53A", "Pending", pendQ.length], ["#C0584F", "Lost", lostQ.length]].map(([c, l, n], i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <i style={{ width: 11, height: 11, borderRadius: 3, background: c, flexShrink: 0 }} />
+              <span style={{ fontSize: 13.5, color: "var(--dim)", flex: 1 }}>{l}</span>
+              <b className="mono" style={{ fontSize: 14 }}>{n}</b>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* value trend bars */}
+      <div className="card anim-in st3" style={{ padding: "20px 18px 16px", marginBottom: 14 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-          <span className="lbl" style={{ margin: 0 }}>Quoted value by day</span>
+          <span className="lbl" style={{ margin: 0 }}>Quoted value{range === "all" ? " by month" : range === "30" ? " (5-day blocks)" : " by day"}</span>
           <span style={{ color: "var(--grn)" }}><I.chart /></span>
         </div>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8, height: 150 }}>
-          {days.map((d, i) => {
-            const hPct = (d.value / maxVal) * 100;
+          {buckets.map((b, i) => {
+            const hPct = (b.value / maxVal) * 100, wonPct = b.value ? (b.won / b.value) * 100 : 0;
             return (
               <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 7, height: "100%", justifyContent: "flex-end" }}>
-                <div className="mono" style={{ fontSize: 9.5, color: d.value ? "var(--grn-d)" : "transparent", fontWeight: 600, whiteSpace: "nowrap" }}>
-                  {d.value >= 1000 ? "₹" + (d.value / 1000).toFixed(0) + "k" : d.value ? "₹" + d.value : "0"}
+                <div className="mono" style={{ fontSize: 9.5, color: b.value ? "var(--grn-d)" : "transparent", fontWeight: 600, whiteSpace: "nowrap" }}>
+                  {b.value >= 100000 ? "₹" + (b.value / 100000).toFixed(1) + "L" : b.value >= 1000 ? "₹" + (b.value / 1000).toFixed(0) + "k" : b.value ? "₹" + b.value : "0"}
                 </div>
-                <div style={{ width: "100%", maxWidth: 30, flex: 1, display: "flex", alignItems: "flex-end" }}>
-                  <div style={{ width: "100%", height: Math.max(hPct, d.value ? 6 : 2) + "%",
-                    background: d.value ? "linear-gradient(180deg,#3FAE45,#1B7A20)" : "var(--line)",
-                    borderRadius: 7, transition: "height .6s cubic-bezier(.2,.7,.3,1)",
-                    boxShadow: d.value ? "0 4px 12px -4px rgba(34,139,34,.5)" : "none",
-                    animation: "growBar .6s cubic-bezier(.2,.7,.3,1) both", animationDelay: (i * .05) + "s" }} />
+                <div style={{ width: "100%", maxWidth: 34, flex: 1, display: "flex", alignItems: "flex-end" }}>
+                  <div title="green portion = won" style={{ width: "100%", height: Math.max(hPct, b.value ? 6 : 2) + "%", position: "relative", overflow: "hidden",
+                    background: b.value ? "linear-gradient(180deg,#9FD9A2,#7CCB80)" : "var(--line)", borderRadius: 7,
+                    boxShadow: b.value ? "0 4px 12px -4px rgba(34,139,34,.4)" : "none",
+                    animation: "growBar .6s cubic-bezier(.2,.7,.3,1) both", animationDelay: (i * .05) + "s" }}>
+                    <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: wonPct + "%", background: "linear-gradient(180deg,#2E9E33,#1B7A20)" }} />
+                  </div>
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ink)" }}>{d.label}</div>
+                <div style={{ fontSize: 10.5, fontWeight: 600, color: "var(--ink)", whiteSpace: "nowrap" }}>{b.label}</div>
               </div>
             );
           })}
         </div>
-        <div style={{ borderTop: "1px solid var(--line)", marginTop: 14, paddingTop: 12, fontSize: 12.5, color: "var(--dim)", textAlign: "center" }}>
-          {totCount ? <>Best day was <b style={{ color: "var(--grn-d)" }}>{best.label} ({best.date})</b> - {inr(best.value)} quoted.</> : "No quotes in the last 7 days yet."}
+        <div style={{ borderTop: "1px solid var(--line)", marginTop: 14, paddingTop: 12, display: "flex", justifyContent: "center", gap: 16 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--dim)" }}><i style={{ width: 10, height: 10, borderRadius: 2, background: "#1B7A20" }} /> Won</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--dim)" }}><i style={{ width: 10, height: 10, borderRadius: 2, background: "#7CCB80" }} /> Quoted</span>
         </div>
       </div>
 
-      {/* won/lost/pending stacked composition */}
-      <div className="card anim-in st3" style={{ padding: "20px 18px 18px", marginBottom: 14 }}>
-        <span className="lbl">Outcome of this week's quotes</span>
-        <span className="hint">How the {totCount} quote{totCount === 1 ? "" : "s"} you sent are doing.</span>
-        {totCount ? (<>
-          <div className="segbar" style={{ height: 14, marginTop: 6 }}>
-            <i style={{ width: (totWon / totCount) * 100 + "%", background: "#228B22" }} />
-            <i style={{ width: (days.reduce((s, d) => s + d.pending, 0) / totCount) * 100 + "%", background: "#E0A53A" }} />
-            <i style={{ width: (totLost / totCount) * 100 + "%", background: "#C0584F" }} />
+      {/* money funnel: quoted -> won -> pending -> lost */}
+      <div className="card anim-in st4" style={{ padding: "20px 18px 18px", marginBottom: 14 }}>
+        <span className="lbl">Where the money is</span>
+        <span className="hint">Of {inr(totVal)} quoted in this period.</span>
+        {[["Won", wonVal, "#228B22"], ["Still pending", pendVal, "#E0A53A"], ["Lost", lostVal, "#C0584F"]].map(([l, v, c], i) => (
+          <div key={i} style={{ marginTop: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 5 }}>
+              <span style={{ color: "var(--dim)" }}>{l}</span><b className="mono" style={{ color: "var(--ink)" }}>{inr(v)}</b>
+            </div>
+            <div style={{ height: 10, borderRadius: 5, background: "var(--line)", overflow: "hidden" }}>
+              <div style={{ height: "100%", width: (totVal ? (v / totVal) * 100 : 0) + "%", background: c, borderRadius: 5, transition: "width .6s cubic-bezier(.2,.7,.3,1)" }} />
+            </div>
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 12 }}>
-            {[["#228B22", "Won", totWon], ["#E0A53A", "Pending", days.reduce((s, d) => s + d.pending, 0)], ["#C0584F", "Lost", totLost]].map(([c, l, n], i) => (
-              <span key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--dim)" }}>
-                <i style={{ width: 11, height: 11, borderRadius: 3, background: c, display: "inline-block" }} /><b style={{ color: "var(--ink)" }}>{n}</b> {l}
-              </span>
-            ))}
-          </div>
-        </>) : <div style={{ fontSize: 13, color: "var(--faint)", marginTop: 8 }}>Send a quote to see this.</div>}
+        ))}
       </div>
 
-      {/* daily detail list */}
-      <span className="eyebrow anim-in st4" style={{ display: "block", marginBottom: 10 }}>Day by day</span>
-      {[...days].reverse().map((d, i) => (
-        <div key={i} className="card anim-in" style={{ animationDelay: (i * .04 + .2) + "s", padding: "13px 16px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center", opacity: d.count ? 1 : .55 }}>
-          <div><div style={{ fontWeight: 600, fontSize: 14.5 }}>{d.label} <span style={{ color: "var(--faint)", fontWeight: 400, fontSize: 12.5 }}>{d.date}</span></div>
-            <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 1 }}>{d.count ? `${d.count} quote${d.count === 1 ? "" : "s"}` : "No quotes"}{d.won ? ` · ${d.won} won` : ""}</div></div>
-          <div className="mono" style={{ fontWeight: 600, fontSize: 15, color: d.value ? "var(--grn-d)" : "var(--faint)" }}>{d.value ? inr(d.value) : "-"}</div>
-        </div>
-      ))}
-      <button className="btn btn-soft press" style={{ width: "100%", marginTop: 10 }} onClick={() => goQuotes("all")}>See all quotes</button>
+      {/* top customers */}
+      <div className="card anim-in st5" style={{ padding: "20px 18px 16px", marginBottom: 14 }}>
+        <span className="lbl" style={{ marginBottom: 4 }}>Top customers</span>
+        <span className="hint">By quoted value in this period.</span>
+        {topCust.map(([name, v], i) => (
+          <div key={i} style={{ marginTop: 13 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
+              <span style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "62%" }}>{name}</span>
+              <span style={{ fontSize: 12, color: "var(--faint)" }}>{v.n} quote{v.n === 1 ? "" : "s"}{v.won ? " · " + v.won + " won" : ""}</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ flex: 1, height: 9, borderRadius: 5, background: "var(--line)", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: (v.value / maxCust) * 100 + "%", background: "linear-gradient(90deg,#3FAE45,#1B7A20)", borderRadius: 5, transition: "width .6s cubic-bezier(.2,.7,.3,1)" }} />
+              </div>
+              <b className="mono" style={{ fontSize: 13, color: "var(--grn-d)", flexShrink: 0, width: 74, textAlign: "right" }}>{inr(v.value)}</b>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      </>)}
+
+      <button className="btn btn-soft press" style={{ width: "100%", marginTop: 4 }} onClick={() => goQuotes("all")}>See all quotes</button>
+      <div style={{ fontSize: 11.5, color: "var(--faint)", textAlign: "center", margin: "16px 0 6px" }} className="mono">{rangeLbl.toUpperCase()} · {scoped.length} QUOTES</div>
     </div></div>
   );
 }
