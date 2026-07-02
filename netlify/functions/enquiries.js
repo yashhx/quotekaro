@@ -8,7 +8,7 @@ const json = (code, obj) => ({ statusCode: code, headers: { "content-type": "app
 
 export const handler = async (event) => {
   let store;
-  try { store = getStore("enquiries"); } catch { return json(200, { enabled: false, enquiries: [] }); }
+  try { store = getStore("enquiries"); } catch (e) { return json(200, { enabled: false, enquiries: [], error: "getStore: " + String(e && e.message) }); }
 
   if (event.httpMethod === "GET") {
     try {
@@ -20,8 +20,8 @@ export const handler = async (event) => {
       }
       items.sort((a, b) => (b.at || 0) - (a.at || 0));
       return json(200, { enabled: true, enquiries: items });
-    } catch {
-      return json(200, { enabled: true, enquiries: [] });
+    } catch (e) {
+      return json(200, { enabled: true, enquiries: [], error: "list: " + String(e && e.message) });
     }
   }
 
