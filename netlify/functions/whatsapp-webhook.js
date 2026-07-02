@@ -1,25 +1,27 @@
-/* WhatsApp Cloud API webhook.
+/* WhatsApp Cloud API webhook (Netlify Functions v2).
    GET  = Meta's one-time verification handshake (uses WHATSAPP_VERIFY_TOKEN).
    POST = incoming message events from Meta -> stored as "enquiries" (Netlify Blobs)
           so the app can pull them into the pipeline.
    Set env vars in Netlify: WHATSAPP_VERIFY_TOKEN (any secret you choose). */
 import { getStore } from "@netlify/blobs";
 
-export const handler = async (event) => {
+export default async (req) => {
+  const url = new URL(req.url);
+
   // ---- verification handshake ----
-  if (event.httpMethod === "GET") {
-    const p = event.queryStringParameters || {};
-    if (p["hub.mode"] === "subscribe" && p["hub.verify_token"] && p["hub.verify_token"] === process.env.WHATSAPP_VERIFY_TOKEN) {
-      return { statusCode: 200, body: p["hub.challenge"] || "" };
+  if (req.method === "GET") {
+    const p = url.searchParams;
+    if (p.get("hub.mode") === "subscribe" && p.get("hub.verify_token") && p.get("hub.verify_token") === process.env.WHATSAPP_VERIFY_TOKEN) {
+      return new Response(p.get("hub.challenge") || "", { status: 200 });
     }
-    return { statusCode: 403, body: "forbidden" };
+    return new Response("forbidden", { status: 403 });
   }
 
-  if (event.httpMethod !== "POST") return { statusCode: 405, body: "method not allowed" };
+  if (req.method !== "POST") return new Response("method not allowed", { status: 405 });
 
   // Always answer 200 quickly so Meta does not retry-storm on our errors.
   try {
-    const body = JSON.parse(event.body || "{}");
+    const body = await req.json();
     const store = getStore("enquiries");
     for (const entry of body.entry || []) {
       for (const change of entry.changes || []) {
@@ -52,5 +54,5 @@ export const handler = async (event) => {
   } catch (e) {
     // swallow - we still return 200 below
   }
-  return { statusCode: 200, body: "ok" };
+  return new Response("ok", { status: 200 });
 };

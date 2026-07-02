@@ -1,16 +1,16 @@
-/* Bridge between stored inbound WhatsApp messages and the app.
+/* Bridge between stored inbound WhatsApp messages and the app (Netlify Functions v2).
    GET  -> { enabled, enquiries:[...] }  (unhandled inbound messages, newest first)
    POST { id } -> mark one handled (removes it) once the app logs or dismisses it.
    Returns { enabled:false } gracefully when Blobs isn't available. */
 import { getStore } from "@netlify/blobs";
 
-const json = (code, obj) => ({ statusCode: code, headers: { "content-type": "application/json" }, body: JSON.stringify(obj) });
+const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json" } });
 
-export const handler = async (event) => {
+export default async (req) => {
   let store;
-  try { store = getStore("enquiries"); } catch (e) { return json(200, { enabled: false, enquiries: [], error: "getStore: " + String(e && e.message) }); }
+  try { store = getStore("enquiries"); } catch (e) { return json({ enabled: false, enquiries: [], error: "getStore: " + String(e && e.message) }); }
 
-  if (event.httpMethod === "GET") {
+  if (req.method === "GET") {
     try {
       const { blobs } = await store.list();
       const items = [];
@@ -19,16 +19,16 @@ export const handler = async (event) => {
         if (v && !v.handled) items.push(v);
       }
       items.sort((a, b) => (b.at || 0) - (a.at || 0));
-      return json(200, { enabled: true, enquiries: items });
+      return json({ enabled: true, enquiries: items });
     } catch (e) {
-      return json(200, { enabled: true, enquiries: [], error: "list: " + String(e && e.message) });
+      return json({ enabled: true, enquiries: [], error: "list: " + String(e && e.message) });
     }
   }
 
-  if (event.httpMethod === "POST") {
-    try { const { id } = JSON.parse(event.body || "{}"); if (id) await store.delete("msg_" + id); } catch {}
-    return json(200, { ok: true });
+  if (req.method === "POST") {
+    try { const { id } = await req.json(); if (id) await store.delete("msg_" + id); } catch {}
+    return json({ ok: true });
   }
 
-  return json(405, { error: "method not allowed" });
+  return json({ error: "method not allowed" }, 405);
 };
