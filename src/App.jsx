@@ -776,22 +776,32 @@ export default function App() {
   const [quotesFilter, setQuotesFilter] = useState("all");
   const [fabOpen, setFabOpen] = useState(false);
   const [enquiries, setEnquiries] = useState([]); // inbound WhatsApp messages (backend only)
+  const [waOn, setWaOn] = useState(false); // true once the WhatsApp backend has answered
   const [account, setAccount] = useState(undefined); // undefined = loading, null = logged out, object = logged in
   const saveT = useRef(null);
+  /* ids already logged/dismissed locally - filters the poll so a card can never
+     reappear even if the server-side mark-handled call failed */
+  const handledIds = useRef(new Set());
 
   /* poll the WhatsApp backend for incoming enquiries (no-op when not deployed).
      Declared with the other hooks, above any early return, per Rules of Hooks. */
   useEffect(() => {
     let alive = true, t;
     const poll = async () => {
+      if (document.hidden) { t = setTimeout(poll, 30000); return; } // skip while backgrounded
       const list = await fetchEnquiries();
       if (!alive) return;
-      if (list) setEnquiries(list);
+      if (list) { setWaOn(true); setEnquiries(list.filter((e) => !handledIds.current.has(e.id))); }
       t = setTimeout(poll, 30000);
     };
     poll();
     return () => { alive = false; clearTimeout(t); };
   }, []);
+  const refreshEnquiries = async () => {
+    const list = await fetchEnquiries();
+    if (list) { setWaOn(true); setEnquiries(list.filter((e) => !handledIds.current.has(e.id))); return true; }
+    return false;
+  };
 
   /* load account (auth) */
   useEffect(() => {
@@ -878,11 +888,12 @@ export default function App() {
       part: enq.type === "document" && enq.filename ? enq.filename : "(from WhatsApp)", qty: num(p.qty), pricePc: 0, total: num(p.total),
       followUp: null, source: "whatsapp", note: bits.join(" ") };
     setData((d) => ({ ...d, quotes: [q, ...d.quotes] }));
+    handledIds.current.add(enq.id);
     setEnquiries((list) => list.filter((x) => x.id !== enq.id));
     markEnquiryHandled(enq.id);
     setTab("quotes"); setQuotesFilter("all"); ping("Enquiry added to pipeline");
   };
-  const dismissEnquiry = (enq) => { setEnquiries((list) => list.filter((x) => x.id !== enq.id)); markEnquiryHandled(enq.id); ping("Enquiry dismissed"); };
+  const dismissEnquiry = (enq) => { handledIds.current.add(enq.id); setEnquiries((list) => list.filter((x) => x.id !== enq.id)); markEnquiryHandled(enq.id); ping("Enquiry dismissed"); };
   const setStatus = (id, status) => setData({ ...data, quotes: data.quotes.map((q) => (q.id === id ? { ...q, status } : q)) });
   const updateQuote = (id, patch) => setData({ ...data, quotes: data.quotes.map((q) => (q.id === id ? { ...q, ...patch } : q)) });
   const delQuote = (id) => setData({ ...data, quotes: data.quotes.filter((q) => q.id !== id) });
@@ -894,7 +905,7 @@ export default function App() {
         {toast && <div className="toast">{toast}</div>}
 
         {tab === "home" && <Home data={data} account={account} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} />}
-        {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} />}
+        {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} />}
         {tab === "log" && <QuickLog data={data} onSave={saveLogged} onExit={() => setTab("home")} ping={ping} />}
         {tab === "setup" && <Setup data={data} setData={setData} ping={ping} account={account} goSubscribe={() => setTab("subscribe")} onLogout={logout} />}
         {tab === "help" && <Help data={data} ping={ping} />}
@@ -1350,7 +1361,23 @@ function Success({ q, data, onFinish, ping }) {
 }
 
 /* ================= QUOTES / PIPELINE ================= */
-function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, filter, setFilter, onLog, enquiries = [], logEnquiry, dismissEnquiry }) {
+/* inline WhatsApp image with graceful fallback (media proxy can 401 when the token expires) */
+function WaImage({ src }) {
+  const [err, setErr] = useState(false);
+  if (err) return (
+    <div style={{ marginTop: 8, padding: "11px 12px", border: "1px dashed var(--line2)", borderRadius: 12, background: "#fff", fontSize: 12.5, color: "var(--faint)", textAlign: "center" }}>
+      Photo could not load - WhatsApp token may have expired. Open WhatsApp to view it.
+    </div>
+  );
+  return (
+    <a href={src} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: 8 }}>
+      <img src={src} alt="WhatsApp attachment" loading="lazy" onError={() => setErr(true)}
+        style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 12, border: "1px solid #CBEAD2", display: "block" }} />
+    </a>
+  );
+}
+
+function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, filter, setFilter, onLog, enquiries = [], logEnquiry, dismissEnquiry, waOn, refreshEnquiries }) {
   const [open, setOpen] = useState(null);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1396,9 +1423,23 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
       </div>
 
       {/* incoming WhatsApp enquiries (only present when the backend is deployed) */}
-      {enquiries.length > 0 && (
+      {(enquiries.length > 0 || waOn) && (
         <div className="anim-in" style={{ marginBottom: 18 }}>
-          <span className="eyebrow" style={{ display: "flex", alignItems: "center", gap: 7, color: "#128C4B" }}><I.wa /> Incoming on WhatsApp · {enquiries.length}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span className="eyebrow" style={{ display: "flex", alignItems: "center", gap: 7, color: "#128C4B" }}>
+              <I.wa /> Incoming on WhatsApp{enquiries.length > 0 ? " · " + enquiries.length : ""}
+              <i style={{ width: 7, height: 7, borderRadius: "50%", background: "#25A75B", display: "inline-block" }} title="WhatsApp backend connected" />
+            </span>
+            <button className="iconbtn press" style={{ width: 32, height: 32 }} title="Check for new messages"
+              onClick={async () => { const ok = await refreshEnquiries(); ping(ok ? "Inbox refreshed" : "Could not reach WhatsApp backend"); }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4.5h-4.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+          </div>
+          {enquiries.length === 0 && (
+            <div style={{ marginTop: 10, padding: "13px 15px", border: "1px dashed #CBEAD2", borderRadius: 14, background: "#F7FCF8", fontSize: 13, color: "var(--dim)", lineHeight: 1.5 }}>
+              Connected. When a customer messages your WhatsApp business number, the enquiry appears here within 30 seconds.
+            </div>
+          )}
           {enquiries.map((e) => (
             <div key={e.id} className="card" style={{ padding: "14px 15px", marginTop: 10, border: "1px solid #CBEAD2", background: "#F3FBF4" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1406,13 +1447,10 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
                 <span className="mono" style={{ fontSize: 11.5, color: "var(--faint)" }}>{fdateShort(e.at)}</span>
               </div>
               {e.type === "image" && e.mediaId && (
-                <a href={WA_API + "/whatsapp-media?id=" + encodeURIComponent(e.mediaId)} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: 8 }}>
-                  <img src={WA_API + "/whatsapp-media?id=" + encodeURIComponent(e.mediaId)} alt="WhatsApp attachment" loading="lazy"
-                    style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 12, border: "1px solid #CBEAD2", display: "block" }} />
-                </a>
+                <WaImage src={WA_API + "/whatsapp-media?id=" + encodeURIComponent(e.mediaId)} />
               )}
               {e.type === "document" && e.mediaId && (
-                <a className="press" href={WA_API + "/whatsapp-media?id=" + encodeURIComponent(e.mediaId)} target="_blank" rel="noreferrer"
+                <a className="press" href={WA_API + "/whatsapp-media?id=" + encodeURIComponent(e.mediaId) + "&name=" + encodeURIComponent(e.filename || "document")} target="_blank" rel="noreferrer"
                   style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "11px 12px", border: "1px solid #CBEAD2", borderRadius: 12, background: "#fff", textDecoration: "none" }}>
                   <span style={{ color: "var(--grn-d)", flexShrink: 0 }}><I.pdf /></span>
                   <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 600, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.filename || "Document"}</span>

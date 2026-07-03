@@ -23,14 +23,18 @@ export default async (req) => {
     : { messaging_product: "whatsapp", to, type: "text", text: { body: String(payload.text || "") } };
 
   try {
+    console.log("send: ->", to, payload.template ? "template:" + (payload.template.name || "?") : "text");
     const r = await fetch("https://graph.facebook.com/v20.0/" + phoneId + "/messages", {
       method: "POST",
       headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
       body: JSON.stringify(msg),
     });
     const data = await r.json().catch(() => ({}));
+    if (!r.ok) console.error("send: Meta API error", r.status, JSON.stringify(data && data.error ? data.error : data).slice(0, 400));
+    else console.log("send: OK, message id", data.messages && data.messages[0] && data.messages[0].id);
     return json(data, r.ok ? 200 : r.status);
-  } catch {
+  } catch (e) {
+    console.error("send: fetch failed -", e && e.message);
     return json({ error: "send failed" }, 502);
   }
 };
