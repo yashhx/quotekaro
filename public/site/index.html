@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuoteKaro — Quote bheja. Phir kya hua?</title>
+<meta name="description" content="QuoteKaro tracks every quotation — pending, won, lost — with WhatsApp enquiries flowing in and Excel flowing out. Built in Faridabad, tested on real shop floors.">
+<meta property="og:title" content="QuoteKaro — the quote tracker for traders & job-shops">
+<meta property="og:description" content="Log a quote in 30 seconds. WhatsApp enquiries flow in. Excel flows out. Nothing slips.">
+<meta property="og:url" content="https://quotekaroo.netlify.app/site/">
+<meta property="og:image" content="https://quotekaroo.netlify.app/icon-512.png">
+<meta name="twitter:card" content="summary">
+<link rel="canonical" href="https://quotekaroo.netlify.app/site/">
+<link rel="icon" href="/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FFFFFF; --soft:#F4F8F4; --tint:#EBF5EC;
+  --ink:#16201A; --dim:#56655B; --faint:#6F7F75; /* faint darkened for WCAG contrast on small labels */
+  --grn:#228B22; --grn-d:#155E18; --grn-x:#3FAE45; --grn-100:#E5F4E6;
+  --line:#E1EAE2; --line2:#D2DFD4;
+  --amber:#9A5408; --amber-bg:#FBEFDD;
+  --red:#9B2C2C; --red-bg:#FBEAEA;
+  --disp:'Space Grotesk',sans-serif; --sans:'Inter',sans-serif; --mono:'IBM Plex Mono',monospace;
+  --sh-s:0 1px 2px rgba(22,32,26,.05), 0 8px 24px -12px rgba(22,32,26,.12);
+  --sh-m:0 2px 4px rgba(22,32,26,.05), 0 18px 44px -18px rgba(21,94,24,.22);
+  --sh-l:0 4px 10px rgba(22,32,26,.06), 0 36px 80px -28px rgba(21,94,24,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth;scroll-padding-top:90px}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:2.5px solid var(--grn);outline-offset:3px;border-radius:6px}
+body{font-family:var(--sans);color:var(--ink);background:var(--bg);overflow-x:hidden;line-height:1.6}
+::selection{background:var(--grn);color:#fff}
+img{max-width:100%}
+a{color:inherit}
+.mono{font-family:var(--mono)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.22em;font-weight:600;color:var(--grn);text-transform:uppercase;display:inline-flex;align-items:center;gap:10px}
+.eyebrow::before{content:'';width:26px;height:2px;background:var(--grn);display:inline-block}
+h1,h2,h3{font-family:var(--disp);letter-spacing:-.03em;line-height:1.04}
+.grad{background:linear-gradient(95deg,#0F5132,#228B22 55%,#3FAE45);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* ---------- progress + nav ---------- */
+#prog{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#155E18,#3FAE45);width:0;z-index:99;transition:width .1s linear}
+nav{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:90;width:min(1120px,calc(100% - 28px));
+  display:flex;align-items:center;justify-content:space-between;padding:10px 12px 10px 20px;border-radius:999px;
+  background:rgba(255,255,255,.55);backdrop-filter:blur(18px) saturate(1.6);-webkit-backdrop-filter:blur(18px) saturate(1.6);
+  border:1px solid rgba(255,255,255,.6);box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 0 0 .5px rgba(22,32,26,.06),0 14px 40px -14px rgba(21,94,24,.25);
+  transition:box-shadow .3s}
+nav.scrolled{box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 0 0 .5px rgba(22,32,26,.08),0 18px 50px -14px rgba(21,94,24,.4)}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--disp);font-weight:700;font-size:19px;text-decoration:none}
+.logo .lq{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,#2E9E33,#155E18);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;font-weight:600;box-shadow:0 6px 16px -6px rgba(34,139,34,.6)}
+.navlinks{display:flex;gap:26px;font-size:14.5px;font-weight:600;color:var(--dim)}
+.navlinks a{text-decoration:none;transition:color .2s}
+.navlinks a:hover{color:var(--grn-d)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font-weight:600;font-size:16px;padding:15px 26px;border-radius:999px;border:1px solid transparent;cursor:pointer;font-family:var(--sans);text-decoration:none;transition:transform .16s ease,box-shadow .16s ease}
+.btn:active{transform:scale(.97)}
+.btn-grn{background:linear-gradient(135deg,#2E9E33,#1B7A20 65%);color:#fff;box-shadow:0 10px 26px -10px rgba(34,139,34,.6),inset 0 1px 0 rgba(255,255,255,.28)}
+.btn-grn:hover{transform:translateY(-2px);box-shadow:0 16px 34px -10px rgba(34,139,34,.7),inset 0 1px 0 rgba(255,255,255,.28)}
+.btn-ghost{background:#fff;border-color:var(--line2);color:var(--ink);box-shadow:var(--sh-s)}
+.btn-ghost:hover{transform:translateY(-2px);box-shadow:var(--sh-m)}
+.btn-sm{padding:11px 20px;font-size:14px}
+@media(max-width:760px){.navlinks{display:none}}
+
+/* ---------- hero ---------- */
+header{position:relative;min-height:100vh;min-height:100svh;display:flex;align-items:center;overflow:hidden;
+  background:radial-gradient(70% 55% at 50% -10%,rgba(34,139,34,.10),transparent 70%),linear-gradient(180deg,#F7FAF7,#FFFFFF 70%)}
+.h-grid{position:absolute;inset:0;pointer-events:none;opacity:.5;transform:translateY(var(--plxY));
+  background-image:linear-gradient(rgba(34,139,34,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(34,139,34,.055) 1px,transparent 1px);
+  background-size:56px 56px;mask-image:radial-gradient(70% 60% at 50% 40%,#000 30%,transparent 75%);-webkit-mask-image:radial-gradient(70% 60% at 50% 40%,#000 30%,transparent 75%)}
+.hero-inner{position:relative;z-index:2;display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center;width:100%;padding-top:90px;padding-bottom:60px}
+.hero-copy h1{font-size:clamp(44px,6.2vw,78px);font-weight:700;margin:22px 0 20px}
+.hero-copy .sub{font-size:clamp(16.5px,1.6vw,19px);color:var(--dim);max-width:52ch;line-height:1.7}
+.hero-ctas{display:flex;gap:14px;margin-top:32px;flex-wrap:wrap}
+.hero-trust{display:flex;gap:26px;margin-top:38px;flex-wrap:wrap}
+.hero-trust b{font-family:var(--disp);font-size:22px;color:var(--grn-d);display:block}
+.hero-trust span{font-size:12.5px;color:var(--faint)}
+
+/* phone stage - 3D */
+.stage{position:relative;perspective:1400px;height:640px}
+.phone{position:relative;width:320px;margin:0 auto;background:#fff;border-radius:38px;border:1px solid var(--line);
+  box-shadow:0 0 0 10px #16201A,0 0 0 12px #2a352d,0 60px 110px -30px rgba(21,94,24,.45),0 30px 50px -25px rgba(22,32,26,.4);
+  padding:18px 14px 16px;transform-style:preserve-3d;will-change:transform}
+.phone .pnotch{width:110px;height:22px;background:#16201A;border-radius:0 0 14px 14px;margin:-18px auto 12px}
+.ph-head{display:flex;justify-content:space-between;align-items:center;margin:2px 4px 10px}
+.ph-head .t{font-family:var(--disp);font-weight:700;font-size:19px}
+.ph-head .e{font-family:var(--mono);font-size:8.5px;letter-spacing:.18em;color:var(--grn);font-weight:600}
+.ph-pills{display:flex;gap:6px;margin:0 2px 12px}
+.ph-pills i{font-style:normal;font-size:10.5px;font-weight:600;padding:5px 11px;border-radius:999px;border:1px solid var(--line2);color:var(--dim);background:#fff}
+.ph-pills i.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.qcard{border:1px solid var(--line);border-radius:15px;padding:11px 12px;margin-bottom:8px;background:#fff;box-shadow:var(--sh-s)}
+.qcard .r1{display:flex;justify-content:space-between;align-items:center}
+.qcard .nm{font-weight:600;font-size:12.5px}
+.qcard .amt{font-family:var(--mono);font-weight:600;font-size:12.5px}
+.qcard .r2{display:flex;justify-content:space-between;align-items:center;margin-top:4px}
+.qcard .pt{font-size:10.5px;color:var(--dim)}
+.spill{font-family:var(--mono);font-size:7.5px;letter-spacing:.1em;font-weight:600;padding:3px 8px;border-radius:999px}
+.spill.won{background:var(--grn-100);color:var(--grn-d)}
+.spill.pend{background:var(--amber-bg);color:var(--amber)}
+.spill.lost{background:var(--red-bg);color:var(--red)}
+.spill.fup{background:#FDF3E3;color:#9A5408}
+.qcard.wa{background:#F3FBF4;border-color:#CBEAD2}
+.qcard.wa .tag{font-family:var(--mono);font-size:7.5px;letter-spacing:.14em;color:#128C4B;font-weight:600;display:flex;align-items:center;gap:5px;margin-bottom:5px}
+.qcard.wa .msg{font-size:11px;color:var(--dim);line-height:1.5}
+.qcard.wa .act{display:inline-block;margin-top:7px;font-size:9.5px;font-weight:700;color:var(--grn-d);background:var(--grn-100);border:1px solid #CFE9D1;padding:5px 10px;border-radius:999px}
+.wadot{width:6px;height:6px;border-radius:50%;background:#25A75B;display:inline-block}
+
+/* floating parallax cards around the phone */
+.float{position:absolute;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--sh-l);padding:14px 16px;will-change:transform;z-index:3;transform:translateY(var(--plxY))}
+.float .fl{font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--faint);font-weight:600}
+.float .fv{font-family:var(--disp);font-weight:700;font-size:20px;margin-top:2px}
+.float.f1{top:30px;left:-30px;animation:bob 5.2s ease-in-out infinite}
+.float.f2{top:150px;right:-46px;animation:bob 6.1s ease-in-out .7s infinite}
+.float.f3{bottom:120px;left:-58px;animation:bob 5.7s ease-in-out .3s infinite}
+.float.f4{bottom:20px;right:-20px;animation:bob 6.5s ease-in-out 1.1s infinite}
+.float .exl{width:30px;height:30px;border-radius:9px;background:#1D6F42;color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:600;font-size:11px}
+@keyframes bob{0%,100%{margin-top:0}50%{margin-top:-14px}}
+@media(max-width:980px){
+  .hero-inner{grid-template-columns:1fr;text-align:center;padding-top:120px}
+  .hero-copy .sub{margin:0 auto}
+  .hero-ctas,.hero-trust{justify-content:center}
+  .stage{height:600px;margin-top:20px}
+  .float.f1{left:0}.float.f3{left:-6px}.float.f2{right:-6px}.float.f4{right:0}
+}
+@media(max-width:560px){
+  /* small screens: fewer, smaller floats so the phone mock stays readable */
+  .float{padding:10px 12px}
+  .float .fv{font-size:16px}
+  .float.f1{top:-30px;left:0}
+  .float.f2,.float.f3{display:none}
+  .float.f4{bottom:-8px;right:6px}
+}
+
+/* ---------- marquee ---------- */
+.marq{background:var(--ink);color:#E9F5EA;overflow:hidden;padding:15px 0;transform:rotate(-1.2deg) scale(1.02);margin:10px 0 0}
+.marq .inner{display:flex;gap:44px;white-space:nowrap;font-family:var(--mono);font-size:13px;letter-spacing:.14em;font-weight:500;animation:slide 30s linear infinite;width:max-content}
+.marq b{color:#7CCB80}
+@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ---------- sections ---------- */
+section{position:relative;padding:110px 0}
+.sec-head{max-width:720px;margin-bottom:56px}
+.sec-head h2{font-size:clamp(32px,4.4vw,54px);font-weight:700;margin:18px 0 16px}
+.sec-head p{font-size:17px;color:var(--dim);line-height:1.75}
+[data-plx]{--plxY:0px}
+.watermark{position:absolute;top:40px;left:50%;transform:translateX(-50%) translateY(var(--plxY));font-family:var(--disp);font-weight:700;
+  font-size:clamp(90px,17vw,240px);color:transparent;-webkit-text-stroke:1.5px rgba(34,139,34,.10);letter-spacing:-.02em;
+  white-space:nowrap;pointer-events:none;user-select:none;z-index:0;will-change:transform}
+.z1{position:relative;z-index:1}
+
+/* story */
+.story{background:linear-gradient(180deg,#fff, #F5FAF5)}
+.visits{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.visit{background:#fff;border:1px solid var(--line);border-radius:24px;padding:30px 26px;box-shadow:var(--sh-s);transform-style:preserve-3d;transition:transform .18s ease,box-shadow .3s}
+.visit .vn{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--grn);font-weight:600}
+.visit h3{font-size:21px;margin:12px 0 10px}
+.visit p{font-size:14.5px;color:var(--dim);line-height:1.7}
+.visit .vq{margin-top:16px;padding:12px 14px;background:var(--tint);border-radius:13px;font-size:13.5px;color:var(--grn-d);font-weight:500;font-style:italic}
+.insight{margin-top:40px;background:linear-gradient(135deg,#1B7A20 0%,#228B22 55%,#2E9E33 100%);border-radius:28px;color:#fff;padding:44px 44px;position:relative;overflow:hidden;box-shadow:var(--sh-l)}
+.insight::after{content:'';position:absolute;inset:0;background:radial-gradient(80% 60% at 85% -10%,rgba(255,255,255,.22),transparent 60%);pointer-events:none}
+.insight::before{content:'';position:absolute;right:-40px;bottom:-60px;width:220px;height:220px;border:1.5px solid rgba(255,255,255,.16);border-radius:52px;transform:rotate(18deg)}
+.insight .il{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:rgba(255,255,255,.8);font-weight:600}
+.insight h3{font-size:clamp(24px,3vw,36px);margin-top:12px;line-height:1.25;max-width:26ch}
+@media(max-width:860px){.visits{grid-template-columns:1fr}}
+
+/* features 3D grid */
+.feats{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;perspective:1200px}
+.feat{background:#fff;border:1px solid var(--line);border-radius:24px;padding:30px 26px;box-shadow:var(--sh-s);transform-style:preserve-3d;transition:box-shadow .3s;will-change:transform}
+.feat:hover{box-shadow:var(--sh-l)}
+.feat .fi{width:52px;height:52px;border-radius:16px;background:var(--grn-100);color:var(--grn-d);display:flex;align-items:center;justify-content:center;margin-bottom:18px;transform:translateZ(30px)}
+.feat h3{font-size:20px;margin-bottom:9px;transform:translateZ(22px)}
+.feat p{font-size:14.5px;color:var(--dim);line-height:1.7;transform:translateZ(14px)}
+.feat .fk{margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--grn);font-weight:600;letter-spacing:.08em;transform:translateZ(14px)}
+@media(max-width:860px){.feats{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.feats{grid-template-columns:1fr}}
+
+/* whatsapp flow */
+.wa-sec{background:linear-gradient(180deg,#F5FAF5,#fff)}
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:0;position:relative;margin-top:10px}
+.fstep{position:relative;padding:0 18px}
+.fstep .fnum{width:44px;height:44px;border-radius:50%;background:#fff;border:2px solid var(--grn);color:var(--grn-d);font-family:var(--mono);font-weight:600;display:flex;align-items:center;justify-content:center;margin-bottom:16px;position:relative;z-index:1;box-shadow:0 0 0 6px #fff}
+.fstep::before{content:'';position:absolute;top:22px;left:calc(50% + 40px);right:calc(-50% + 40px);border-top:2px dashed var(--line2)}
+.fstep:last-child::before{display:none}
+.fstep h3{font-family:var(--disp);font-size:17px;margin-bottom:7px}
+.fstep p{font-size:13.5px;color:var(--dim);line-height:1.65}
+.wa-bubble{max-width:430px;background:#E7F6E9;border:1px solid #CBEAD2;border-radius:18px 18px 18px 5px;padding:18px 20px;font-size:14.5px;line-height:1.7;color:#143A1B;box-shadow:var(--sh-s);margin-top:44px}
+.wa-bubble b{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:#128C4B;margin-bottom:6px}
+@media(max-width:860px){.flow{grid-template-columns:1fr 1fr;row-gap:34px}.fstep::before{display:none}}
+
+/* excel */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+.xl-card{background:#fff;border:1px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:var(--sh-l);transform-style:preserve-3d;will-change:transform}
+.xl-head{background:#1D6F42;color:#fff;padding:13px 18px;font-family:var(--mono);font-size:12px;letter-spacing:.1em;display:flex;align-items:center;gap:10px}
+.xl-grid{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px}
+.xl-grid th{background:#F1F6F2;color:var(--faint);font-weight:500;padding:8px 10px;border:1px solid var(--line);text-align:left;font-size:10px;letter-spacing:.06em}
+.xl-grid td{padding:9px 10px;border:1px solid var(--line);color:var(--ink)}
+.xl-grid td.g{color:var(--grn-d);font-weight:600}
+.xl-grid td.a{color:var(--amber);font-weight:600}
+.xl-grid td.r{color:var(--red);font-weight:600}
+.checks{list-style:none;margin-top:26px;display:flex;flex-direction:column;gap:15px}
+.checks li{display:flex;gap:13px;align-items:flex-start;font-size:15.5px;color:#39483D;line-height:1.6}
+.checks .ck{width:24px;height:24px;border-radius:50%;background:var(--grn-100);color:var(--grn-d);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;font-size:12px;font-weight:700}
+@media(max-width:900px){.split{grid-template-columns:1fr;gap:36px}}
+
+/* analytics */
+.ana{background:linear-gradient(180deg,#fff,#F5FAF5)}
+.ana-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.ana-card{background:#fff;border:1px solid var(--line);border-radius:24px;padding:28px;box-shadow:var(--sh-s)}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.kpi{background:var(--soft);border:1px solid var(--line);border-radius:16px;padding:16px}
+.kpi b{font-family:var(--disp);font-size:24px;color:var(--grn-d);display:block}
+.kpi span{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--faint);font-weight:600}
+.bars{display:flex;align-items:flex-end;gap:10px;height:150px;margin-top:8px}
+.bars .b{flex:1;background:linear-gradient(180deg,#3FAE45,#1B7A20);border-radius:8px 8px 4px 4px;min-height:6px;transform:scaleY(0);transform-origin:bottom;transition:transform .8s cubic-bezier(.2,.7,.3,1);box-shadow:0 4px 12px -4px rgba(34,139,34,.5)}
+.inview .bars .b{transform:scaleY(1)}
+.bl{display:flex;gap:10px;margin-top:8px}
+.bl span{flex:1;text-align:center;font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+.donut-wrap{display:flex;align-items:center;gap:26px}
+.donut{transform:rotate(-90deg)}
+.donut .track{stroke:var(--line)}
+.donut .fill{stroke:url(#dgrad);stroke-dasharray:0 999;transition:stroke-dasharray 1.1s cubic-bezier(.2,.7,.3,1)}
+.dleg{display:flex;flex-direction:column;gap:9px;font-size:13.5px;color:var(--dim)}
+.dleg i{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:8px}
+@media(max-width:860px){.ana-grid{grid-template-columns:1fr}}
+
+/* costing */
+.math-card{background:#0F1D13;color:#D9EBDB;border-radius:28px;padding:44px;font-family:var(--mono);position:relative;overflow:hidden;box-shadow:var(--sh-l)}
+.math-card::after{content:'';position:absolute;inset:0;background:radial-gradient(60% 50% at 90% 0%,rgba(63,174,69,.18),transparent 60%);pointer-events:none}
+.math-line{display:flex;justify-content:space-between;padding:13px 0;border-bottom:1px dashed rgba(217,235,219,.18);font-size:14px}
+.math-line .ml{color:#9DBCA1}
+.math-line .mv{color:#fff}
+.math-line.total{border-bottom:none;padding-top:18px}
+.math-line.total .ml{color:#7CCB80;font-weight:600}
+.math-line.total .mv{font-size:22px;font-weight:600;color:#7CCB80}
+.rate-chip{display:inline-flex;align-items:center;gap:10px;background:var(--grn-100);border:1px solid #CFE9D1;color:var(--grn-d);border-radius:999px;padding:10px 18px;font-family:var(--mono);font-size:13px;font-weight:600;margin-top:22px}
+
+/* pricing */
+.price-card{max-width:520px;margin:0 auto;background:#fff;border-radius:30px;padding:46px 42px;position:relative;text-align:center;
+  border:1.5px solid transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(140deg,#3FAE45,#228B22 55%,#155E18) border-box;
+  box-shadow:var(--sh-l);transform-style:preserve-3d;will-change:transform}
+.price-card .badge{position:absolute;top:-15px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#2E9E33,#1B7A20);color:#fff;font-family:var(--mono);font-size:10px;letter-spacing:.16em;font-weight:600;padding:8px 18px;border-radius:999px;box-shadow:0 8px 20px -6px rgba(34,139,34,.6)}
+.price-card .prow{display:flex;align-items:baseline;justify-content:center;gap:6px;margin:20px 0 6px}
+.price-card .pamt{font-family:var(--disp);font-size:74px;font-weight:700;color:var(--grn-d);line-height:1}
+.price-card .pcur{font-family:var(--disp);font-size:30px;font-weight:700;color:var(--grn-d)}
+.price-card .pper{font-size:15px;color:var(--faint)}
+.price-card ul{list-style:none;margin:26px 0 30px;display:flex;flex-direction:column;gap:13px;text-align:left}
+.price-card li{display:flex;gap:12px;align-items:flex-start;font-size:15px;color:#39483D}
+.price-card .ck{width:22px;height:22px;border-radius:50%;background:var(--grn-100);color:var(--grn-d);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;font-size:11px;font-weight:700}
+.price-note{text-align:center;font-size:13px;color:var(--faint);margin-top:18px}
+
+/* faq */
+.faq{max-width:760px;margin:0 auto}
+.qa{border:1px solid var(--line);border-radius:18px;background:#fff;margin-bottom:12px;overflow:hidden;box-shadow:var(--sh-s)}
+.qa summary{cursor:pointer;padding:20px 22px;font-family:var(--disp);font-weight:600;font-size:16.5px;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:14px}
+.qa summary::-webkit-details-marker{display:none}
+.qa summary::after{content:'+';font-family:var(--mono);color:var(--grn);font-size:22px;transition:transform .25s}
+.qa[open] summary::after{transform:rotate(45deg)}
+.qa .ans{padding:0 22px 20px;font-size:14.5px;color:var(--dim);line-height:1.75}
+
+/* final cta */
+.cta-panel{background:linear-gradient(135deg,#155E18 0%,#228B22 55%,#2E9E33 100%);border-radius:34px;color:#fff;padding:80px 40px;text-align:center;position:relative;overflow:hidden;box-shadow:var(--sh-l)}
+.cta-panel::after{content:'';position:absolute;inset:0;background:radial-gradient(70% 70% at 50% -20%,rgba(255,255,255,.25),transparent 60%);pointer-events:none}
+.cta-panel h2{font-size:clamp(34px,4.6vw,58px);margin-bottom:16px}
+.cta-panel p{font-size:17px;color:rgba(255,255,255,.88);max-width:46ch;margin:0 auto 34px}
+.cta-panel .btn-white{background:#fff;color:var(--grn-d);box-shadow:0 14px 34px -10px rgba(0,0,0,.35)}
+.cta-rings{position:absolute;inset:0;pointer-events:none}
+.cta-rings i{position:absolute;border:1.5px solid rgba(255,255,255,.14);border-radius:40px;transform:rotate(18deg)}
+.cta-rings i:nth-child(1){width:200px;height:200px;right:-60px;bottom:-70px}
+.cta-rings i:nth-child(2){width:150px;height:150px;left:-50px;top:-50px;transform:rotate(-14deg)}
+
+footer{padding:56px 0 40px;border-top:1px solid var(--line);margin-top:110px}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.foot .fnote{font-size:13px;color:var(--faint)}
+.foot .mono{font-size:11px;letter-spacing:.16em;color:var(--faint)}
+
+/* reveal */
+.rev{opacity:0;transform:translateY(34px);transition:opacity .7s cubic-bezier(.2,.7,.3,1),transform .7s cubic-bezier(.2,.7,.3,1)}
+.rev.in{opacity:1;transform:none}
+.rev.d1{transition-delay:.08s}.rev.d2{transition-delay:.16s}.rev.d3{transition-delay:.24s}.rev.d4{transition-delay:.32s}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001s!important;transition-duration:.001s!important}
+  .rev{opacity:1;transform:none}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<div id="prog"></div>
+
+<nav id="nav">
+  <a class="logo" href="#top"><span class="lq">QK</span>QuoteKaro</a>
+  <div class="navlinks">
+    <a href="#story">Story</a>
+    <a href="#features">Features</a>
+    <a href="#whatsapp">WhatsApp</a>
+    <a href="#excel">Excel</a>
+    <a href="#pricing">Pricing</a>
+  </div>
+  <a class="btn btn-grn btn-sm" href="/">Open the app</a>
+</nav>
+
+<!-- ================= HERO ================= -->
+<header id="top">
+  <div class="h-grid" data-plx="0.06"></div>
+  <div class="wrap hero-inner">
+    <div class="hero-copy">
+      <span class="eyebrow">Quote tracker for traders &amp; job-shops</span>
+      <h1>Quote bheja.<br><span class="grad">Phir kya hua?</span></h1>
+      <p class="sub">Every workshop sends quotations. Almost nobody tracks them. QuoteKaro keeps every quote — <b>pending, won, lost</b> — in one pipeline, with WhatsApp enquiries flowing in and Excel flowing out. Nothing slips.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-grn" href="/">Try the app — it's free</a>
+        <a class="btn btn-ghost" href="https://wa.me/919910605207?text=Hi%2C%20I%20want%20to%20know%20more%20about%20QuoteKaro" target="_blank" rel="noreferrer">WhatsApp us</a>
+      </div>
+      <div class="hero-trust">
+        <div><b>30 sec</b><span>to log a quote</span></div>
+        <div><b>2-way</b><span>WhatsApp, once connected</span></div>
+        <div><b>.xlsx</b><span>in &amp; out, freely</span></div>
+        <div><b>₹0</b><span>to start today</span></div>
+      </div>
+    </div>
+
+    <div class="stage" id="stage">
+      <div class="float f1" data-plx="-0.10">
+        <div class="fl">THIS MONTH</div>
+        <div class="fv grad">₹2,40,678</div>
+      </div>
+      <div class="float f2" data-plx="0.12">
+        <div class="fl">WIN RATE</div>
+        <div class="fv" style="color:var(--grn-d)">62%</div>
+      </div>
+      <div class="float f3" data-plx="0.08">
+        <div class="fl" style="color:var(--amber)">FOLLOW-UPS DUE</div>
+        <div class="fv" style="color:var(--amber)">3 today</div>
+      </div>
+      <div class="float f4" data-plx="-0.07" style="display:flex;align-items:center;gap:12px">
+        <span class="exl">X</span>
+        <div><div class="fl">PIPELINE.XLSX</div><div style="font-size:12px;font-weight:600;color:var(--grn-d)">Exported ✓</div></div>
+      </div>
+
+      <div class="phone" id="phone">
+        <div class="pnotch"></div>
+        <div class="ph-head">
+          <div><div class="e">PIPELINE</div><div class="t">All quotes</div></div>
+          <span class="wadot" title="WhatsApp connected"></span>
+        </div>
+        <div class="ph-pills"><i class="on">All</i><i>Pending</i><i>Won</i><i>Follow-ups · 3</i></div>
+
+        <div class="qcard wa">
+          <div class="tag"><span class="wadot"></span> INCOMING ON WHATSAPP</div>
+          <div class="msg"><b style="color:var(--ink)">Ravi Metals:</b> Need 500 pcs MS hex bolt M12, rate batao</div>
+          <span class="act">⚡ Log as quote</span>
+        </div>
+        <div class="qcard">
+          <div class="r1"><span class="nm">Apex Hydraulics</span><span class="amt">₹34,878</span></div>
+          <div class="r2"><span class="pt">Gland Nut - 60mm · 200 pcs</span><span class="spill won">WON</span></div>
+        </div>
+        <div class="qcard">
+          <div class="r1"><span class="nm">Krishna Pumps</span><span class="amt">₹30,600</span></div>
+          <div class="r2"><span class="pt">Bush Ø42 · 500 pcs</span><span class="spill fup">FOLLOW UP TODAY</span></div>
+        </div>
+        <div class="qcard">
+          <div class="r1"><span class="nm">Bharat Traders</span><span class="amt">₹1,28,000</span></div>
+          <div class="r2"><span class="pt">MS Hex Bar lot</span><span class="spill pend">PENDING</span></div>
+        </div>
+        <div class="qcard">
+          <div class="r1"><span class="nm">Om Forgings</span><span class="amt">₹49,500</span></div>
+          <div class="r2"><span class="pt">Flange 6" · 120 pcs</span><span class="spill lost">LOST</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ================= MARQUEE ================= -->
+<div class="marq" aria-hidden="true">
+  <div class="inner">
+    <span>PENDING → <b>WON</b></span><span>LOG A QUOTE IN <b>30 SECONDS</b></span><span>QUOTES &amp; CHASES <b>ON WHATSAPP</b></span><span>EXCEL IN · EXCEL OUT</span><span>FOLLOW-UPS THAT <b>NEVER SLIP</b></span><span>BUILT IN <b>FARIDABAD</b></span>
+    <span>PENDING → <b>WON</b></span><span>LOG A QUOTE IN <b>30 SECONDS</b></span><span>QUOTES &amp; CHASES <b>ON WHATSAPP</b></span><span>EXCEL IN · EXCEL OUT</span><span>FOLLOW-UPS THAT <b>NEVER SLIP</b></span><span>BUILT IN <b>FARIDABAD</b></span>
+  </div>
+</div>
+
+<!-- ================= STORY ================= -->
+<section class="story" id="story">
+  <div class="watermark" data-plx="0.14">TRACK</div>
+  <div class="wrap z1">
+    <div class="sec-head rev">
+      <span class="eyebrow">Why we built it</span>
+      <h2>We walked into real workshops.<br>They corrected us.</h2>
+      <p>QuoteKaro started as a quotation <i>maker</i>. Then we sat with owners in Faridabad and Delhi NCR — and the product they actually wanted was hiding in plain sight.</p>
+    </div>
+    <div class="visits">
+      <div class="visit rev d1" data-tilt>
+        <div class="vn">SHOP VISIT 01</div>
+        <h3>"Excel is fine. Clients demand it."</h3>
+        <p>Shops already quote comfortably in Excel — and their customers often insist on that exact format. Replacing Excel is a losing battle. Working <b>with</b> it wins.</p>
+        <div class="vq">So QuoteKaro imports and exports .xlsx instead of fighting it.</div>
+      </div>
+      <div class="visit rev d2" data-tilt>
+        <div class="vn">SHOP VISIT 02</div>
+        <h3>"Yeh wali screen achhi hai."</h3>
+        <p>Unprompted, every owner pointed at one screen: the pipeline — all quotes with pending / won / lost status. Nobody had ever shown them their quotes as money in motion.</p>
+        <div class="vq">So the pipeline became the home screen, not an afterthought.</div>
+      </div>
+      <div class="visit rev d3" data-tilt>
+        <div class="vn">SHOP VISIT 03</div>
+        <h3>"Traders ko zyada kaam aayega."</h3>
+        <p>A micro-shop owner told us the tool might fit traders — the middlemen juggling dozens of quotes across parties — even better than shops. He was right.</p>
+        <div class="vq">So QuoteKaro is built traders-first, shops a close second.</div>
+      </div>
+    </div>
+    <div class="insight rev">
+      <div class="il">THE INSIGHT</div>
+      <h3>Making a quotation was never the problem. Knowing what happened to it — that's where the money leaks.</h3>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FEATURES ================= -->
+<section id="features">
+  <div class="watermark" data-plx="0.12">PIPELINE</div>
+  <div class="wrap z1">
+    <div class="sec-head rev">
+      <span class="eyebrow">What it does</span>
+      <h2>One pipeline. Six sharp tools.<br>Zero clutter.</h2>
+      <p>Everything a trader or a job-shop owner touches daily — and deliberately nothing else.</p>
+    </div>
+    <div class="feats">
+      <div class="feat rev d1" data-tilt>
+        <div class="fi"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M8.5 6.5h11M8.5 12h11M8.5 17.5h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="4.6" cy="6.5" r="1.3" fill="currentColor"/><circle cx="4.6" cy="12" r="1.3" fill="currentColor"/><circle cx="4.6" cy="17.5" r="1.3" fill="currentColor"/></svg></div>
+        <h3>The Pipeline</h3>
+        <p>Every quote as a card: pending, won or lost. Filter, search, tap to update. Your whole quoting business, visible on one screen for the first time.</p>
+        <div class="fk">HOME SCREEN, NOT A REPORT</div>
+      </div>
+      <div class="feat rev d2" data-tilt>
+        <div class="fi"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M13.2 2 4.5 13.4h6l-1.7 8.6 8.7-11.4h-6L13.2 2Z"/></svg></div>
+        <h3>Log in 30 seconds</h3>
+        <p>Made the quote in Excel or on a call? Log just the essentials — customer, part, amount, status. Paste a WhatsApp message and it fills the form itself.</p>
+        <div class="fk">CUSTOMER · AMOUNT · DONE</div>
+      </div>
+      <div class="feat rev d3" data-tilt>
+        <div class="fi"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div>
+        <h3>Follow-ups that chase</h3>
+        <p>Set a follow-up date on any pending quote. Overdue turns amber, today pings you on the home screen, and one tap opens WhatsApp with the reminder already written.</p>
+        <div class="fk">OVERDUE · TODAY · UPCOMING</div>
+      </div>
+      <div class="feat rev d1" data-tilt>
+        <div class="fi"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 20h16M7 20v-7M12 20V8M17 20v-4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></div>
+        <h3>Analytics that speak plainly</h3>
+        <p>Win rate, quoted value, money funnel, top customers — as big honest graphs, not accountant tables. Switch 7 days / 30 days / all time.</p>
+        <div class="fk">SEE THE LEAK, FIX THE LEAK</div>
+      </div>
+      <div class="feat rev d2" data-tilt>
+        <div class="fi"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="4" y="3.5" width="16" height="17" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M4 9h16M4 14.5h16M9.5 9v11.5M14.5 9v11.5" stroke="currentColor" stroke-width="1.5"/></svg></div>
+        <h3>Excel, both directions</h3>
+        <p>Import your existing quote sheet — messy columns, Indian dates, comma amounts, all handled. Export the pipeline back to .xlsx or CSV any time. Your data stays yours.</p>
+        <div class="fk">NO LOCK-IN, EVER</div>
+      </div>
+      <div class="feat rev d3" data-tilt>
+        <div class="fi"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.9 1.9M7.4 16.6l-1.9 1.9M18.5 18.5l-1.9-1.9M7.4 7.4 5.5 5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <h3>Full costing, when you want it</h3>
+        <p>A 4-step wizard prices a job properly: material by weight, machine time at your TRUE hourly rate, labour, setup spread over quantity, overhead, margin. You give the times; it does the money.</p>
+        <div class="fk">GST-READY PDF IN ONE TAP</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= WHATSAPP ================= -->
+<section class="wa-sec" id="whatsapp">
+  <div class="watermark" data-plx="0.12">WHATSAPP</div>
+  <div class="wrap z1">
+    <div class="sec-head rev">
+      <span class="eyebrow">Two-way WhatsApp</span>
+      <h2>Your business already runs on WhatsApp.<br>Now your pipeline does too.</h2>
+      <p>Enquiries arrive on WhatsApp. Quotes go out on WhatsApp. Follow-ups happen on WhatsApp. QuoteKaro doesn't ask you to change that — it plugs into it.</p>
+    </div>
+    <div class="flow">
+      <div class="fstep rev d1">
+        <div class="fnum">1</div>
+        <h3>Customer messages you</h3>
+        <p>Text, a drawing photo, or a PO PDF — sent to your WhatsApp business number like always.</p>
+      </div>
+      <div class="fstep rev d2">
+        <div class="fnum">2</div>
+        <h3>It appears in the app</h3>
+        <p>Within seconds the enquiry shows under "Incoming on WhatsApp" — photo inline, document ready to download.</p>
+      </div>
+      <div class="fstep rev d3">
+        <div class="fnum">3</div>
+        <h3>One tap to log</h3>
+        <p>"Log as quote" reads the message, pulls out amounts and quantities, and drops it into your pipeline as pending.</p>
+      </div>
+      <div class="fstep rev d4">
+        <div class="fnum">4</div>
+        <h3>Chase without typing</h3>
+        <p>When the follow-up is due, one tap opens WhatsApp with a polite reminder already written. Send. Done.</p>
+      </div>
+    </div>
+    <p class="rev" style="font-size:13px;color:var(--faint);margin-top:30px;max-width:64ch;line-height:1.7">Steps 2 and 3 are connected mode: link a WhatsApp Business number once (free Meta Cloud API) and incoming enquiries appear automatically. Even without connecting, every quote, reply and follow-up opens WhatsApp pre-written from your own number.</p>
+    <div class="wa-bubble rev">
+      <b>AUTO-WRITTEN FOLLOW-UP</b>
+      Hi, this is Sharma Precision Works.<br>
+      Just following up on our quotation for <b style="display:inline;color:#143A1B;font-family:var(--sans)">Bush Ø42 (500 pcs)</b>.<br>
+      Quoted ₹30,600. Please let us know if we can proceed. Thank you.
+    </div>
+  </div>
+</section>
+
+<!-- ================= EXCEL ================= -->
+<section id="excel">
+  <div class="watermark" data-plx="0.12">EXCEL</div>
+  <div class="wrap z1">
+    <div class="split">
+      <div>
+        <div class="sec-head rev" style="margin-bottom:0">
+          <span class="eyebrow">Excel friendship</span>
+          <h2>Client wants Excel?<br><span class="grad">Theek hai. Bilkul.</span></h2>
+          <p>We learned this on a shop floor: you can't ask a business to abandon the sheet its clients demand. So QuoteKaro treats Excel as a first-class citizen.</p>
+        </div>
+        <ul class="checks">
+          <li class="rev d1"><span class="ck">✓</span><span><b>Import</b> your existing .xlsx / .xls / .csv — column names like "Party", "Amount", "Qty" are understood even when they don't match ours.</span></li>
+          <li class="rev d2"><span class="ck">✓</span><span><b>Indian formats handled</b> — 12/07/2026 dates, ₹1,28,000 with commas, phone numbers with spaces. It just reads them.</span></li>
+          <li class="rev d3"><span class="ck">✓</span><span><b>Export</b> the whole pipeline back to .xlsx or CSV whenever you like. Send it to the client in the format they asked for.</span></li>
+          <li class="rev d4"><span class="ck">✓</span><span><b>No lock-in.</b> CSV export works even offline — your data can always leave with you.</span></li>
+        </ul>
+      </div>
+      <div class="xl-card rev" data-tilt>
+        <div class="xl-head"><span style="width:20px;height:20px;border-radius:5px;background:#fff;color:#1D6F42;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px">X</span> QuoteKaro-pipeline.xlsx</div>
+        <table class="xl-grid">
+          <tr><th>Date</th><th>Customer</th><th>Part</th><th>Total</th><th>Status</th></tr>
+          <tr><td>2026-07-02</td><td>Apex Hydraulics</td><td>Gland Nut - 60mm</td><td>34,878</td><td class="g">won</td></tr>
+          <tr><td>2026-07-04</td><td>Krishna Pumps</td><td>Bush Ø42</td><td>30,600</td><td class="a">pending</td></tr>
+          <tr><td>2026-06-30</td><td>Bharat Traders</td><td>MS Hex Bar lot</td><td>1,28,000</td><td class="a">pending</td></tr>
+          <tr><td>2026-06-28</td><td>Om Forgings</td><td>Flange 6"</td><td>49,500</td><td class="r">lost</td></tr>
+          <tr><td>2026-06-25</td><td>Singh Auto Parts</td><td>Spacer Ø18</td><td>22,500</td><td class="g">won</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ANALYTICS ================= -->
+<section class="ana" id="analytics">
+  <div class="watermark" data-plx="0.12">GROW</div>
+  <div class="wrap z1">
+    <div class="sec-head rev">
+      <span class="eyebrow">Analytics</span>
+      <h2>Graphs that a busy owner<br>reads in five seconds.</h2>
+      <p>No pivot tables. No jargon. Just the questions you actually ask: kitna quote kiya, kitna jeeta, kahan atka hai?</p>
+    </div>
+    <div class="ana-grid">
+      <div class="ana-card rev d1" id="anaBars">
+        <span class="eyebrow" style="font-size:10px">QUOTED VALUE — LAST 7 DAYS</span>
+        <div class="bars" aria-hidden="true">
+          <div class="b" style="height:34%"></div><div class="b" style="height:58%"></div><div class="b" style="height:22%"></div><div class="b" style="height:74%"></div><div class="b" style="height:48%"></div><div class="b" style="height:100%"></div><div class="b" style="height:64%"></div>
+        </div>
+        <div class="bl"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+      </div>
+      <div class="ana-card rev d2" id="anaDonut">
+        <span class="eyebrow" style="font-size:10px">WIN RATE — DECIDED QUOTES</span>
+        <div class="donut-wrap" style="margin-top:16px">
+          <svg class="donut" width="150" height="150" viewBox="0 0 150 150" role="img" aria-label="Win rate 62 percent">
+            <defs><linearGradient id="dgrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3FAE45"/><stop offset="1" stop-color="#155E18"/></linearGradient></defs>
+            <circle class="track" cx="75" cy="75" r="60" fill="none" stroke-width="17"/>
+            <circle class="fill" id="donutFill" cx="75" cy="75" r="60" fill="none" stroke-width="17" stroke-linecap="round"/>
+          </svg>
+          <div>
+            <div style="font-family:var(--disp);font-weight:700;font-size:42px;color:var(--grn-d)"><span id="winCount" data-count="62">0</span>%</div>
+            <div class="dleg" style="margin-top:8px">
+              <span><i style="background:#228B22"></i>Won — ₹86,178</span>
+              <span><i style="background:#E0A53A"></i>Pending — ₹2,35,100</span>
+              <span><i style="background:#C0584F"></i>Lost — ₹96,300</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ana-card rev d3" style="grid-column:1/-1">
+        <div class="kpis" style="grid-template-columns:repeat(4,1fr)">
+          <div class="kpi"><b data-count="240678" data-prefix="₹">₹0</b><span>QUOTED (30D)</span></div>
+          <div class="kpi"><b data-count="86178" data-prefix="₹">₹0</b><span>WON VALUE</span></div>
+          <div class="kpi"><b data-count="235100" data-prefix="₹">₹0</b><span>PENDING VALUE</span></div>
+          <div class="kpi"><b data-count="62" data-suffix="%">0%</b><span>WIN RATE</span></div>
+        </div>
+        <p style="font-size:13px;color:var(--faint);margin-top:16px">Sample numbers from the demo pipeline. Your dashboard fills with your own quotes.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= COSTING ================= -->
+<section id="costing">
+  <div class="watermark" data-plx="0.12">₹366/HR</div>
+  <div class="wrap z1">
+    <div class="split">
+      <div>
+        <div class="sec-head rev" style="margin-bottom:0">
+          <span class="eyebrow">The costing brain</span>
+          <h2>Most shops don't know what one machine-hour truly costs.</h2>
+          <p>QuoteKaro's rate calculator adds up depreciation, power, operator salary and maintenance — per real working hour. Owners are usually surprised. Then they stop underquoting.</p>
+        </div>
+        <div class="rate-chip rev d1">VMC 850 — TRUE RATE ≈ ₹366/hr</div>
+        <p class="rev d2" style="font-size:14.5px;color:var(--dim);margin-top:18px;line-height:1.75">You supply the cycle time — the app never pretends to know your machining. It does the part you shouldn't do at 11pm on a calculator: the money math, with overhead and margin, spread over quantity, GST shown.</p>
+      </div>
+      <div class="math-card rev" data-tilt>
+        <div style="font-size:10px;letter-spacing:.2em;color:#7CCB80;margin-bottom:14px">QUOTE / PIECE — GLAND NUT 60MM × 200</div>
+        <div class="math-line"><span class="ml">Material — 0.60 kg × ₹85</span><span class="mv">₹51.00</span></div>
+        <div class="math-line"><span class="ml">Machine — 9 min @ ₹366/hr</span><span class="mv">₹54.90</span></div>
+        <div class="math-line"><span class="ml">Labour 5.5 min + tooling</span><span class="mv">₹12.33</span></div>
+        <div class="math-line"><span class="ml">Overhead 18%</span><span class="mv">₹21.28</span></div>
+        <div class="math-line"><span class="ml">Margin 25%</span><span class="mv">₹34.88</span></div>
+        <div class="math-line total"><span class="ml">Price / pc</span><span class="mv">₹174.39</span></div>
+        <div style="font-size:11px;color:#9DBCA1;margin-top:14px">Total: ₹34,878 + GST · valid 7 days · PDF &amp; WhatsApp ready</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRICING ================= -->
+<section id="pricing" style="background:linear-gradient(180deg,#fff,#F5FAF5)">
+  <div class="wrap">
+    <div class="sec-head rev" style="text-align:center;margin-left:auto;margin-right:auto">
+      <span class="eyebrow" style="justify-content:center">Pricing</span>
+      <h2>One underquoted job costs more than a year of QuoteKaro.</h2>
+    </div>
+    <div class="price-card rev" data-tilt>
+      <div class="badge">FOUNDING PRICE — NCR</div>
+      <div style="font-family:var(--disp);font-weight:700;font-size:22px">Everything. One price.</div>
+      <div class="prow"><span class="pcur">₹</span><span class="pamt" data-count="1000" data-plain="1">0</span><span class="pper">/ month</span></div>
+      <div class="mono" style="font-size:12px;color:var(--faint)">less than one chai per day</div>
+      <ul>
+        <li><span class="ck">✓</span>Unlimited quotes in the pipeline — logged or fully costed</li>
+        <li><span class="ck">✓</span>Two-way WhatsApp: incoming enquiries + one-tap follow-ups</li>
+        <li><span class="ck">✓</span>Excel import &amp; export, PDF quotations, GST display</li>
+        <li><span class="ck">✓</span>Analytics: win rate, funnel, trends, top customers</li>
+        <li><span class="ck">✓</span>True hourly-rate calculator for every machine</li>
+        <li><span class="ck">✓</span>Support on WhatsApp, in Hindi, from the builder</li>
+      </ul>
+      <a class="btn btn-grn" style="width:100%" href="https://wa.me/919910605207?text=Hi%2C%20I%20want%20the%20founding%20price%20for%20QuoteKaro" target="_blank" rel="noreferrer">Lock the founding price</a>
+    </div>
+    <p class="price-note rev">Founding-member pricing for early NCR traders and shops — locked for life. Try the full app free first; pay only when it earns its keep. Payment is arranged in a WhatsApp conversation with the builder — there is no automated checkout yet.</p>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section id="faq">
+  <div class="wrap">
+    <div class="sec-head rev" style="text-align:center;margin-left:auto;margin-right:auto">
+      <span class="eyebrow" style="justify-content:center">Questions</span>
+      <h2>Asked by real owners.</h2>
+    </div>
+    <div class="faq">
+      <details class="qa rev d1"><summary>I already quote in Excel. Why do I need this?</summary><div class="ans">Keep quoting in Excel — seriously. QuoteKaro's job starts after the quote goes out: log it in 30 seconds (or import your sheet), and now every pending rupee has a status and a follow-up date. Excel makes quotes; QuoteKaro makes sure they come back as orders.</div></details>
+      <details class="qa rev d2"><summary>Does it work on my phone?</summary><div class="ans">Yes — it's built phone-first and installs from the browser (Add to Home Screen), no app store needed. Big text, big buttons, readable numbers. Works on any Android or iPhone.</div></details>
+      <details class="qa rev d3"><summary>How does the WhatsApp integration actually work?</summary><div class="ans">Two layers. Out of the box: every quote, follow-up and chase opens WhatsApp with the message pre-written — you just hit send from your own number. Connected mode: link a WhatsApp Business number and incoming customer messages (text, photos, PDFs) appear inside the app automatically, ready to log as quotes with one tap.</div></details>
+      <details class="qa rev d4"><summary>Is my data safe? Can my competitors see my rates?</summary><div class="ans">Your rates, customers and quotes are yours alone — never shown to any other shop, never used against you. And with one-tap Excel/CSV export, your data can always leave with you. No lock-in.</div></details>
+      <details class="qa rev d4"><summary>Does it calculate my machining time?</summary><div class="ans">No — and be suspicious of anything that claims to. You know your machines; you supply the cycle time. QuoteKaro does the part that leaks money: true hourly rates, setup spread over quantity, overhead, margin, GST — instantly and consistently.</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FINAL CTA ================= -->
+<section style="padding-top:20px">
+  <div class="wrap">
+    <div class="cta-panel rev">
+      <div class="cta-rings"><i></i><i></i></div>
+      <h2>Pipeline ready hai.<br>Aap ready ho?</h2>
+      <p>Open the app, load the sample shop, and see your quoting business the way it should have always looked.</p>
+      <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+        <a class="btn btn-white btn-grn" style="background:#fff;color:var(--grn-d)" href="/">Open QuoteKaro free</a>
+        <a class="btn" style="border:1.5px solid rgba(255,255,255,.5);color:#fff" href="https://wa.me/919910605207?text=Hi%2C%20QuoteKaro%20demo%20chahiye" target="_blank" rel="noreferrer">Get a demo on WhatsApp</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <a class="logo" href="#top"><span class="lq">QK</span>QuoteKaro</a>
+    <div class="fnote">Built solo in Faridabad, tested on real shop floors of Delhi NCR.</div>
+    <div class="mono">QUOTEKARO · PROTOTYPE</div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* scroll progress + nav shadow */
+  var prog = document.getElementById('prog'), nav = document.getElementById('nav');
+  function onScroll(){
+    var h = document.documentElement;
+    var sc = h.scrollTop / (h.scrollHeight - h.clientHeight);
+    prog.style.width = (sc * 100) + '%';
+    nav.classList.toggle('scrolled', h.scrollTop > 30);
+  }
+  addEventListener('scroll', onScroll, {passive:true}); onScroll();
+
+  /* reveal on scroll - threshold 0 included so elements taller than the
+     viewport (tall cards on small phones) still reveal */
+  var io = new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+  }, {threshold:[0,.14], rootMargin:'0px 0px -8% 0px'});
+  document.querySelectorAll('.rev').forEach(function(el){ io.observe(el); });
+
+  /* count-up numbers */
+  var fmt = function(n){ return Number(n).toLocaleString('en-IN'); };
+  var cio = new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if(!e.isIntersecting) return; cio.unobserve(e.target);
+      var el = e.target, to = +el.getAttribute('data-count'), pre = el.getAttribute('data-prefix')||'', suf = el.getAttribute('data-suffix')||'';
+      if(reduce){ el.textContent = pre + fmt(to) + suf; return; }
+      var t0 = performance.now(), dur = 1100;
+      (function step(t){
+        var k = Math.min(1,(t-t0)/dur), ease = 1 - Math.pow(1-k,3);
+        el.textContent = pre + fmt(Math.round(to*ease)) + suf;
+        if(k<1) requestAnimationFrame(step);
+      })(t0);
+    });
+  }, {threshold:.5});
+  document.querySelectorAll('[data-count]').forEach(function(el){ cio.observe(el); });
+
+  /* analytics bars + donut trigger */
+  var aio = new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if(!e.isIntersecting) return;
+      e.target.classList.add('inview');
+      if(e.target.id === 'anaDonut'){
+        var f = document.getElementById('donutFill');
+        var C = 2 * Math.PI * 60;
+        f.style.strokeDasharray = (C * .62) + ' ' + C;
+      }
+      aio.unobserve(e.target);
+    });
+  }, {threshold:.4});
+  ['anaBars','anaDonut'].forEach(function(id){ var el=document.getElementById(id); if(el) aio.observe(el); });
+
+  if(reduce) return; /* no parallax / tilt for reduced motion */
+
+  /* pause rAF loops while the tab is hidden (battery) */
+  var visible = !document.hidden;
+  document.addEventListener('visibilitychange', function(){
+    visible = !document.hidden;
+    if(visible){
+      parallax();
+      if(tick && !tickOn){ tickOn = true; tick(); }
+    }
+  });
+
+  /* ---- parallax: [data-plx] elements shift with scroll ---- */
+  var plx = [].slice.call(document.querySelectorAll('[data-plx]'));
+  var ticking = false;
+  function parallax(){
+    ticking = false;
+    var vh = innerHeight;
+    plx.forEach(function(el){
+      var sp = +el.getAttribute('data-plx');
+      /* measure the untransformed parent so our own translation never feeds back */
+      var r = (el.parentElement || el).getBoundingClientRect();
+      var mid = r.top + r.height/2 - vh/2;
+      /* set a CSS variable so it composes with each element's own transform */
+      el.style.setProperty('--plxY', (-mid * sp).toFixed(1) + 'px');
+    });
+  }
+  addEventListener('scroll', function(){ if(!ticking){ ticking=true; requestAnimationFrame(parallax);} }, {passive:true});
+  parallax();
+
+  /* ---- 3D phone: idle float + mouse-tracked tilt ---- */
+  var phone = document.getElementById('phone'), stage = document.getElementById('stage');
+  var tick = null, tickOn = false;
+  if(phone && stage && matchMedia('(pointer:fine)').matches){
+    var rx = 8, ry = -14, trx = 8, tryy = -14;
+    stage.addEventListener('mousemove', function(e){
+      var r = stage.getBoundingClientRect();
+      var x = (e.clientX - r.left)/r.width - .5, y = (e.clientY - r.top)/r.height - .5;
+      tryy = -14 + x * 16; trx = 8 - y * 12;
+    });
+    stage.addEventListener('mouseleave', function(){ trx = 8; tryy = -14; });
+    tick = function(){
+      if(!visible){ tickOn = false; return; } /* stop while tab hidden; restarted on visibilitychange */
+      rx += (trx - rx) * .07; ry += (tryy - ry) * .07;
+      phone.style.transform = 'rotateX(' + rx.toFixed(2) + 'deg) rotateY(' + ry.toFixed(2) + 'deg)';
+      requestAnimationFrame(tick);
+    };
+    tickOn = true; tick();
+  } else if(phone){
+    phone.style.transform = 'rotateX(6deg) rotateY(-10deg)';
+  }
+
+  /* ---- 3D tilt cards ---- */
+  if(matchMedia('(pointer:fine)').matches){
+    document.querySelectorAll('[data-tilt]').forEach(function(card){
+      card.addEventListener('mousemove', function(e){
+        var r = card.getBoundingClientRect();
+        var x = (e.clientX - r.left)/r.width - .5, y = (e.clientY - r.top)/r.height - .5;
+        card.style.transform = 'perspective(900px) rotateX(' + (-y*7).toFixed(2) + 'deg) rotateY(' + (x*9).toFixed(2) + 'deg) translateZ(6px)';
+      });
+      card.addEventListener('mouseleave', function(){
+        card.style.transition = 'transform .5s cubic-bezier(.2,.7,.3,1)';
+        card.style.transform = 'perspective(900px) rotateX(0) rotateY(0)';
+        setTimeout(function(){ card.style.transition=''; }, 500);
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>

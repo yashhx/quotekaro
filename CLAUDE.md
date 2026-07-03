@@ -63,6 +63,11 @@ The app is STILL fully client-side by default and deploys as a static PWA. A ser
 - **Frontend hooks** (in App.jsx, above the storage shim / in App component): `fetchEnquiries` / `markEnquiryHandled` / `sendWhatsApp` against `/.netlify/functions`; a 30s poll effect (declared above early returns — Rules of Hooks; skips while `document.hidden`; sets `waOn` once the backend answers; filters a `handledIds` ref so cards can't resurrect if server delete fails). Pipeline > "Incoming on WhatsApp" shows a connected dot + manual refresh + an empty "connected, waiting" state when `waOn`; images render via `WaImage` (onError fallback for expired token); one-tap `logEnquiry` (runs `parseEnquiry`, quote gets `source:"whatsapp"`). Backend-absent is detected by a non-JSON/failed response, so nothing breaks offline.
 - **Deploy caveat:** functions can't be drag-dropped — needs git-connected Netlify or `netlify deploy`. Outbound to customers still primarily uses `wa.me` links (owner's own number); the send function is for automation/templates. Payments (Razorpay) and cloud auth/sync were offered but NOT built.
 
+## Marketing site (2026-07)
+- `public/site/index.html` - standalone landing page, live at `/site/` (Netlify serves the directory index; in Vite dev use `/site/index.html`). Self-contained: inline CSS/JS, same design tokens/fonts as the app, no build step.
+- Parallax via `--plxY` CSS variable (composes with each element's own transform - do NOT set el.style.transform directly), mouse-tilt 3D phone mock, IntersectionObserver reveals (threshold [0,.14] so tall cards reveal on small phones), reduced-motion + hidden-tab rAF pause handled.
+- Copy is fact-checked against this file: costing example must keep summing to Rs 174.39/pc (51.00 + 54.90 + 12.33, +18%, +25%); never claim machining-time prediction; two-way WhatsApp is labeled "once connected"; pricing note says payment is arranged on WhatsApp, no automated checkout.
+
 ## Conventions & gotchas (bugs we already paid for)
 - **Rules of Hooks:** every hook must sit above any early `return` in a component. A hooks-after-loading-return bug already crashed this app once.
 - **No smart punctuation in source:** em-dashes (—), curly quotes ("" '') inside string literals have broken the parser before. Use ASCII (-, ', ") in code and string content.
