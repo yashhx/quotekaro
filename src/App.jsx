@@ -337,19 +337,104 @@ const waFollowText = (q, shop) =>
   `Hi, this is ${shop}.\n` +
   `Just following up on our quotation for *${q.part}*` + (q.qty ? ` (${q.qty} pcs)` : "") + `.\n` +
   `Quoted ${inr(q.total)}. Please let us know if we can proceed or if any change is needed.\nThank you.`;
-/* very light parser: pull a name / part / amount out of a pasted WhatsApp/enquiry message */
+/* Pull structured fields out of a pasted WhatsApp / enquiry message.
+   Conservative, Hinglish-aware heuristics: every guess lands in an editable
+   field, so prefer a decent guess over an empty box - the user checks anyway.
+   Returns { customer, part, qty, rate, total, phone, followUp (ms or null) }. */
+const MONTHS3 = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+const cleanFrag = (s) => String(s || "").replace(/[*_~]/g, "").replace(/\s+/g, " ").replace(/^[\s:,\-]+|[\s:,\-.]+$/g, "").trim();
 const parseEnquiry = (raw) => {
   const text = String(raw || "");
-  const out = { customer: "", part: "", total: "", qty: "", phone: "" };
-  const amt = /(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d+)?)/i.exec(text) || /([\d,]{4,})(?:\s*(?:only|\/-|rupees))/i.exec(text);
-  if (amt) out.total = amt[1].replace(/,/g, "");
-  const q = /(\d{1,6})\s*(?:pcs|pc|nos|no\.?|pieces|qty)/i.exec(text);
-  if (q) out.qty = q[1];
-  const ph = /(?:\+?91[\-\s]?)?([6-9]\d{9})\b/.exec(text.replace(/[\-\s]/g, (m) => m === " " ? " " : ""));
-  const ph2 = /([6-9]\d{9})/.exec(text.replace(/\D/g, " "));
-  if (ph) out.phone = ph[1]; else if (ph2) out.phone = ph2[1];
-  const firstLine = text.split(/\n/).map((l) => l.trim()).filter(Boolean)[0] || "";
-  if (firstLine && firstLine.length < 50) out.customer = firstLine.replace(/[:*]/g, "").trim();
+  const out = { customer: "", part: "", qty: "", rate: "", total: "", phone: "", followUp: null };
+
+  /* phone: Indian mobile anywhere in the text, spaces/dashes tolerated */
+  const ph = /(?:\+?91[\s\-]?)?([6-9]\d{4}[\s\-]?\d{5})(?!\d)/.exec(text);
+  if (ph) out.phone = ph[1].replace(/\D/g, "");
+
+  /* quantity: "500 pcs" / "qty: 500" / "quantity - 500" / "500 nos" */
+  const q1 = /(?:qty|quantity)\s*[:\-=]?\s*([\d,]{1,7})/i.exec(text)
+    || /([\d,]{1,7})\s*(?:pcs?\b|pieces?\b|nos?\b\.?|units?\b|qty\b|quantity\b)/i.exec(text);
+  if (q1) out.qty = q1[1].replace(/,/g, "");
+
+  /* rate per piece: "82/pc", "rs 82 per piece", "@110 each" */
+  const r1 = /(?:rs\.?|inr|@|₹)?\s*([\d,]+(?:\.\d+)?)\s*(?:\/\s*(?:pcs?|piece|nos?|unit)|per\s*(?:pc|piece|unit|nos)|each\b)/i.exec(text);
+  if (r1) out.rate = r1[1].replace(/,/g, "");
+
+  /* total: currency amounts, skipping any that were actually a per-piece rate */
+  const money = /(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d+)?)/gi;
+  let m;
+  while ((m = money.exec(text))) {
+    const tail = text.slice(m.index + m[0].length, m.index + m[0].length + 12);
+    if (/^\s*(?:\/|per\b|each\b)/i.test(tail)) continue;
+    out.total = m[1].replace(/,/g, "");
+    break;
+  }
+  if (!out.total) {
+    const t2 = /([\d,]{4,})\s*(?:\/\-|only\b|rupees\b|total\b)/i.exec(text);
+    if (t2) out.total = t2[1].replace(/,/g, "");
+  }
+  if (!out.total && out.rate && out.qty) out.total = String(Math.round(parseFloat(out.rate) * parseInt(out.qty, 10)));
+
+  /* a date in the message ("by 15/7", "delivery 20 July", "tomorrow") -> follow-up */
+  const today = startOfDay(Date.now());
+  let fu = null;
+  const d1 = /(?:^|[^\d/\-.])(\d{1,2})[/\-.](\d{1,2})(?:[/\-.](\d{2,4}))?(?![\d/\-.])/.exec(text);
+  if (d1) {
+    const dd = +d1[1], mo = +d1[2] - 1;
+    if (dd >= 1 && dd <= 31 && mo >= 0 && mo <= 11) {
+      const yy = d1[3] ? (+d1[3] < 100 ? +d1[3] + 2000 : +d1[3]) : new Date(today).getFullYear();
+      let ts = new Date(yy, mo, dd).getTime();
+      if (!d1[3] && ts < today) ts = new Date(yy + 1, mo, dd).getTime(); /* "by 15/1" said in Dec */
+      /* reject dates that rolled over (31/2 would become 2-3 March) */
+      if (new Date(ts).getDate() === dd) fu = ts;
+    }
+  }
+  if (fu == null) {
+    const d2 = /(\d{1,2})\s*(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*/i.exec(text)
+      || /(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{1,2})\b/i.exec(text);
+    if (d2) {
+      const dd = +(/^\d+$/.test(d2[1]) ? d2[1] : d2[2]);
+      const mo = MONTHS3[(/^\d+$/.test(d2[1]) ? d2[2] : d2[1]).slice(0, 3).toLowerCase()];
+      if (dd >= 1 && dd <= 31 && mo != null) {
+        let ts = new Date(new Date(today).getFullYear(), mo, dd).getTime();
+        if (ts < today) ts = new Date(new Date(today).getFullYear() + 1, mo, dd).getTime();
+        /* reject dates that rolled over ("31 feb") */
+        if (new Date(ts).getDate() === dd) fu = ts;
+      }
+    }
+  }
+  if (fu == null && /\btomorrow\b/i.test(text)) fu = today + DAY;
+  out.followUp = fu;
+
+  /* part / item name - try explicit labels first, then sentence patterns */
+  const p1 = /(?:part|item|product|drawing|job)\s*(?:name)?\s*[:\-]\s*([^\n,;.]{2,60})/i.exec(text);
+  const p2 = /(?:quote|quotation|rate|price|estimate)\s+(?:for|of)\s+(?:the\s+)?([^\n,;.]{3,60})/i.exec(text);
+  const p3 = /(?:pcs?|pieces?|nos?\.?|units?)\s+(?:of\s+)?([a-zA-Z][^\n,;.]{2,60})/i.exec(text);
+  const p4 = /(?:need|want|require|order)\s+(?:a\s+|an\s+|some\s+)?([a-zA-Z][^\n,;.]{3,60})/i.exec(text);
+  /* Hindi word orders: "spacer 18mm chahiye" (part BEFORE) and "chahiye gland nut ka" (part AFTER) */
+  const p5 = /([a-zA-Z][^\n,;.]{2,60}?)\s+(?:chahiye|chaiye|banwana)/i.exec(text);
+  const p6 = /(?:chahiye|chaiye|banwana)\s+([a-zA-Z][^\n,;.]{2,60}?)(?:\s+(?:ka|ki|ke)\b|\s*$)/im.exec(text);
+  const p5ok = p5 && !/^(?:quote|quotation|rate|price|estimate|urgent)/i.test(cleanFrag(p5[1])) ? p5[1] : "";
+  let part = cleanFrag((p1 && p1[1]) || (p2 && p2[1]) || (p3 && p3[1]) || (p4 && p4[1]) || p5ok || (p6 && p6[1]) || "");
+  part = part.replace(/\s*(?:rs\.?|inr|@|₹)\s*[\d,]+.*$/i, "");                       /* cut price tails */
+  part = part.replace(/\s*[\d,]{1,7}\s*(?:pcs?\b|pieces?\b|nos?\b\.?|units?\b|qty\b|quantity\b).*$/i, ""); /* cut qty tails */
+  part = part.replace(/\s+(?:chahiye|chaiye|urgent(?:ly)?|asap|please|pls|kindly)\b.*$/i, "");
+  part = part.replace(/\s+(?:ka|ki|ke)\s*$/i, ""); /* trailing Hindi possessive: "gland nut ka" */
+  out.part = cleanFrag(part).slice(0, 60);
+
+  /* customer: "this is X" / "I am X" / "from X" / a plain short first line */
+  const c1 = /(?:this is|i am|i'm|myself)\s+([a-zA-Z][a-zA-Z .&'()]{1,38})/i.exec(text);
+  const c2 = /\bfrom\s+([A-Z][a-zA-Z .&'()]{2,38})/.exec(text);
+  let customer = cleanFrag((c1 && c1[1]) || (c2 && c2[1]) || "");
+  customer = cleanFrag(customer.split(/[.\n!?]/)[0]); /* stop at sentence end */
+  customer = customer.replace(/\s+(?:here|need|want|require|regarding|about|please|pls|kindly|and|quote|quotation)\b.*$/i, "");
+  if (!customer) {
+    const firstLine = text.split(/\n/).map((l) => l.trim()).filter(Boolean)[0] || "";
+    if (firstLine && firstLine.length < 42 && !/\d{3,}/.test(firstLine) &&
+      !/(need|want|require|quote|quotation|rate|price|pcs|kindly|please|chahiye|urgent)/i.test(firstLine))
+      customer = cleanFrag(firstLine.replace(/^(?:hi|hello|namaste|hey|dear)\b[,!\s]*/i, ""));
+  }
+  out.customer = customer.slice(0, 40);
   return out;
 };
 
@@ -883,10 +968,12 @@ export default function App() {
     if (enq.type === "image") bits.push("[Photo on WhatsApp]");
     if (enq.type === "document") bits.push("[Doc: " + (enq.filename || "file") + "]");
     if (enq.text) bits.push(enq.text);
+    const qty = num(p.qty), total = num(p.total);
     const q = { id: uid(), at: enq.at || Date.now(), status: "pending",
       customer: enq.name || p.customer || "WhatsApp lead", phone,
-      part: enq.type === "document" && enq.filename ? enq.filename : "(from WhatsApp)", qty: num(p.qty), pricePc: 0, total: num(p.total),
-      followUp: null, source: "whatsapp", note: bits.join(" ") };
+      part: p.part || (enq.type === "document" && enq.filename ? enq.filename : "(from WhatsApp)"),
+      qty, pricePc: p.rate ? num(p.rate) : (qty ? total / qty : 0), total,
+      followUp: p.followUp || null, source: "whatsapp", note: bits.join(" ") };
     setData((d) => ({ ...d, quotes: [q, ...d.quotes] }));
     handledIds.current.add(enq.id);
     setEnquiries((list) => list.filter((x) => x.id !== enq.id));
@@ -1105,7 +1192,9 @@ function QuickLog({ data, onSave, onExit, ping }) {
 
   const applyPaste = () => {
     const p = parseEnquiry(paste);
-    setF((s) => ({ ...s, customer: p.customer || s.customer, phone: p.phone || s.phone, total: p.total || s.total, qty: p.qty || s.qty }));
+    setF((s) => ({ ...s, customer: p.customer || s.customer, phone: p.phone || s.phone,
+      part: p.part || s.part, total: p.total || s.total, qty: p.qty || s.qty,
+      followUp: p.followUp ? isoDate(p.followUp) : s.followUp }));
     setPasteOpen(false); setPaste(""); ping("Filled from message - check the fields");
   };
   const save = () => {
@@ -1133,7 +1222,7 @@ function QuickLog({ data, onSave, onExit, ping }) {
         {pasteOpen && (
           <div className="card anim-in" style={{ padding: 14, marginBottom: 16, border: "1.5px solid #CFE9D1" }}>
             <div className="lbl" style={{ color: "var(--grn-d)", marginBottom: 4 }}>Paste a WhatsApp / enquiry message</div>
-            <span className="hint">We'll try to pull out the customer, amount, quantity and number. Always check before saving.</span>
+            <span className="hint">We'll try to pull out the customer, part name, amount, quantity, phone number and any date mentioned. Always check before saving.</span>
             <textarea className="input" style={{ minHeight: 90, resize: "vertical", fontFamily: "var(--sans)" }} placeholder="Paste the customer's message here..." value={paste} onChange={(e) => setPaste(e.target.value)} />
             <button className="btn btn-grn btn-sm press" style={{ width: "100%", marginTop: 10 }} onClick={applyPaste} disabled={!paste.trim()}>Fill the form</button>
           </div>
@@ -1381,6 +1470,7 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
   const [open, setOpen] = useState(null);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
+  const [xlOpen, setXlOpen] = useState(false); // Excel import/export bottom sheet
   const fileRef = useRef(null);
   const fdate = (t) => new Date(t).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 
@@ -1411,15 +1501,14 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
     finally { setBusy(false); }
   };
 
-  return (
+  return (<>
     <div className="scr"><div className="pagepad">
       <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={onFile} style={{ display: "none" }} />
       <div className="anim-in" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
         <div><span className="eyebrow">Pipeline</span><div className="h-disp" style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>All quotes</div></div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="iconbtn press" title="Import from Excel/CSV" disabled={busy} onClick={() => fileRef.current?.click()}><I.up /></button>
-          <button className="iconbtn press" title="Export Excel" disabled={busy} onClick={() => doExport("xlsx")}><I.sheet /></button>
-        </div>
+        <button className="btn btn-sm btn-soft press" disabled={busy} onClick={() => setXlOpen(true)}>
+          <I.sheet style={{ width: 16, height: 16 }} /> Excel
+        </button>
       </div>
 
       {/* incoming WhatsApp enquiries (only present when the backend is deployed) */}
@@ -1542,14 +1631,47 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
         );
       })}
 
-      {data.quotes.length > 0 && (
-        <div className="card-tint anim-in" style={{ padding: "14px 16px", marginTop: 6, display: "flex", gap: 10, alignItems: "center" }}>
-          <span style={{ color: "var(--grn)", flexShrink: 0 }}><I.sheet /></span>
-          <div style={{ flex: 1, fontSize: 13, color: "var(--dim)" }}>Move your pipeline in and out of Excel.</div>
-          <button className="btn btn-sm btn-ghost press" disabled={busy} onClick={() => doExport("csv")} style={{ padding: "8px 12px" }}><I.down style={{ width: 15 }} /> CSV</button>
-        </div>
-      )}
+      <button className="btn btn-ghost press anim-in" style={{ width: "100%", marginTop: 6 }} disabled={busy} onClick={() => setXlOpen(true)}>
+        <I.sheet /> Excel - import or download
+      </button>
     </div></div>
+
+    {/* Excel bottom sheet - plain-language import/export */}
+    {xlOpen && (
+      <div onClick={() => setXlOpen(false)} style={{ position: "absolute", inset: 0, zIndex: 60, background: "rgba(16,26,20,.42)", backdropFilter: "blur(3px)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+        <div className="anim-in" onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: "26px 26px 0 0", padding: "22px 18px calc(20px + env(safe-area-inset-bottom))", boxShadow: "0 -20px 50px -20px rgba(21,94,24,.4)" }}>
+          <div style={{ width: 40, height: 4, borderRadius: 3, background: "var(--line2)", margin: "0 auto 16px" }} />
+          <div className="microlbl" style={{ marginLeft: 2 }}>EXCEL / CSV</div>
+          <div className="h-disp" style={{ fontSize: 21, fontWeight: 700, margin: "3px 0 16px 2px" }}>Move quotes in or out</div>
+
+          <button className="press" disabled={busy} onClick={() => { setXlOpen(false); fileRef.current?.click(); }}
+            style={{ all: "unset", boxSizing: "border-box", cursor: busy ? "default" : "pointer", opacity: busy ? .5 : 1, width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 18, background: "#fff", border: "1.5px solid var(--line2)", boxShadow: "var(--sh-s)", marginBottom: 10 }}>
+            <span style={{ width: 42, height: 42, borderRadius: 13, background: "var(--grn-100)", color: "var(--grn-d)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><I.up /></span>
+            <span style={{ flex: 1 }}>
+              <span style={{ display: "block", fontWeight: 700, fontSize: 16 }}>Bring quotes IN</span>
+              <span style={{ fontSize: 12.5, color: "var(--dim)" }}>Import your Excel/CSV sheet - purani sheet bhi chalegi, columns match ho jaate hain.</span>
+            </span>
+            <I.chev style={{ color: "var(--faint)" }} />
+          </button>
+
+          <button className="press" disabled={busy || !data.quotes.length} onClick={() => { setXlOpen(false); doExport("xlsx"); }}
+            style={{ all: "unset", boxSizing: "border-box", cursor: busy || !data.quotes.length ? "default" : "pointer", width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 18, background: "linear-gradient(135deg,#1B7A20,#2E9E33)", color: "#fff", boxShadow: "var(--sh-m)", opacity: busy || !data.quotes.length ? .5 : 1 }}>
+            <span style={{ width: 42, height: 42, borderRadius: 13, background: "rgba(255,255,255,.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><I.down /></span>
+            <span style={{ flex: 1 }}>
+              <span style={{ display: "block", fontWeight: 700, fontSize: 16 }}>Take quotes OUT (.xlsx)</span>
+              <span style={{ fontSize: 12.5, color: "rgba(255,255,255,.85)" }}>Download the whole pipeline as an Excel file - date, customer, part, qty, status.</span>
+            </span>
+            <I.chev />
+          </button>
+
+          <button className="press" disabled={busy || !data.quotes.length} onClick={() => { setXlOpen(false); doExport("csv"); }}
+            style={{ all: "unset", boxSizing: "border-box", cursor: busy || !data.quotes.length ? "default" : "pointer", opacity: busy || !data.quotes.length ? .5 : 1, width: "100%", textAlign: "center", padding: "14px 0 2px", fontSize: 13.5, fontWeight: 600, color: "var(--dim)" }}>
+            Download as CSV instead <span style={{ color: "var(--faint)", fontWeight: 400 }}>(works even offline)</span>
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
