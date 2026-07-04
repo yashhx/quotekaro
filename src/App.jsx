@@ -29,6 +29,27 @@ async function sendWhatsApp(to, text) {
     return r.ok;
   } catch { return false; }
 }
+/* Optional AI enquiry reader (opt-in via Setup > Smart reading). Sends ONE
+   message's text to our parse-enquiry function (Anthropic behind it), with
+   phone numbers stripped first. Any failure returns null -> regex fallback. */
+async function aiParseEnquiry(text) {
+  try {
+    const redacted = String(text).replace(/(?:\+?91[\s\-]?)?[6-9]\d{4}[\s\-]?\d{5}(?!\d)/g, "[phone]");
+    const r = await fetch(WA_API + "/parse-enquiry", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: redacted }) });
+    const ct = r.headers.get("content-type") || "";
+    if (!r.ok || !ct.includes("application/json")) return null;
+    const d = await r.json();
+    return d && d.ok && d.fields ? d.fields : null;
+  } catch { return null; }
+}
+/* AI wins where it found something; regex fills the gaps. Phone always comes
+   from the regex/local side - it never went to the AI. */
+const mergeParsed = (rx, ai) => ({
+  customer: ai.customer || rx.customer, part: ai.part || rx.part,
+  qty: ai.qty || rx.qty, rate: ai.rate || rx.rate, total: ai.total || rx.total,
+  phone: rx.phone,
+  followUp: (ai.followUp && parseDate(ai.followUp)) || rx.followUp,
+});
 
 
 /* ================================================================
@@ -420,6 +441,7 @@ const parseEnquiry = (raw) => {
   part = part.replace(/\s*[\d,]{1,7}\s*(?:pcs?\b|pieces?\b|nos?\b\.?|units?\b|qty\b|quantity\b).*$/i, ""); /* cut qty tails */
   part = part.replace(/\s+(?:chahiye|chaiye|urgent(?:ly)?|asap|please|pls|kindly)\b.*$/i, "");
   part = part.replace(/\s+(?:ka|ki|ke)\s*$/i, ""); /* trailing Hindi possessive: "gland nut ka" */
+  part = part.replace(/\s+(?:by|before|till|until|tak)\s+\d.*$/i, ""); /* date tails: "flange by 20/7" */
   out.part = cleanFrag(part).slice(0, 60);
 
   /* customer: "this is X" / "I am X" / "from X" / a plain short first line */
@@ -961,8 +983,13 @@ export default function App() {
   const saveLogged = (q) => { setData({ ...data, quotes: [q, ...data.quotes] }); setTab("quotes"); setQuotesFilter("all"); ping("Quote logged"); };
   const importQuotes = (rows) => { setData({ ...data, quotes: [...rows, ...data.quotes] }); ping(rows.length + " quote" + (rows.length === 1 ? "" : "s") + " imported"); };
   /* turn an inbound WhatsApp enquiry into a pending pipeline quote */
-  const logEnquiry = (enq) => {
-    const p = parseEnquiry(enq.text || "");
+  const logEnquiry = async (enq) => {
+    let p = parseEnquiry(enq.text || "");
+    if (data.settings.aiParse && enq.text) {
+      ping("AI reading the message...");
+      const ai = await aiParseEnquiry(enq.text);
+      if (ai) p = mergeParsed(p, ai);
+    }
     const phone = String(enq.from || p.phone || "").replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
     const bits = [];
     if (enq.type === "image") bits.push("[Photo on WhatsApp]");
@@ -1187,11 +1214,18 @@ function QuickLog({ data, onSave, onExit, ping }) {
   const [f, setF] = useState({ customer: "", phone: "", part: "", total: "", qty: "", status: "pending", followUp: "", note: "" });
   const [pasteOpen, setPasteOpen] = useState(false);
   const [paste, setPaste] = useState("");
+  const [reading, setReading] = useState(false); // AI reading in progress
   const upd = (k, v) => setF((s) => ({ ...s, [k]: v }));
   const ok = f.customer.trim() && num(f.total) > 0;
 
-  const applyPaste = () => {
-    const p = parseEnquiry(paste);
+  const applyPaste = async () => {
+    let p = parseEnquiry(paste);
+    if (data.settings.aiParse && paste.trim()) {
+      setReading(true);
+      const ai = await aiParseEnquiry(paste);
+      setReading(false);
+      if (ai) p = mergeParsed(p, ai);
+    }
     setF((s) => ({ ...s, customer: p.customer || s.customer, phone: p.phone || s.phone,
       part: p.part || s.part, total: p.total || s.total, qty: p.qty || s.qty,
       followUp: p.followUp ? isoDate(p.followUp) : s.followUp }));
@@ -1224,7 +1258,7 @@ function QuickLog({ data, onSave, onExit, ping }) {
             <div className="lbl" style={{ color: "var(--grn-d)", marginBottom: 4 }}>Paste a WhatsApp / enquiry message</div>
             <span className="hint">We'll try to pull out the customer, part name, amount, quantity, phone number and any date mentioned. Always check before saving.</span>
             <textarea className="input" style={{ minHeight: 90, resize: "vertical", fontFamily: "var(--sans)" }} placeholder="Paste the customer's message here..." value={paste} onChange={(e) => setPaste(e.target.value)} />
-            <button className="btn btn-grn btn-sm press" style={{ width: "100%", marginTop: 10 }} onClick={applyPaste} disabled={!paste.trim()}>Fill the form</button>
+            <button className="btn btn-grn btn-sm press" style={{ width: "100%", marginTop: 10 }} onClick={applyPaste} disabled={!paste.trim() || reading}>{reading ? "AI reading..." : "Fill the form"}</button>
           </div>
         )}
 
@@ -2103,6 +2137,24 @@ function Setup({ data, setData, ping, account, goSubscribe, onLogout }) {
             </span>
           </div>
         ))}
+      </div>
+
+      {/* ===== Smart reading (AI) - opt-in enquiry reader ===== */}
+      <div className="anim-in" style={{ margin: "24px 0 10px" }}><span className="eyebrow">Smart reading (AI)</span></div>
+      <div className="card" style={{ padding: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14 }}>
+          <div style={{ flex: 1 }}>
+            <div className="lbl" style={{ margin: 0 }}>AI fills the form from messages</div>
+            <span className="hint" style={{ margin: "5px 0 0" }}>
+              Reads each pasted or incoming enquiry with AI (Anthropic) to pull out the part, quantity, rate and date - samajhta hai Hinglish bhi. Phone numbers are removed before the text is sent; your quotes, rates and customers never leave this device. Needs an AI key on the server - without one, the built-in reader keeps working. Turn off anytime.
+            </span>
+          </div>
+          <button onClick={() => { const on = !s.aiParse; setS("aiParse", on); ping(on ? "Smart reading ON" : "Smart reading off"); }}
+            aria-label="Toggle smart reading" aria-pressed={!!s.aiParse}
+            style={{ flexShrink: 0, width: 54, height: 32, borderRadius: 999, border: "none", cursor: "pointer", position: "relative", transition: "background .2s", background: s.aiParse ? "linear-gradient(135deg,#2E9E33,#1B7A20)" : "var(--line2)" }}>
+            <span style={{ position: "absolute", top: 3, left: s.aiParse ? 25 : 3, width: 26, height: 26, borderRadius: "50%", background: "#fff", boxShadow: "0 2px 6px rgba(22,32,26,.25)", transition: "left .2s" }} />
+          </button>
+        </div>
       </div>
 
       {/* ===== Marketplace (concept / demo) ===== */}
