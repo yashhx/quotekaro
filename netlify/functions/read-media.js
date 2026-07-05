@@ -135,7 +135,7 @@ export default async (req) => {
   } catch (e) {
     if (e instanceof Anthropic.AuthenticationError) { console.error("read-media: bad ANTHROPIC_API_KEY"); return json({ ok: false, error: "AI key invalid" }, 501); }
     if (e instanceof Anthropic.RateLimitError) { console.warn("read-media: rate limited"); return json({ ok: false, error: "AI busy" }, 429); }
-    if (e instanceof Anthropic.APIError) { console.error("read-media: API error", e.status, e.message); return json({ ok: false, error: "ai error" }, 502); }
+    if (e instanceof Anthropic.APIError) { console.error("read-media: API error", e.status, e.message); return json({ ok: false, error: "ai error", detail: e.status + " " + String(e.message).slice(0, 300) }, 502); }
     console.error("read-media: failed -", e && e.message);
     return json({ ok: false, error: "ai read failed" }, 502);
   }
