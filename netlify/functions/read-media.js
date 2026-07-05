@@ -83,7 +83,10 @@ export default async (req) => {
 
   /* 2) show it to Claude vision with a handwriting-aware prompt */
   const today = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
-  const model = process.env.ANTHROPIC_VISION_MODEL || "claude-opus-4-8";
+  /* best-first model ladder: some plans don't include Opus-tier - when the API
+     says "not available on your plan" we step down instead of failing */
+  const LADDER = [process.env.ANTHROPIC_VISION_MODEL, "claude-opus-4-8", "claude-sonnet-5", "claude-haiku-4-5"].filter(Boolean)
+    .filter((m, i, a) => a.indexOf(m) === i);
   /* budget: media fetch already spent ~1-2s; Netlify kills the function at 10s */
   const client = new Anthropic({ apiKey: aiKey, timeout: 7000, maxRetries: 0 });
 
@@ -92,9 +95,13 @@ export default async (req) => {
     : { type: "image", source: { type: "base64", media_type: mime, data: b64 } };
 
   try {
-    const msg = await client.messages.create({
-      model,
-      max_tokens: 2000, /* headroom for a long transcript inside the JSON */
+    let msg, usedModel;
+    for (const model of LADDER) {
+      try {
+        usedModel = model;
+        msg = await client.messages.create({
+          model,
+          max_tokens: 2000, /* headroom for a long transcript inside the JSON */
       system:
         "You read photos and documents sent on WhatsApp to Indian traders and machine shops: " +
         "handwritten parts lists (Hindi, English or Hinglish, often rushed handwriting on notebook paper or chits), " +
@@ -112,8 +119,20 @@ export default async (req) => {
           { type: "text", text: caption ? "Sender's caption: " + caption : "No caption - read the attachment." },
         ],
       }],
-      output_config: { format: { type: "json_schema", schema: FIELDS_SCHEMA } },
-    });
+          output_config: { format: { type: "json_schema", schema: FIELDS_SCHEMA } },
+        });
+        break; /* success - stop stepping down */
+      } catch (e) {
+        const planBlocked = e instanceof Anthropic.APIError &&
+          (e.status === 403 || e.status === 404) && /not_available_on_plan|not_found/i.test(String(e.message));
+        if (planBlocked && model !== LADDER[LADDER.length - 1]) {
+          console.warn("read-media:", model, "not available on this plan - trying next");
+          continue;
+        }
+        throw e;
+      }
+    }
+    console.log("read-media: used model", usedModel);
 
     if (msg.stop_reason === "refusal" || msg.stop_reason === "max_tokens") {
       console.warn("read-media: unusable stop_reason", msg.stop_reason);
