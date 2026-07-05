@@ -42,8 +42,23 @@ async function aiParseEnquiry(text) {
     return d && d.ok && d.fields ? d.fields : null;
   } catch { return null; }
 }
+/* AI photo/PDF reader: the server fetches the WhatsApp media by id and shows it
+   to Claude vision (handwriting-aware). Caption is redacted like any text.
+   Any failure returns null -> the caption/regex path is used instead. */
+async function aiReadMedia(mediaId, caption) {
+  try {
+    const redacted = String(caption || "").replace(/(?:\+?91[\s\-]?)?[6-9]\d{4}[\s\-]?\d{5}(?!\d)/g, "[phone]");
+    const r = await fetch(WA_API + "/read-media", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mediaId, caption: redacted }) });
+    const ct = r.headers.get("content-type") || "";
+    if (!r.ok || !ct.includes("application/json")) return null;
+    const d = await r.json();
+    return d && d.ok && d.fields ? d.fields : null;
+  } catch { return null; }
+}
 /* AI wins where it found something; regex fills the gaps. Phone always comes
-   from the regex/local side - it never went to the AI. */
+   from the regex/local side - it never went to the AI. Note: aiReadMedia's
+   `transcript` is deliberately NOT merged here - the caller adds it to the
+   quote's note itself. */
 const mergeParsed = (rx, ai) => ({
   customer: ai.customer || rx.customer, part: ai.part || rx.part,
   qty: ai.qty || rx.qty, rate: ai.rate || rx.rate, total: ai.total || rx.total,
@@ -984,8 +999,18 @@ export default function App() {
   const importQuotes = (rows) => { setData({ ...data, quotes: [...rows, ...data.quotes] }); ping(rows.length + " quote" + (rows.length === 1 ? "" : "s") + " imported"); };
   /* turn an inbound WhatsApp enquiry into a pending pipeline quote */
   const logEnquiry = async (enq) => {
+    /* claim the enquiry BEFORE the (up to ~8s) AI read so a second impatient
+       tap can't log the same quote twice */
+    if (handledIds.current.has(enq.id)) return;
+    handledIds.current.add(enq.id);
     let p = parseEnquiry(enq.text || "");
-    if (data.settings.aiParse && enq.text) {
+    let transcript = "";
+    const hasMedia = (enq.type === "image" || enq.type === "document") && enq.mediaId;
+    if (data.settings.aiParse && hasMedia) {
+      ping(enq.type === "image" ? "AI reading the photo..." : "AI reading the document...");
+      const ai = await aiReadMedia(enq.mediaId, enq.text || "");
+      if (ai) { p = mergeParsed(p, ai); transcript = ai.transcript || ""; }
+    } else if (data.settings.aiParse && enq.text) {
       ping("AI reading the message...");
       const ai = await aiParseEnquiry(enq.text);
       if (ai) p = mergeParsed(p, ai);
@@ -995,6 +1020,7 @@ export default function App() {
     if (enq.type === "image") bits.push("[Photo on WhatsApp]");
     if (enq.type === "document") bits.push("[Doc: " + (enq.filename || "file") + "]");
     if (enq.text) bits.push(enq.text);
+    if (transcript) bits.push("AI read: " + transcript);
     const qty = num(p.qty), total = num(p.total);
     const q = { id: uid(), at: enq.at || Date.now(), status: "pending",
       customer: enq.name || p.customer || "WhatsApp lead", phone,
@@ -2146,7 +2172,7 @@ function Setup({ data, setData, ping, account, goSubscribe, onLogout }) {
           <div style={{ flex: 1 }}>
             <div className="lbl" style={{ margin: 0 }}>AI fills the form from messages</div>
             <span className="hint" style={{ margin: "5px 0 0" }}>
-              Reads each pasted or incoming enquiry with AI (Anthropic) to pull out the part, quantity, rate and date - samajhta hai Hinglish bhi. Phone numbers are removed before the text is sent; your quotes, rates and customers never leave this device. Needs an AI key on the server - without one, the built-in reader keeps working. Turn off anytime.
+              Reads each pasted or incoming enquiry with AI (Anthropic) to fill the form - text, photos and PDFs, handwriting aur Hinglish bhi. Phone numbers are removed from text before sending; photos/documents are read as they are. Your quotes, rates and customer list never leave this device. Needs an AI key on the server - without one, the built-in reader keeps working. Turn off anytime.
             </span>
           </div>
           <button onClick={() => { const on = !s.aiParse; setS("aiParse", on); ping(on ? "Smart reading ON" : "Smart reading off"); }}
