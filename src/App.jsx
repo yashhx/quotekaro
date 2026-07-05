@@ -50,10 +50,13 @@ async function aiReadMedia(mediaId, caption) {
     const redacted = String(caption || "").replace(/(?:\+?91[\s\-]?)?[6-9]\d{4}[\s\-]?\d{5}(?!\d)/g, "[phone]");
     const r = await fetch(WA_API + "/read-media", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mediaId, caption: redacted }) });
     const ct = r.headers.get("content-type") || "";
-    if (!r.ok || !ct.includes("application/json")) return null;
-    const d = await r.json();
-    return d && d.ok && d.fields ? d.fields : null;
-  } catch { return null; }
+    if (!ct.includes("application/json")) return { fields: null, why: "backend missing" };
+    const d = await r.json().catch(() => null);
+    if (d && d.ok && d.fields) return { fields: d.fields };
+    /* tell the caller WHY so the user isn't left guessing */
+    const why = r.status === 401 ? "WhatsApp token expired" : r.status === 501 ? "AI not set up" : r.status === 429 ? "AI busy, try again" : "could not read it";
+    return { fields: null, why };
+  } catch { return { fields: null, why: "no internet" }; }
 }
 /* AI wins where it found something; regex fills the gaps. Phone always comes
    from the regex/local side - it never went to the AI. Note: aiReadMedia's
@@ -1008,8 +1011,9 @@ export default function App() {
     const hasMedia = (enq.type === "image" || enq.type === "document") && enq.mediaId;
     if (data.settings.aiParse && hasMedia) {
       ping(enq.type === "image" ? "AI reading the photo..." : "AI reading the document...");
-      const ai = await aiReadMedia(enq.mediaId, enq.text || "");
-      if (ai) { p = mergeParsed(p, ai); transcript = ai.transcript || ""; }
+      const res = await aiReadMedia(enq.mediaId, enq.text || "");
+      if (res.fields) { p = mergeParsed(p, res.fields); transcript = res.fields.transcript || ""; }
+      else ping((enq.type === "image" ? "Photo" : "Document") + " not read - " + res.why);
     } else if (data.settings.aiParse && enq.text) {
       ping("AI reading the message...");
       const ai = await aiParseEnquiry(enq.text);
