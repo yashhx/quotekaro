@@ -19,6 +19,8 @@ import Anthropic from "@anthropic-ai/sdk";
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json" } });
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+/* warm-instance memo: once a model works, start there and skip plan-blocked ones */
+let preferredModel = null;
 const MAX_BYTES = 8 * 1024 * 1024; // keep request + latency sane
 
 const FIELDS_SCHEMA = {
@@ -107,7 +109,7 @@ export default async (req) => {
   const LADDER = [process.env.ANTHROPIC_VISION_MODEL, "claude-opus-4-8", "claude-sonnet-5", "claude-haiku-4-5"].filter(Boolean)
     .filter((m, i, a) => a.indexOf(m) === i);
   /* budget: media fetch already spent ~1-2s; Netlify kills the function at 10s */
-  const client = new Anthropic({ apiKey: aiKey, timeout: 7000, maxRetries: 0 });
+  const client = new Anthropic({ apiKey: aiKey, timeout: 8000, maxRetries: 0 });
 
   const mediaBlock = isPdf
     ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 } }
@@ -115,7 +117,8 @@ export default async (req) => {
 
   try {
     let msg, usedModel;
-    for (const model of LADDER) {
+    const ladder = preferredModel ? [preferredModel, ...LADDER.filter((m) => m !== preferredModel)] : LADDER;
+    for (const model of ladder) {
       try {
         usedModel = model;
         msg = await client.messages.create({
@@ -140,11 +143,12 @@ export default async (req) => {
       }],
           output_config: { format: { type: "json_schema", schema: FIELDS_SCHEMA } },
         });
+        preferredModel = model; /* remember for the next call on this instance */
         break; /* success - stop stepping down */
       } catch (e) {
         const planBlocked = e instanceof Anthropic.APIError &&
           (e.status === 403 || e.status === 404) && /not_available_on_plan|not_found/i.test(String(e.message));
-        if (planBlocked && model !== LADDER[LADDER.length - 1]) {
+        if (planBlocked && model !== ladder[ladder.length - 1]) {
           console.warn("read-media:", model, "not available on this plan - trying next");
           continue;
         }

@@ -959,6 +959,7 @@ export default function App() {
   /* ids already logged/dismissed locally - filters the poll so a card can never
      reappear even if the server-side mark-handled call failed */
   const handledIds = useRef(new Set());
+  const aiTried = useRef(new Set()); /* media enquiries that already failed one AI read */
 
   /* poll the WhatsApp backend for incoming enquiries (no-op when not deployed).
      Declared with the other hooks, above any early return, per Rules of Hooks. */
@@ -1165,10 +1166,20 @@ export default function App() {
     let transcript = "";
     const hasMedia = (enq.type === "image" || enq.type === "document") && enq.mediaId;
     if (data.settings.aiParse && hasMedia) {
-      ping(enq.type === "image" ? "AI reading the photo..." : "AI reading the document...");
+      const what = enq.type === "image" ? "Photo" : "Document";
+      ping("AI reading the " + what.toLowerCase() + "...");
       const res = await aiReadMedia(enq.mediaId, enq.text || "");
       if (res.fields) { p = mergeParsed(p, res.fields); transcript = res.fields.transcript || ""; }
-      else ping((enq.type === "image" ? "Photo" : "Document") + " not read - " + res.why);
+      else if (!aiTried.current.has(enq.id)) {
+        /* first failure: keep the card so a second tap can retry, instead of
+           silently logging an empty quote */
+        aiTried.current.add(enq.id);
+        handledIds.current.delete(enq.id); /* release the double-tap claim */
+        ping(what + " not read (" + res.why + ") - tap Log again to retry");
+        return;
+      } else {
+        ping(what + " still not read - logging without AI details");
+      }
     } else if (data.settings.aiParse && enq.text) {
       ping("AI reading the message...");
       const ai = await aiParseEnquiry(enq.text);
