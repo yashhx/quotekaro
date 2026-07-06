@@ -1,4 +1,25 @@
 import { useState, useEffect, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+/* ---- Cloud accounts (Supabase), optional ----
+   When VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are set at build time the app
+   runs in CLOUD mode: real Google login, quotes synced to the user's private
+   row (enforced by row-level security), WhatsApp inbox filtered per tenant.
+   When absent (local dev / drag-drop build) everything behaves exactly like
+   the original on-device prototype - same graceful degradation as WhatsApp. */
+const SB_URL = import.meta.env.VITE_SUPABASE_URL || "";
+const SB_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+const sb = SB_URL && SB_ANON ? createClient(SB_URL, SB_ANON) : null;
+
+/* bearer token for our Netlify functions (they verify it with Supabase) */
+async function authHeaders() {
+  if (!sb) return {};
+  try {
+    const { data } = await sb.auth.getSession();
+    const t = data && data.session && data.session.access_token;
+    return t ? { authorization: "Bearer " + t } : {};
+  } catch { return {}; }
+}
 
 /* localStorage-backed storage shim — same async API the app expects,
    but works on any host (Vercel/Netlify). Each user's data stays on THEIR device. */
@@ -13,7 +34,7 @@ const storage = {
 const WA_API = "/.netlify/functions";
 async function fetchEnquiries() {
   try {
-    const r = await fetch(WA_API + "/enquiries", { headers: { accept: "application/json" } });
+    const r = await fetch(WA_API + "/enquiries", { headers: { accept: "application/json", ...(await authHeaders()) } });
     const ct = r.headers.get("content-type") || "";
     if (!r.ok || !ct.includes("application/json")) return null; // functions not deployed (e.g. Vite dev serves index.html)
     const d = await r.json();
@@ -21,11 +42,11 @@ async function fetchEnquiries() {
   } catch { return null; }
 }
 async function markEnquiryHandled(id) {
-  try { await fetch(WA_API + "/enquiries", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id }) }); } catch {}
+  try { await fetch(WA_API + "/enquiries", { method: "POST", headers: { "content-type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ id }) }); } catch {}
 }
 async function sendWhatsApp(to, text) {
   try {
-    const r = await fetch(WA_API + "/whatsapp-send", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ to, text }) });
+    const r = await fetch(WA_API + "/whatsapp-send", { method: "POST", headers: { "content-type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ to, text }) });
     return r.ok;
   } catch { return false; }
 }
@@ -35,7 +56,7 @@ async function sendWhatsApp(to, text) {
 async function aiParseEnquiry(text) {
   try {
     const redacted = String(text).replace(/(?:\+?91[\s\-]?)?[6-9]\d{4}[\s\-]?\d{5}(?!\d)/g, "[phone]");
-    const r = await fetch(WA_API + "/parse-enquiry", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: redacted }) });
+    const r = await fetch(WA_API + "/parse-enquiry", { method: "POST", headers: { "content-type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ text: redacted }) });
     const ct = r.headers.get("content-type") || "";
     if (!r.ok || !ct.includes("application/json")) return null;
     const d = await r.json();
@@ -48,7 +69,7 @@ async function aiParseEnquiry(text) {
 async function aiReadMedia(mediaId, caption) {
   try {
     const redacted = String(caption || "").replace(/(?:\+?91[\s\-]?)?[6-9]\d{4}[\s\-]?\d{5}(?!\d)/g, "[phone]");
-    const r = await fetch(WA_API + "/read-media", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mediaId, caption: redacted }) });
+    const r = await fetch(WA_API + "/read-media", { method: "POST", headers: { "content-type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ mediaId, caption: redacted }) });
     const ct = r.headers.get("content-type") || "";
     if (!ct.includes("application/json")) return { fields: null, why: "backend missing" };
     const d = await r.json().catch(() => null);
@@ -754,12 +775,41 @@ function CountUp({ value, d = 0, dur = 700, prefix = "₹" }) {
 function Auth({ onAuthed }) {
   const [mode, setMode] = useState("otp"); // otp | password
   const [stage, setStage] = useState("enter"); // enter | code (for otp)
+  const [busy, setBusy] = useState(false); // cloud: opening Google
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [uname, setUname] = useState("");
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
   const otpRefs = useRef([]);
+
+  /* cloud mode: the only real login is Google via Supabase. This return sits
+     BELOW every hook declaration, so hook order stays constant. */
+  if (sb) {
+    const google = async () => {
+      setBusy(true);
+      try { await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } }); }
+      catch { setBusy(false); }
+    };
+    return (
+      <div className="auth">
+        <div className="auth-top">
+          <div className="auth-logo">QK</div>
+          <h1>QuoteKaro</h1>
+          <p>Quotations in five minutes - built for India's job-shops.</p>
+        </div>
+        <div className="auth-body">
+          <label className="lbl">Sign in to your shop</label>
+          <span className="hint">Your quotes live in your own private account - alag, surakshit, sirf aapke liye. Log in from any phone or computer.</span>
+          <button className="btn btn-ghost press" style={{ width: "100%", marginTop: 14, gap: 12 }} onClick={google} disabled={busy}>
+            <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.7 1.22 9.19 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+            {busy ? "Opening Google..." : "Continue with Google"}
+          </button>
+          <div className="auth-note">One tap, no password to remember. We only receive your name and email - nothing else from your Google account.</div>
+        </div>
+      </div>
+    );
+  }
 
   const sendOtp = () => {
     if (phone.replace(/\D/g, "").length < 10) { setErr("Enter a valid 10-digit number"); return; }
@@ -902,8 +952,10 @@ export default function App() {
   const [fabOpen, setFabOpen] = useState(false);
   const [enquiries, setEnquiries] = useState([]); // inbound WhatsApp messages (backend only)
   const [waOn, setWaOn] = useState(false); // true once the WhatsApp backend has answered
+  const [sync, setSync] = useState(sb ? "synced" : "local"); // cloud sync state: local|synced|saving|offline
   const [account, setAccount] = useState(undefined); // undefined = loading, null = logged out, object = logged in
   const saveT = useRef(null);
+  const cloudReadOk = useRef(false); /* cloud writes allowed only after a clean cloud read this session */
   /* ids already logged/dismissed locally - filters the poll so a card can never
      reappear even if the server-side mark-handled call failed */
   const handledIds = useRef(new Set());
@@ -928,28 +980,131 @@ export default function App() {
     return false;
   };
 
-  /* load account (auth) */
+  /* load account (auth). Cloud mode: real Supabase session (Google login),
+     kept fresh by onAuthStateChange. Local mode: the original simulated auth. */
   useEffect(() => {
+    if (!sb) {
+      (async () => {
+        try { const r = await storage.get(AUTH_KEY); setAccount(r ? JSON.parse(r.value) : null); }
+        catch { setAccount(null); }
+      })();
+      return;
+    }
+    const toAccount = (session) => session ? {
+      method: "google", uid: session.user.id, email: session.user.email || "",
+      name: (session.user.user_metadata && (session.user.user_metadata.full_name || session.user.user_metadata.name)) || session.user.email || "",
+    } : null;
+    let sub;
     (async () => {
-      try { const r = await storage.get(AUTH_KEY); setAccount(r ? JSON.parse(r.value) : null); }
+      try { const { data: d } = await sb.auth.getSession(); setAccount(toAccount(d && d.session)); }
       catch { setAccount(null); }
+      const res = sb.auth.onAuthStateChange((_evt, session) => setAccount((prev) => {
+        const next = toAccount(session);
+        /* avoid pointless re-renders/reloads on token refresh for the same user */
+        return prev && next && prev.uid === next.uid ? prev : next;
+      }));
+      sub = res && res.data && res.data.subscription;
     })();
+    return () => { if (sub) sub.unsubscribe(); };
   }, []);
-  const saveAccount = (acc) => { setAccount(acc); storage.set(AUTH_KEY, JSON.stringify(acc)).catch(() => {}); };
-  const logout = () => { setAccount(null); storage.delete(AUTH_KEY).catch(() => {}); setTab("home"); };
-  const subscribe = (planId) => { const acc = { ...account, plan: planId, subAt: Date.now() }; saveAccount(acc); };
+  const saveAccount = (acc) => { setAccount(acc); if (!sb) storage.set(AUTH_KEY, JSON.stringify(acc)).catch(() => {}); };
+  const logout = async () => {
+    if (sb) {
+      try { if (account && account.uid) localStorage.removeItem(KEY + ":" + account.uid); } catch {} /* shared-device hygiene */
+      try { await sb.auth.signOut(); } catch {}
+      setData(null); setSync("synced");
+    } else { storage.delete(AUTH_KEY).catch(() => {}); }
+    setAccount(null); setTab("home");
+  };
+  /* demo plan choice: on-device account blob locally; inside the synced shop
+     data in cloud mode (the Supabase session object can't hold app fields) */
+  const subscribe = (planId) => {
+    if (sb) { setData((d) => d ? { ...d, planId, subAt: Date.now() } : d); }
+    else saveAccount({ ...account, plan: planId, subAt: Date.now() });
+  };
 
+  /* load shop data. Cloud mode: the user's private shop_data row (RLS-enforced),
+     with a per-uid localStorage cache for offline; first login migrates any
+     on-device data into the account. Local mode: original behaviour. */
   useEffect(() => {
+    if (!sb) {
+      (async () => {
+        try { const r = await storage.get(KEY); setData(r ? JSON.parse(r.value) : seedData()); }
+        catch { setData(seedData()); }
+      })();
+      return;
+    }
+    if (account === undefined) return;      /* still resolving the session */
+    if (!account) { setData(null); return; } /* logged out -> Auth screen */
+    cloudReadOk.current = false;             /* no cloud writes until a clean read */
+    let alive = true;
     (async () => {
-      try { const r = await storage.get(KEY); setData(r ? JSON.parse(r.value) : seedData()); }
-      catch { setData(seedData()); }
+      const cacheKey = KEY + ":" + account.uid;
+      try {
+        const { data: row, error } = await sb.from("shop_data").select("data").eq("user_id", account.uid).maybeSingle();
+        if (!alive) return;
+        if (error) throw error;
+        if (row && row.data) {
+          cloudReadOk.current = true;
+          setData(row.data); setSync("synced");
+          try { localStorage.setItem(cacheKey, JSON.stringify(row.data)); } catch {}
+          return;
+        }
+        /* first login on this account: adopt this device's data (if any), else seed */
+        let seed = null;
+        try { const c = localStorage.getItem(cacheKey); if (c) seed = JSON.parse(c); } catch {}
+        if (!seed) {
+          try {
+            const legacy = localStorage.getItem(KEY);
+            if (legacy) {
+              const parsed = JSON.parse(legacy);
+              const n = (parsed.quotes || []).length;
+              /* explicit consent: this device may have SOMEONE ELSE'S prototype
+                 data - never silently absorb it into the wrong account */
+              if (window.confirm("This device has QuoteKaro data from before login (" + n + " quote" + (n === 1 ? "" : "s") + ", shop: " + (parsed.shopName || "unnamed") + "). Import it into THIS account?")) {
+                seed = parsed; localStorage.removeItem(KEY);
+              }
+            }
+          } catch {}
+        }
+        if (!seed) seed = seedData();
+        setData(seed);
+        /* ignoreDuplicates: if another device seeded this account first, do
+           nothing - the next load will fetch the real row */
+        const { error: e2 } = await sb.from("shop_data").upsert(
+          { user_id: account.uid, data: seed, updated_at: new Date().toISOString() },
+          { ignoreDuplicates: true });
+        cloudReadOk.current = true;
+        setSync(e2 ? "offline" : "synced");
+        try { localStorage.setItem(cacheKey, JSON.stringify(seed)); } catch {}
+      } catch {
+        if (!alive) return;
+        /* cloud unreachable: run from this account's local cache */
+        let cached = null;
+        try { const c = localStorage.getItem(cacheKey); if (c) cached = JSON.parse(c); } catch {}
+        setData(cached || seedData()); setSync("offline");
+      }
     })();
-  }, []);
+    return () => { alive = false; };
+  }, [account ? account.uid : null]);
+
+  /* save shop data: local cache immediately, cloud row debounced */
   useEffect(() => {
     if (!data) return;
     clearTimeout(saveT.current);
-    saveT.current = setTimeout(() => { storage.set(KEY, JSON.stringify(data)).catch(() => {}); }, 400);
-  }, [data]);
+    saveT.current = setTimeout(async () => {
+      if (!sb || !account) { storage.set(KEY, JSON.stringify(data)).catch(() => {}); return; }
+      try { localStorage.setItem(KEY + ":" + account.uid, JSON.stringify(data)); } catch {}
+      /* never push to the cloud in a session that couldn't read it - a stale
+         cache or fresh seed must not clobber the user's real row */
+      if (!cloudReadOk.current) { setSync("offline"); return; }
+      setSync("saving");
+      try {
+        const { error } = await sb.from("shop_data").upsert({ user_id: account.uid, data, updated_at: new Date().toISOString() });
+        setSync(error ? "offline" : "synced");
+      } catch { setSync("offline"); }
+    }, 600);
+  }, [data, account]);
 
   const ping = (m) => { setToast(m); setTimeout(() => setToast(null), 1600); };
 
@@ -979,7 +1134,7 @@ export default function App() {
     return () => { cancelAnimationFrame(raf); clearTimeout(t); window.removeEventListener("resize", measure); };
   }, [tab, data]);
 
-  if (!data || account === undefined)
+  if (account === undefined || (account && !data))
     return (<div className="qk-root"><style>{CSS}</style><div className="app" style={{ alignItems: "center", justifyContent: "center" }}>
       <div className="mono" style={{ color: "var(--faint)", fontSize: 12, letterSpacing: ".2em" }}>LOADING...</div></div></div>);
 
@@ -1043,18 +1198,21 @@ export default function App() {
   const delQuote = (id) => setData({ ...data, quotes: data.quotes.filter((q) => q.id !== id) });
   const goQuotes = (f) => { setQuotesFilter(f || "all"); setTab("quotes"); };
 
+  /* in cloud mode the demo plan lives inside the synced data blob */
+  const accountView = account ? { ...account, plan: sb ? (data && data.planId) : account.plan } : account;
+
   return (
     <div className="qk-root"><style>{CSS}</style>
       <div className="app">
         {toast && <div className="toast">{toast}</div>}
 
-        {tab === "home" && <Home data={data} account={account} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} />}
+        {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} />}
         {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} />}
         {tab === "log" && <QuickLog data={data} onSave={saveLogged} onExit={() => setTab("home")} ping={ping} />}
-        {tab === "setup" && <Setup data={data} setData={setData} ping={ping} account={account} goSubscribe={() => setTab("subscribe")} onLogout={logout} />}
+        {tab === "setup" && <Setup data={data} setData={setData} ping={ping} account={accountView} sync={sync} goSubscribe={() => setTab("subscribe")} onLogout={logout} />}
         {tab === "help" && <Help data={data} ping={ping} />}
         {tab === "analytics" && <Analytics data={data} onBack={() => setTab("home")} goQuotes={goQuotes} />}
-        {tab === "subscribe" && <Subscribe account={account} onSubscribe={(id) => { subscribe(id); ping("You're on the " + PLANS.find(p => p.id === id).name + " plan"); setTab("home"); }} onBack={() => setTab("home")} />}
+        {tab === "subscribe" && <Subscribe account={accountView} onSubscribe={(id) => { subscribe(id); ping("You're on the " + PLANS.find(p => p.id === id).name + " plan"); setTab("home"); }} onBack={() => setTab("home")} />}
         {tab === "new" && (<Wizard data={data} draft={draft} setDraft={setDraft} step={step} setStep={setStep}
           onExit={() => setTab("home")} onSave={saveQuote} doneQuote={doneQuote} ping={ping}
           onFinish={() => { setTab("home"); setDoneQuote(null); }} />)}
@@ -2019,7 +2177,7 @@ function Help({ data, ping }) {
 }
 
 /* ================= SETUP ================= */
-function Setup({ data, setData, ping, account, goSubscribe, onLogout }) {
+function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
   const [calcOpen, setCalcOpen] = useState(false);
   const [matPick, setMatPick] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -2060,8 +2218,14 @@ function Setup({ data, setData, ping, account, goSubscribe, onLogout }) {
                 <div className="mono" style={{ fontSize: 9.5, letterSpacing: ".16em", color: "rgba(255,255,255,.78)" }}>CURRENT PLAN</div>
                 <div className="h-disp" style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{plan ? plan.name : "No plan yet"}</div>
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,.85)", marginTop: 2 }}>
-                  {account?.method === "phone" ? account.phone : account?.username || "Signed in"}
+                  {account?.method === "google" ? (account.email || account.name) : account?.method === "phone" ? account.phone : account?.username || "Signed in"}
                 </div>
+                {sync && sync !== "local" && (
+                  <div className="mono" style={{ fontSize: 10, letterSpacing: ".08em", marginTop: 7, display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.16)", border: "1px solid rgba(255,255,255,.28)", padding: "4px 10px", borderRadius: 999 }}>
+                    <i style={{ width: 6, height: 6, borderRadius: "50%", background: sync === "synced" ? "#7CFF8A" : sync === "saving" ? "#FFD966" : "#FF9F7A" }} />
+                    {sync === "synced" ? "SYNCED TO YOUR ACCOUNT" : sync === "saving" ? "SAVING..." : "OFFLINE - WILL SYNC"}
+                  </div>
+                )}
               </div>
               {plan && <div style={{ background: "rgba(255,255,255,.18)", border: "1px solid rgba(255,255,255,.3)", borderRadius: 12, padding: "8px 12px", textAlign: "right" }}>
                 <div className="mono" style={{ fontSize: 18, fontWeight: 600 }}>₹{plan.price.toLocaleString("en-IN")}</div>

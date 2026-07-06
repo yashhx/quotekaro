@@ -30,8 +30,27 @@ const FIELDS_SCHEMA = {
   },
 };
 
+
+/* when Supabase is configured, only logged-in users may call this
+   (protects the AI/WhatsApp spend); otherwise open like the prototype */
+async function requireUser(req) {
+  const url = process.env.SUPABASE_URL, anon = process.env.SUPABASE_ANON_KEY;
+  if (!url || !anon) return { open: true };
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!token) return null;
+  try {
+    const r = await fetch(url + "/auth/v1/user", { headers: { apikey: anon, authorization: "Bearer " + token } });
+    if (!r.ok) return null;
+    const u = await r.json();
+    return u && u.id ? u : null;
+  } catch { return null; }
+}
+
 export default async (req) => {
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
+
+  const caller = await requireUser(req);
+  if (!caller) { console.warn("rejected call without valid login"); return json({ ok: false, error: "login required" }, 401); }
 
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return json({ ok: false, error: "AI not configured (set ANTHROPIC_API_KEY)" }, 501);

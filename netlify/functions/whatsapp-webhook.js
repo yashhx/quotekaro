@@ -98,6 +98,8 @@ export default async (req) => {
             name: nameOf(msg.from),
             at: msg.timestamp ? Number(msg.timestamp) * 1000 : Date.now(),
             handled: false,
+            /* which business number this was sent TO - the multi-tenant routing key */
+            phoneId: (value.metadata && value.metadata.phone_number_id) || "",
           };
           const rec = toRecord(msg, base);
           if (!rec) { skipped++; console.log("webhook: skipped", msg.type, "from", msg.from); continue; }
