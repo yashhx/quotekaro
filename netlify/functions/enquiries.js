@@ -34,9 +34,11 @@ async function requireUser(req) {
 async function getTenant(userId) {
   const url = process.env.SUPABASE_URL, svc = process.env.SUPABASE_SERVICE_KEY;
   if (!svc) return { wa_phone_id: null, is_admin: false };
+  /* legacy service_role JWTs go in both headers; new sb_secret_ keys in apikey only */
+  const hdrs = svc.startsWith("sb_") ? { apikey: svc } : { apikey: svc, authorization: "Bearer " + svc };
   try {
     const r = await fetch(url + "/rest/v1/tenants?user_id=eq." + encodeURIComponent(userId) + "&select=wa_phone_id,is_admin",
-      { headers: { apikey: svc, authorization: "Bearer " + svc } });
+      { headers: hdrs });
     const rows = r.ok ? await r.json() : [];
     return rows[0] || { wa_phone_id: null, is_admin: false };
   } catch { return { wa_phone_id: null, is_admin: false }; }
