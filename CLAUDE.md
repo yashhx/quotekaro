@@ -85,8 +85,8 @@ Won quotes flow INTO TallyPrime as Sales Orders; customer outstanding balances (
 - **App**: Setup > "Tally (BETA)" card (cloud mode only) shows/copies/regenerates the connector key; App loads `tally_ledgers` once per login (the effect CLEARS tallyBal first on account change - cross-tenant leak guard) and Pipeline cards show an amber "Tally baki Rs X" chip when the quote's customer matches a ledger name (case-insensitive) with balance > 0.
 - Testing pattern: mock Tally + mock cloud HTTP servers + connector `--once`, plus function smoke tests with mocked Supabase REST (13 passing as of ship). Re-create in a scratchpad when touching this code.
 
-## Marketing site (2026-07)
-- `public/site/index.html` - standalone landing page, live at `/site/` (Netlify serves the directory index; in Vite dev use `/site/index.html`). Self-contained: inline CSS/JS, same design tokens/fonts as the app, no build step.
+## Marketing site (2026-07, REBUILT as TrackRakho 2026-07-08)
+- `public/site/index.html` - standalone landing page branded TRACKRAKHO (app itself still says QuoteKaro - rename pending), live at `/site/`. Centrepiece: #ktrack scroll-driven WhatsApp-chat story (5200px sticky track, 10 beats, 3D phone tilt + app cards on nearer planes, reduced-motion static fallback, no scroll hijack). Tool-by-tool problem-first sections, Rs 1,000/month pricing card, Hinglish FAQ. Verified on 1280 + 375 viewports. (Netlify serves the directory index; in Vite dev use `/site/index.html`). Self-contained: inline CSS/JS, same design tokens/fonts as the app, no build step.
 - Parallax via `--plxY` CSS variable (composes with each element's own transform - do NOT set el.style.transform directly), mouse-tilt 3D phone mock, IntersectionObserver reveals (threshold [0,.14] so tall cards reveal on small phones), reduced-motion + hidden-tab rAF pause handled.
 - Copy is fact-checked against this file: costing example must keep summing to Rs 174.39/pc (51.00 + 54.90 + 12.33, +18%, +25%); never claim machining-time prediction; two-way WhatsApp is labeled "once connected"; pricing note says payment is arranged on WhatsApp, no automated checkout.
 
