@@ -9,7 +9,9 @@ import { createClient } from "@supabase/supabase-js";
    the original on-device prototype - same graceful degradation as WhatsApp. */
 const SB_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SB_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-const sb = SB_URL && SB_ANON ? createClient(SB_URL, SB_ANON) : null;
+/* detectSessionInUrl:false -> we run the OAuth code exchange ourselves so its
+   error is visible instead of being swallowed into the console */
+const sb = SB_URL && SB_ANON ? createClient(SB_URL, SB_ANON, { auth: { flowType: "pkce", detectSessionInUrl: false, persistSession: true, autoRefreshToken: true } }) : null;
 
 /* bearer token for our Netlify functions (they verify it with Supabase) */
 async function authHeaders() {
@@ -772,7 +774,7 @@ function CountUp({ value, d = 0, dur = 700, prefix = "₹" }) {
 /* ================= AUTH (phone OTP + username/password) =================
    DEMO ONLY: no real SMS or password check. Any 4-digit OTP / any login works.
    Wire a backend at the marked hooks before production. */
-function Auth({ onAuthed }) {
+function Auth({ onAuthed, authError }) {
   const [mode, setMode] = useState("otp"); // otp | password
   const [stage, setStage] = useState("enter"); // enter | code (for otp)
   const [busy, setBusy] = useState(false); // cloud: opening Google
@@ -815,7 +817,7 @@ function Auth({ onAuthed }) {
             <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.7 1.22 9.19 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
             {busy ? "Opening Google..." : "Continue with Google"}
           </button>
-          {authErr && <div style={{ marginTop: 14, padding: "11px 13px", borderRadius: 12, background: "var(--red-bg)", color: "var(--red)", fontSize: 13, lineHeight: 1.5 }}>Login error: {authErr}</div>}
+          {(authError || authErr) && <div style={{ marginTop: 14, padding: "11px 13px", borderRadius: 12, background: "var(--red-bg)", color: "var(--red)", fontSize: 13, lineHeight: 1.5 }}>Login error: {authError || authErr}</div>}
           <div className="auth-note">One tap, no password to remember. We only receive your name and email - nothing else from your Google account.</div>
         </div>
       </div>
@@ -964,6 +966,7 @@ export default function App() {
   const [enquiries, setEnquiries] = useState([]); // inbound WhatsApp messages (backend only)
   const [waOn, setWaOn] = useState(false); // true once the WhatsApp backend has answered
   const [sync, setSync] = useState(sb ? "synced" : "local"); // cloud sync state: local|synced|saving|offline
+  const [authError, setAuthError] = useState(""); // OAuth return error, shown on the login screen
   const [account, setAccount] = useState(undefined); // undefined = loading, null = logged out, object = logged in
   const saveT = useRef(null);
   const cloudReadOk = useRef(false); /* cloud writes allowed only after a clean cloud read this session */
@@ -1008,6 +1011,22 @@ export default function App() {
     } : null;
     let sub;
     (async () => {
+      /* handle the OAuth redirect back from Google ourselves, capturing any error */
+      try {
+        const u = new URL(window.location.href);
+        const hash = new URLSearchParams((u.hash || "").replace(/^#/, ""));
+        const errDesc = u.searchParams.get("error_description") || hash.get("error_description") || u.searchParams.get("error") || hash.get("error");
+        const code = u.searchParams.get("code");
+        if (errDesc) {
+          setAuthError(String(errDesc).replace(/\+/g, " "));
+        } else if (code) {
+          const { error } = await sb.auth.exchangeCodeForSession(window.location.href);
+          if (error) setAuthError((error.message || "sign-in failed") + " [exchange]");
+        }
+        /* strip auth params from the address bar either way */
+        if (code || errDesc || u.hash) window.history.replaceState({}, "", u.origin + u.pathname);
+      } catch (e) { setAuthError((e && e.message ? e.message : "sign-in failed") + " [return]"); }
+
       try { const { data: d } = await sb.auth.getSession(); setAccount(toAccount(d && d.session)); }
       catch { setAccount(null); }
       const res = sb.auth.onAuthStateChange((_evt, session) => setAccount((prev) => {
@@ -1151,7 +1170,7 @@ export default function App() {
       <div className="mono" style={{ color: "var(--faint)", fontSize: 12, letterSpacing: ".2em" }}>LOADING...</div></div></div>);
 
   if (!account)
-    return (<div className="qk-root"><style>{CSS}</style><div className="app"><Auth onAuthed={saveAccount} /></div></div>);
+    return (<div className="qk-root"><style>{CSS}</style><div className="app"><Auth onAuthed={saveAccount} authError={authError} /></div></div>);
 
   const startQuote = () => {
     setFabOpen(false);
