@@ -1,0 +1,27 @@
+{
+  "_help": "Copy this file to config.json (in this same folder), then fill in connectorKey. Lines starting with _help are just notes - the connector ignores them.",
+
+  "cloudUrl": "https://quotekaroo.netlify.app",
+  "_help_cloudUrl": "The web address of your QuoteKaro app. Keep the default unless you run your own copy of the site.",
+
+  "connectorKey": "tk_paste-your-key-here",
+  "_help_connectorKey": "Your private key. Get it from the app: Setup > Tally. It looks like tk_ followed by 40 letters and numbers. Never share it - anyone with this key can read your won quotes.",
+
+  "tallyUrl": "http://localhost:9000",
+  "_help_tallyUrl": "Where TallyPrime listens on this PC. 9000 is Tally's default port - only change this if you changed the port inside Tally.",
+
+  "intervalSec": 60,
+  "_help_intervalSec": "How often to check for new won quotes, in seconds. 60 (one minute) is fine for almost everyone.",
+
+  "voucherType": "Sales Order",
+  "_help_voucherType": "The Tally voucher type to create for each won quote. Leave as Sales Order unless you made your own voucher type in Tally and want that instead.",
+
+  "salesLedger": "Sales",
+  "_help_salesLedger": "The sales ledger each order's amount is booked under. If your Tally company already has one (usually called Sales or Sales Account), put its exact name here; otherwise the connector creates a ledger named Sales under Sales Accounts.",
+
+  "dryRun": false,
+  "_help_dryRun": "Set to true for a safe first test: the connector prints the Tally XML on screen instead of sending it, and saves nothing to the cloud.",
+
+  "pullOutstanding": true,
+  "_help_pullOutstanding": "true = also read customer outstanding balances (Sundry Debtors) from Tally every round and show them in the app. Set to false to turn that off."
+}

@@ -968,6 +968,7 @@ export default function App() {
   const [sync, setSync] = useState(sb ? "synced" : "local"); // cloud sync state: local|synced|saving|offline
   const [authError, setAuthError] = useState(""); // OAuth return error, shown on the login screen
   const [account, setAccount] = useState(undefined); // undefined = loading, null = logged out, object = logged in
+  const [tallyBal, setTallyBal] = useState(null); // Tally outstanding by customer name (lowercased) - filled by the opt-in connector
   const saveT = useRef(null);
   const cloudReadOk = useRef(false); /* cloud writes allowed only after a clean cloud read this session */
   /* ids already logged/dismissed locally - filters the poll so a card can never
@@ -1138,6 +1139,26 @@ export default function App() {
     }, 600);
   }, [data, account]);
 
+  /* Tally outstanding balances (opt-in connector, cloud mode only). Read-only;
+     RLS limits the rows to this user. Errors are ignored silently - the feature
+     simply stays invisible when the connector has never run. Declared above the
+     early returns per Rules of Hooks. */
+  useEffect(() => {
+    setTallyBal(null); /* never carry one account's balances into the next (shared device) */
+    if (!sb || !account || !account.uid) return;
+    let alive = true;
+    (async () => {
+      try {
+        const { data: rows, error } = await sb.from("tally_ledgers").select("name,balance");
+        if (!alive || error || !rows || !rows.length) return;
+        const m = {};
+        rows.forEach((r) => { if (Number(r.balance) > 0) m[String(r.name).trim().toLowerCase()] = Number(r.balance); });
+        setTallyBal(m);
+      } catch {}
+    })();
+    return () => { alive = false; };
+  }, [account ? account.uid : null]);
+
   const ping = (m) => { setToast(m); setTimeout(() => setToast(null), 1600); };
 
   /* measured nav pill - tracks the active button exactly. Declared BEFORE any early
@@ -1249,7 +1270,7 @@ export default function App() {
         {toast && <div className="toast">{toast}</div>}
 
         {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} />}
-        {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} />}
+        {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} tallyBal={tallyBal} />}
         {tab === "log" && <QuickLog data={data} onSave={saveLogged} onExit={() => setTab("home")} ping={ping} />}
         {tab === "setup" && <Setup data={data} setData={setData} ping={ping} account={accountView} sync={sync} goSubscribe={() => setTab("subscribe")} onLogout={logout} />}
         {tab === "help" && <Help data={data} ping={ping} />}
@@ -1730,7 +1751,7 @@ function WaImage({ src }) {
   );
 }
 
-function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, filter, setFilter, onLog, enquiries = [], logEnquiry, dismissEnquiry, waOn, refreshEnquiries }) {
+function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, filter, setFilter, onLog, enquiries = [], logEnquiry, dismissEnquiry, waOn, refreshEnquiries, tallyBal = null }) {
   const [open, setOpen] = useState(null);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1846,6 +1867,8 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
       {list.map((q, i) => {
         const fs = followState(q);
         const pill = q.status === "won" ? "won" : q.status === "lost" ? "lost" : "pend";
+        /* outstanding balance from Tally (via the opt-in connector), matched by customer name */
+        const tBal = tallyBal && q.customer ? tallyBal[String(q.customer).trim().toLowerCase()] : null;
         return (
           <div key={q.id} className={"card anim-in st" + Math.min(8, i + 2)} style={{ padding: "16px 16px", marginBottom: 10, borderColor: fs === "overdue" ? "#F0DCB8" : undefined }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setOpen(open === q.id ? null : q.id)}>
@@ -1861,6 +1884,13 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
               <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 12 }}>
                 <div className="mono" style={{ fontWeight: 600, fontSize: 15.5 }}>{inr(q.total)}</div>
                 <span className={"pill " + pill} style={{ marginTop: 4 }}><i className="dot" />{q.status.toUpperCase()}</span>
+                {tBal != null && (
+                  <div style={{ marginTop: 5 }}>
+                    <span className="mono" style={{ display: "inline-block", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", background: "var(--amber-bg)", color: "var(--amber)", border: "1px solid #F0DCB8", borderRadius: 999, padding: "3px 9px" }}>
+                      Tally baki {inr(tBal)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
             {open === q.id && (
@@ -2223,6 +2253,8 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
   const [calcOpen, setCalcOpen] = useState(false);
   const [matPick, setMatPick] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [tallyKey, setTallyKey] = useState(null);   // connector key, fetched on demand
+  const [tallyBusy, setTallyBusy] = useState(false);
   const s = data.settings;
   const setS = (k, v) => setData({ ...data, settings: { ...s, [k]: v } });
 
@@ -2242,6 +2274,25 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
     setData({ ...data, materials: [...data.materials, { id: uid(), name: m.name, rate: m.rate }] }); ping(m.name + " added");
   };
   const libRemaining = MAT_LIB.filter((m) => !data.materials.some((x) => x.name.toLowerCase() === m.name.toLowerCase()));
+
+  /* fetch (or regenerate) the Tally connector key from our Netlify function.
+     Backend absent -> non-JSON response -> friendly toast, nothing breaks. */
+  const fetchTallyKey = async (regen) => {
+    if (regen && !window.confirm("Purani key kaam karna band kar degi. Nayi key banayein?")) return;
+    setTallyBusy(true);
+    try {
+      const opts = regen
+        ? { method: "POST", headers: { "content-type": "application/json", accept: "application/json", ...(await authHeaders()) }, body: JSON.stringify({ regenerate: true }) }
+        : { headers: { accept: "application/json", ...(await authHeaders()) } };
+      const r = await fetch(WA_API + "/tally-key", opts);
+      const ct = r.headers.get("content-type") || "";
+      if (!r.ok || !ct.includes("application/json")) { ping("Could not get key - check internet"); return; }
+      const d = await r.json().catch(() => null);
+      if (d && d.ok && d.key) setTallyKey(d.key);
+      else ping("Could not get key - check internet");
+    } catch { ping("Could not get key - check internet"); }
+    finally { setTallyBusy(false); }
+  };
 
   return (
     <div className="scr"><div className="pagepad">
@@ -2392,6 +2443,38 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
           </button>
         </div>
       </div>
+
+      {/* ===== Tally connector (BETA) - cloud accounts only ===== */}
+      {sb && account && account.method === "google" && (<>
+        <div className="anim-in" style={{ margin: "24px 0 10px" }}><span className="eyebrow">Tally (BETA)</span></div>
+        <div className="card" style={{ padding: 16 }}>
+          <div style={{ fontSize: 15, color: "var(--ink)", lineHeight: 1.55 }}>
+            Won quotes seedha aapke accountant ke Tally mein - koi retyping nahi. Customer ka baki (outstanding) bhi pipeline mein dikhega.
+          </div>
+          <div className="lbl" style={{ marginTop: 14 }}>Connector key</div>
+          {tallyKey ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div className="mono" style={{ flex: 1, minWidth: 0, fontSize: 13, lineHeight: 1.45, background: "var(--soft)", border: "1px solid var(--line2)", borderRadius: 12, padding: "11px 12px", overflowWrap: "anywhere" }}>{tallyKey}</div>
+                <button className="btn btn-sm btn-soft press" style={{ flexShrink: 0 }}
+                  onClick={async () => { try { await navigator.clipboard.writeText(tallyKey); ping("Key copied"); } catch { ping("Copy failed"); } }}>
+                  <I.copy /> Copy
+                </button>
+              </div>
+              <button className="btn btn-sm btn-ghost press" style={{ marginTop: 8 }} disabled={tallyBusy} onClick={() => fetchTallyKey(true)}>New key</button>
+            </>
+          ) : (
+            <button className="btn btn-soft press" style={{ width: "100%" }} disabled={tallyBusy} onClick={() => fetchTallyKey(false)}>
+              {tallyBusy ? "Getting key..." : "Get connector key"}
+            </button>
+          )}
+          <div style={{ fontSize: 15, color: "var(--dim)", lineHeight: 1.7, marginTop: 14 }}>
+            1. Tally wale computer par connector install karo (TALLY_SETUP.md file dekho).<br />
+            2. Key ko config.json mein daalo.<br />
+            3. start-connector.bat chalao.
+          </div>
+        </div>
+      </>)}
 
       {/* ===== Marketplace (concept / demo) ===== */}
       <div className="anim-in st5" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "26px 0 6px" }}>
