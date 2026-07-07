@@ -1020,7 +1020,8 @@ export default function App() {
         if (errDesc) {
           setAuthError(String(errDesc).replace(/\+/g, " "));
         } else if (code) {
-          const { error } = await sb.auth.exchangeCodeForSession(window.location.href);
+          /* exchangeCodeForSession expects the bare code, not the URL */
+          const { error } = await sb.auth.exchangeCodeForSession(code);
           if (error) setAuthError((error.message || "sign-in failed") + " [exchange]");
         }
         /* strip auth params from the address bar either way */
