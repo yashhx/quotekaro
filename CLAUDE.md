@@ -53,6 +53,8 @@ Three real shop visits taught us:
 - **Schema is now `quotekaro:v5`.** Quote objects gained `phone`, `followUp`, `source` (and `note` on logged quotes). Bump the key again if you add fields.
 - Target price being tested in the field: ₹1,000/month. Target user hypothesis: traders first, small shops second.
 
+**Validated future feature - photo similarity search (2026-07-09, user's own field insight):** a photo enquiry arrives -> vendor searches their own delivered-order history by image ("have I made this sofa before?") -> top matches with old price/customer/date. Observed real pain: sofa vendors scrolling months of WhatsApp groups to find one photo. Plan: persist enquiry/order photos to Supabase Storage (PREREQUISITE - do this whenever media code is next touched; Meta media links expire in days), Claude captions + multimodal embeddings (Voyage) in pgvector, brute-force similarity is fine at shop scale. Bootstrap trick: WhatsApp chat export (.zip with media) import = instant catalog from their old group chats. Moat: data accrues -> switching cost grows. Build AFTER furniture/printing demos confirm demand - not before.
+
 **Do NOT build unless explicitly asked:** supplier marketplace (a demo section labeled CONCEPT exists in Setup — keep it labeled), CAD file parsing/geometry costing, real payments/SMS, live Excel add-ins. Excel is real file import/export, not a live add-in.
 
 ## WhatsApp backend (two-way) — SHIPPED, opt-in (2026-07)
