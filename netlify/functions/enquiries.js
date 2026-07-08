@@ -39,11 +39,10 @@ async function getTenant(userId) {
   try {
     const r = await fetch(url + "/rest/v1/tenants?user_id=eq." + encodeURIComponent(userId) + "&select=wa_phone_id,is_admin",
       { headers: hdrs });
-    if (!r.ok) console.warn("DIAG enquiries: getTenant REST failed", r.status, "- SUPABASE_SERVICE_KEY may be wrong/truncated");
+    if (!r.ok) console.warn("enquiries: getTenant REST failed", r.status, "- check SUPABASE_SERVICE_KEY");
     const rows = r.ok ? await r.json() : [];
-    console.log("DIAG enquiries: tenant read for", userId, "-> rows", rows.length, "| is_admin", !!(rows[0] && rows[0].is_admin), "| wa_phone_id", (rows[0] && rows[0].wa_phone_id) || "(none)");
     return rows[0] || { wa_phone_id: null, is_admin: false };
-  } catch (e) { console.warn("DIAG enquiries: getTenant threw -", e && e.message); return { wa_phone_id: null, is_admin: false }; }
+  } catch (e) { console.warn("enquiries: getTenant threw -", e && e.message); return { wa_phone_id: null, is_admin: false }; }
 }
 
 const canSee = (v, tenant) => {
@@ -77,12 +76,7 @@ export default async (req) => {
         await Promise.all(stale.map((v) => store.delete("msg_" + v.id).catch(() => {})));
       }
 
-      const inWindow = items.filter((v) => (v.at || 0) >= cutoff);
-      const fresh = inWindow.filter((v) => canSee(v, tenant)).slice(0, MAX_RETURNED);
-      const seenPhoneIds = [...new Set(inWindow.map((v) => v.phoneId || "(none)"))];
-      console.log("DIAG enquiries: stored", inWindow.length, "| visible to caller", fresh.length,
-        "| is_admin", !!(tenant && tenant.is_admin), "| my wa_phone_id", (tenant && tenant.wa_phone_id) || "(none)",
-        "| stored phoneIds", JSON.stringify(seenPhoneIds));
+      const fresh = items.filter((v) => (v.at || 0) >= cutoff).filter((v) => canSee(v, tenant)).slice(0, MAX_RETURNED);
       return json({ enabled: true, enquiries: fresh });
     } catch (e) {
       console.error("enquiries: list failed -", e && e.message);
