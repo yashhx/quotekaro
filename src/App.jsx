@@ -605,24 +605,52 @@ const guessCategory = (part, key) => {
 const catOf = (q, ind) => q.category || guessCategory(q.part, ind.key);
 const catMeta = (ind, key) => (ind.cats || []).find((c) => c.key === key) || { key: "other", label: "Other", emoji: "📦" };
 
+/* self-contained SVG preview illustrations per category (data URIs, no network).
+   Used to seed demo quotes so a fresh printing/furniture pipeline is visual
+   immediately; real user quotes carry actual photos. */
+const art = (inner, bg) => "data:image/svg+xml," + encodeURIComponent(
+  "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' fill='" + (bg || "#EAF3EC") + "'/>" + inner + "</svg>");
+const CAT_ART = {
+  sofa: art("<rect x='14' y='52' width='16' height='36' rx='7' fill='#5B7590'/><rect x='90' y='52' width='16' height='36' rx='7' fill='#5B7590'/><rect x='22' y='40' width='76' height='30' rx='10' fill='#84A0BC'/><rect x='18' y='60' width='84' height='26' rx='8' fill='#6E88A3'/><rect x='24' y='86' width='8' height='10' fill='#3E5468'/><rect x='88' y='86' width='8' height='10' fill='#3E5468'/>", "#E7EEF4"),
+  bed: art("<rect x='14' y='44' width='18' height='46' rx='5' fill='#6E5744'/><rect x='14' y='60' width='92' height='28' rx='6' fill='#8A6E57'/><rect x='38' y='62' width='30' height='16' rx='6' fill='#F1E7DA'/><rect x='18' y='88' width='7' height='10' fill='#4E3E30'/><rect x='97' y='88' width='7' height='10' fill='#4E3E30'/>", "#F3EEE6"),
+  wardrobe: art("<rect x='30' y='22' width='60' height='78' rx='4' fill='#7A6A55'/><rect x='58' y='22' width='3' height='78' fill='#5E5142'/><circle cx='52' cy='62' r='3' fill='#F1E7DA'/><circle cx='68' cy='62' r='3' fill='#F1E7DA'/>", "#F1EDE6"),
+  dining: art("<rect x='28' y='52' width='64' height='7' rx='3' fill='#8A6E57'/><rect x='34' y='59' width='5' height='28' fill='#6E5744'/><rect x='81' y='59' width='5' height='28' fill='#6E5744'/><circle cx='60' cy='47' r='9' fill='#E7EEF4'/><rect x='16' y='46' width='6' height='42' rx='3' fill='#5B7590'/><rect x='98' y='46' width='6' height='42' rx='3' fill='#5B7590'/>", "#F1EDE6"),
+  tvunit: art("<rect x='34' y='30' width='52' height='30' rx='3' fill='#2E3A44'/><rect x='40' y='36' width='40' height='18' fill='#4B6076'/><rect x='56' y='60' width='8' height='6' fill='#2E3A44'/><rect x='20' y='66' width='80' height='22' rx='4' fill='#6E5744'/><rect x='30' y='72' width='18' height='10' rx='2' fill='#5A4636'/>", "#E9EDF0"),
+  chair: art("<rect x='42' y='56' width='36' height='8' rx='3' fill='#6E88A3'/><rect x='42' y='30' width='9' height='34' rx='3' fill='#5B7590'/><rect x='46' y='64' width='5' height='24' fill='#3E5468'/><rect x='72' y='64' width='5' height='24' fill='#3E5468'/>", "#E7EEF4"),
+  office: art("<rect x='18' y='58' width='84' height='7' rx='3' fill='#5B7590'/><rect x='24' y='65' width='6' height='27' fill='#3E5468'/><rect x='90' y='65' width='6' height='27' fill='#3E5468'/><rect x='60' y='34' width='34' height='22' rx='2' fill='#2E3A44'/><rect x='64' y='38' width='26' height='14' fill='#4B6076'/>", "#E7EEF4"),
+  cards: art("<rect x='30' y='46' width='58' height='36' rx='5' fill='#C9D6E3'/><rect x='36' y='40' width='58' height='36' rx='5' fill='#F3F7FB'/><rect x='42' y='50' width='30' height='5' rx='2' fill='#155E18'/><rect x='42' y='60' width='22' height='3' rx='1' fill='#9AB0C4'/><rect x='42' y='66' width='26' height='3' rx='1' fill='#9AB0C4'/>", "#EAF1F7"),
+  flyers: art("<rect x='36' y='22' width='48' height='74' rx='3' fill='#F6F9FC'/><rect x='44' y='30' width='32' height='22' rx='2' fill='#7CA9E0'/><rect x='44' y='58' width='32' height='3' fill='#9AB0C4'/><rect x='44' y='65' width='32' height='3' fill='#9AB0C4'/><rect x='44' y='72' width='20' height='3' fill='#9AB0C4'/>", "#EAF1F7"),
+  banner: art("<rect x='58' y='20' width='4' height='80' fill='#8894A0'/><rect x='44' y='94' width='32' height='5' rx='2' fill='#6E7E74'/><rect x='30' y='22' width='60' height='58' rx='3' fill='#3FAE45'/><rect x='30' y='22' width='60' height='12' fill='#2E7A32'/><rect x='38' y='42' width='44' height='7' rx='2' fill='#ffffff'/><rect x='38' y='54' width='30' height='5' rx='2' fill='#DCF3DD'/>", "#EAF3EC"),
+  hoarding: art("<rect x='16' y='24' width='88' height='42' rx='2' fill='#4B6076'/><rect x='24' y='30' width='34' height='30' fill='#7CA9E0'/><rect x='62' y='30' width='34' height='9' fill='#ffffff'/><rect x='62' y='44' width='28' height='6' fill='#B7C6D6'/><rect x='34' y='66' width='7' height='32' fill='#6E7E74'/><rect x='80' y='66' width='7' height='32' fill='#6E7E74'/>", "#E9EDF0"),
+  boxes: art("<rect x='34' y='48' width='52' height='42' fill='#C79A6B'/><polygon points='34,48 60,36 86,48 60,60' fill='#DDB588'/><rect x='57' y='48' width='6' height='42' fill='#A87E52'/><rect x='34' y='62' width='52' height='4' fill='#B98C5E'/>", "#F3EEE6"),
+  invites: art("<rect x='42' y='28' width='40' height='26' rx='2' fill='#ffffff'/><rect x='48' y='36' width='28' height='4' rx='1' fill='#C9A24B'/><rect x='30' y='42' width='60' height='40' rx='3' fill='#E7D9EE'/><polygon points='30,42 60,66 90,42' fill='#D3BFDE'/>", "#F0EAF3"),
+  stationery: art("<rect x='36' y='22' width='48' height='74' rx='2' fill='#F6F9FC'/><rect x='44' y='30' width='22' height='7' rx='2' fill='#155E18'/><rect x='44' y='46' width='32' height='3' fill='#9AB0C4'/><rect x='44' y='53' width='32' height='3' fill='#9AB0C4'/><rect x='44' y='60' width='24' height='3' fill='#9AB0C4'/>", "#EAF1F7"),
+};
+
 /* trade-specific sample quotes, shown only when a fresh account picks a trade
    (never overwrites real data - see the pick handler) */
 const industrySamples = (key) => {
   if (key === "printing") return [
-    { customer: "Sharma Cards & Print", part: "500 visiting cards, matte", qty: 500, total: 1200, status: "won", fu: null, cat: "cards" },
-    { customer: "Gupta Sweets", part: "2000 boxes, 250gsm, 4-color", qty: 2000, total: 46000, status: "pending", fu: 2, cat: "boxes" },
-    { customer: "City Gym", part: "6x3 flex banner, urgent", qty: 2, total: 1400, status: "pending", fu: -1, cat: "banner" },
-    { customer: "Verma Wedding", part: "150 wedding invites, gold foil", qty: 150, total: 18750, status: "pending", fu: 0, cat: "invites" },
-    { customer: "Highway Motors", part: "Unipole hoarding, 20x10", qty: 1, total: 32000, status: "won", fu: null, cat: "hoarding" },
-    { customer: "Auto Parts Co", part: "1000 letterheads + envelopes", qty: 1000, total: 8500, status: "lost", fu: null, cat: "stationery" },
+    { customer: "City Gym", part: "6x3 flex banner, sale offer", qty: 2, total: 1400, status: "pending", fu: -1, cat: "banner", note: "Urgent - wants it by this evening. Design ready, awaiting go-ahead." },
+    { customer: "Verma Wedding", part: "150 wedding invites, gold foil", qty: 150, total: 18750, status: "pending", fu: 0, cat: "invites", note: "Sample approved. Waiting on final names/date from the couple." },
+    { customer: "Gupta Sweets", part: "2000 sweet boxes, 250gsm, 4-color", qty: 2000, total: 46000, status: "pending", fu: 2, cat: "boxes", note: "Diwali order. Comparing our rate with one more press." },
+    { customer: "Royal Caterers", part: "5000 pamphlets, A5 both sides", qty: 5000, total: 6500, status: "pending", fu: -2, cat: "flyers", note: "Followed up once, no reply yet. Chase again." },
+    { customer: "Sharma & Sons", part: "500 visiting cards, matte lamination", qty: 500, total: 1200, status: "won", fu: null, cat: "cards", note: "Repeat customer - reordered same as last time." },
+    { customer: "Highway Motors", part: "Unipole hoarding, 20x10 flex", qty: 1, total: 32000, status: "won", fu: null, cat: "hoarding", note: "Confirmed, mounting next week." },
+    { customer: "Metro Mall", part: "3 backlit banners, entrance", qty: 3, total: 21000, status: "won", fu: null, cat: "banner", note: "" },
+    { customer: "Star Academy", part: "200 certificates + folders", qty: 200, total: 14000, status: "pending", fu: 4, cat: "stationery", note: "Annual day. Needs logo in gold." },
+    { customer: "Bharat Auto", part: "1000 letterheads + envelopes", qty: 1000, total: 8500, status: "lost", fu: null, cat: "stationery", note: "Lost - went with a cheaper online print." },
   ];
   if (key === "furniture") return [
-    { customer: "Gupta Residence", part: "3-seater L-sofa, grey fabric", qty: 1, total: 62000, status: "pending", fu: 0, cat: "sofa" },
-    { customer: "Mehta Interiors", part: "6-door wardrobe, laminate", qty: 1, total: 84000, status: "won", fu: null, cat: "wardrobe" },
-    { customer: "Cafe Bloom", part: "8 dining tables + 32 chairs", qty: 8, total: 176000, status: "pending", fu: -2, cat: "dining" },
-    { customer: "Sethi Villa", part: "King bed with storage, teak", qty: 1, total: 58000, status: "pending", fu: 1, cat: "bed" },
-    { customer: "Singh House", part: "TV unit + console, walnut", qty: 1, total: 45000, status: "pending", fu: 3, cat: "tvunit" },
-    { customer: "Rao Office", part: "12 modular workstations", qty: 12, total: 240000, status: "lost", fu: null, cat: "office" },
+    { customer: "Gupta Residence", part: "3-seater L-sofa, grey fabric", qty: 1, total: 62000, status: "pending", fu: 0, cat: "sofa", note: "Sent fabric options. Waiting on colour choice." },
+    { customer: "Sharma Villa", part: "Tufted sofa set, same as photo", qty: 1, total: 95000, status: "pending", fu: -3, cat: "sofa", note: "Customer shared a photo, wants the same design. Followed up once." },
+    { customer: "Cafe Bloom", part: "8 dining tables + 32 chairs", qty: 8, total: 176000, status: "pending", fu: -2, cat: "dining", note: "Bulk order. Comparing us with 2 other vendors - price sensitive." },
+    { customer: "Sethi House", part: "King bed with hydraulic storage, teak", qty: 1, total: 58000, status: "pending", fu: 2, cat: "bed", note: "Wants delivery before house-warming." },
+    { customer: "Verma Residence", part: "4 dining chairs, teak", qty: 4, total: 22000, status: "pending", fu: 0, cat: "chair", note: "Add-on to earlier table order." },
+    { customer: "Mehta Interiors", part: "6-door wardrobe, laminate", qty: 1, total: 84000, status: "won", fu: null, cat: "wardrobe", note: "Confirmed. Measurement done." },
+    { customer: "Singh Apartment", part: "TV unit + console, walnut", qty: 1, total: 45000, status: "won", fu: null, cat: "tvunit", note: "" },
+    { customer: "Khanna Flat", part: "3-door wardrobe + dresser", qty: 1, total: 51000, status: "won", fu: null, cat: "wardrobe", note: "Repeat client." },
+    { customer: "Rao Office", part: "12 modular workstations", qty: 12, total: 240000, status: "lost", fu: null, cat: "office", note: "Lost to a local carpenter on price." },
   ];
   return null;
 };
@@ -634,7 +662,8 @@ const buildSampleQuotes = (key) => {
   return specs.map((s, i) => ({
     id: uid(), at: now - i * 0.7 * DAY, status: s.status, customer: s.customer, phone: "",
     part: s.part, qty: s.qty, pricePc: s.qty ? s.total / s.qty : 0, total: s.total,
-    followUp: s.fu == null ? null : now + s.fu * DAY, source: "sample", seed: true, image: "", category: s.cat || "",
+    followUp: s.fu == null ? null : now + s.fu * DAY, source: "sample", seed: true,
+    image: CAT_ART[s.cat] || "", category: s.cat || "", note: s.note || "",
   }));
 };
 
@@ -2103,9 +2132,11 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
           <div key={q.id} className={"card anim-in st" + Math.min(8, i + 2)} style={{ padding: "16px 16px", marginBottom: 10, borderColor: fs === "overdue" ? "#F0DCB8" : undefined }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setOpen(open === q.id ? null : q.id)}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
-              {q.image && (
+              {q.image ? (
                 <img src={q.image} alt="" onClick={(ev) => { ev.stopPropagation(); setViewImg(q.image); }}
                   style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover", flexShrink: 0, border: "1px solid var(--line2)", cursor: "zoom-in" }} />
+              ) : (
+                <span style={{ width: 48, height: 48, borderRadius: 12, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{catMeta(ind, catOf(q, ind)).emoji}</span>
               )}
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 15.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.customer}</div>
