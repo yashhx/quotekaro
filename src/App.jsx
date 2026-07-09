@@ -189,6 +189,13 @@ const CSS = `
 .fpill{font-family:var(--sans); font-size:14px; font-weight:600; padding:10px 17px; border-radius:999px;
   border:1.5px solid var(--line2); background:#fff; color:var(--dim); cursor:pointer; transition:all .15s;}
 .fpill.on{background:var(--ink); color:#fff; border-color:var(--ink);}
+.catchip{display:inline-flex; align-items:center; gap:6px; white-space:nowrap; flex:0 0 auto;
+  font-family:var(--sans); font-size:13.5px; font-weight:600; padding:8px 14px; border-radius:999px;
+  border:1.5px solid var(--line2); background:#fff; color:var(--dim); cursor:pointer; transition:all .15s;}
+.catchip.on{background:var(--grn-100); color:var(--grn-d); border-color:#CFE9D1;}
+.cat-scroll{-ms-overflow-style:none; scrollbar-width:none;}
+.cat-scroll::-webkit-scrollbar{display:none;}
+.cat-tile:active{transform:scale(.98);}
 
 /* ---- liquid glass nav (Apple-style) ---- */
 .navbar{position:absolute; left:14px; right:14px; bottom:14px; z-index:40; isolation:isolate;
@@ -559,30 +566,76 @@ const seedData = () => {
    only tunes vocabulary, examples and which sample data a fresh account shows.
    emoji is intentional (matches the app's existing emoji use, e.g. Won toast). */
 const INDUSTRIES = {
-  machining: { key: "machining", emoji: "⚙️", label: "Machine shop / Trader", tag: "CNC, turning, fabrication, trading", item: "Part / item", eg: "MS Hex Bar lot", unit: "pcs" },
-  printing:  { key: "printing",  emoji: "🖨️", label: "Printing / Press", tag: "Cards, flyers, banners, boxes", item: "Design / job", eg: "500 visiting cards, matte", unit: "pcs" },
-  furniture: { key: "furniture", emoji: "🛋️", label: "Furniture / Interiors", tag: "Sofas, wardrobes, modular, fit-outs", item: "Piece / design", eg: "3-seater sofa, grey fabric", unit: "pcs" },
+  machining: { key: "machining", emoji: "⚙️", label: "Machine shop / Trader", tag: "CNC, turning, fabrication, trading", item: "Part / item", eg: "MS Hex Bar lot", unit: "pcs",
+    cats: [
+      { key: "turned", label: "Turned", emoji: "⚙️" }, { key: "milled", label: "Milled", emoji: "🔧" },
+      { key: "sheet", label: "Sheet metal", emoji: "📐" }, { key: "fabrication", label: "Fabrication", emoji: "🏗️" },
+      { key: "fasteners", label: "Fasteners", emoji: "🔩" }, { key: "trading", label: "Trading", emoji: "📦" },
+      { key: "other", label: "Other", emoji: "🛠️" },
+    ] },
+  printing: { key: "printing", emoji: "🖨️", label: "Printing / Press", tag: "Cards, flyers, banners, boxes", item: "Design / job", eg: "500 visiting cards, matte", unit: "pcs",
+    cats: [
+      { key: "cards", label: "Visiting cards", emoji: "🪪" }, { key: "flyers", label: "Flyers", emoji: "📄" },
+      { key: "banner", label: "Banner / flex", emoji: "🎏" }, { key: "hoarding", label: "Hoarding", emoji: "🖼️" },
+      { key: "boxes", label: "Boxes", emoji: "📦" }, { key: "invites", label: "Invites", emoji: "💌" },
+      { key: "stationery", label: "Stationery", emoji: "✉️" }, { key: "other", label: "Other", emoji: "🖨️" },
+    ] },
+  furniture: { key: "furniture", emoji: "🛋️", label: "Furniture / Interiors", tag: "Sofas, wardrobes, modular, fit-outs", item: "Piece / design", eg: "3-seater sofa, grey fabric", unit: "pcs",
+    cats: [
+      { key: "sofa", label: "Sofa", emoji: "🛋️" }, { key: "bed", label: "Bed", emoji: "🛏️" },
+      { key: "wardrobe", label: "Wardrobe", emoji: "🚪" }, { key: "dining", label: "Dining", emoji: "🍽️" },
+      { key: "tvunit", label: "TV unit", emoji: "📺" }, { key: "chair", label: "Chair", emoji: "🪑" },
+      { key: "office", label: "Office", emoji: "🖥️" }, { key: "other", label: "Other", emoji: "🔨" },
+    ] },
 };
 const industryOf = (data) => INDUSTRIES[data && data.industry] || INDUSTRIES.machining;
+
+/* keyword -> category, per trade (so old/sample quotes categorize themselves) */
+const CAT_RULES = {
+  machining: [["turned", /turn|shaft|bush|nut|spacer|bar|rod|pin|bore|ø|dia/], ["milled", /mill|slot|pocket|face/], ["sheet", /sheet|laser|bend|press|plate/], ["fabrication", /fabricat|weld|structure|frame|grill|gate|railing/], ["fasteners", /bolt|screw|fastener|washer|stud|hex/], ["trading", /lot|supply|trading|resale/]],
+  printing: [["cards", /visiting|business card|v\.?card/], ["flyers", /flyer|pamphlet|leaflet|brochure|poster/], ["banner", /banner|flex|standee/], ["hoarding", /hoarding|unipole|billboard/], ["boxes", /box|carton|packag|mono/], ["invites", /invit|wedding|card/], ["stationery", /letterhead|envelope|stationery|bill book|receipt/]],
+  furniture: [["sofa", /sofa|couch|settee|recliner/], ["bed", /bed|mattress|cot|headboard/], ["wardrobe", /wardrobe|almirah|drawer|cupboard|closet/], ["dining", /dining|table|chair set/], ["tvunit", /tv unit|tv-unit|console|entertainment/], ["chair", /chair|stool|bench/], ["office", /office|desk|workstation|conference/]],
+};
+const guessCategory = (part, key) => {
+  const rules = CAT_RULES[key] || CAT_RULES.machining;
+  const p = String(part || "").toLowerCase();
+  for (const [cat, re] of rules) if (re.test(p)) return cat;
+  return "other";
+};
+const catOf = (q, ind) => q.category || guessCategory(q.part, ind.key);
+const catMeta = (ind, key) => (ind.cats || []).find((c) => c.key === key) || { key: "other", label: "Other", emoji: "📦" };
 
 /* trade-specific sample quotes, shown only when a fresh account picks a trade
    (never overwrites real data - see the pick handler) */
 const industrySamples = (key) => {
   if (key === "printing") return [
-    { customer: "Sharma Cards & Print", part: "500 visiting cards, matte", qty: 500, total: 1200, status: "won", fu: null },
-    { customer: "Gupta Sweets", part: "2000 boxes, 250gsm, 4-color", qty: 2000, total: 46000, status: "pending", fu: 2 },
-    { customer: "City Gym", part: "6x3 flex banner, urgent", qty: 2, total: 1400, status: "pending", fu: -1 },
-    { customer: "Verma Wedding", part: "150 wedding invites, gold foil", qty: 150, total: 18750, status: "pending", fu: 0 },
-    { customer: "Auto Parts Co", part: "1000 letterheads + envelopes", qty: 1000, total: 8500, status: "lost", fu: null },
+    { customer: "Sharma Cards & Print", part: "500 visiting cards, matte", qty: 500, total: 1200, status: "won", fu: null, cat: "cards" },
+    { customer: "Gupta Sweets", part: "2000 boxes, 250gsm, 4-color", qty: 2000, total: 46000, status: "pending", fu: 2, cat: "boxes" },
+    { customer: "City Gym", part: "6x3 flex banner, urgent", qty: 2, total: 1400, status: "pending", fu: -1, cat: "banner" },
+    { customer: "Verma Wedding", part: "150 wedding invites, gold foil", qty: 150, total: 18750, status: "pending", fu: 0, cat: "invites" },
+    { customer: "Highway Motors", part: "Unipole hoarding, 20x10", qty: 1, total: 32000, status: "won", fu: null, cat: "hoarding" },
+    { customer: "Auto Parts Co", part: "1000 letterheads + envelopes", qty: 1000, total: 8500, status: "lost", fu: null, cat: "stationery" },
   ];
   if (key === "furniture") return [
-    { customer: "Gupta Residence", part: "3-seater L-sofa, grey fabric", qty: 1, total: 62000, status: "pending", fu: 0 },
-    { customer: "Mehta Interiors", part: "6-door wardrobe, laminate", qty: 1, total: 84000, status: "won", fu: null },
-    { customer: "Cafe Bloom", part: "8 dining tables + 32 chairs", qty: 8, total: 176000, status: "pending", fu: -2 },
-    { customer: "Singh Villa", part: "TV unit + console, walnut", qty: 1, total: 45000, status: "pending", fu: 3 },
-    { customer: "Rao Office", part: "12 modular workstations", qty: 12, total: 240000, status: "lost", fu: null },
+    { customer: "Gupta Residence", part: "3-seater L-sofa, grey fabric", qty: 1, total: 62000, status: "pending", fu: 0, cat: "sofa" },
+    { customer: "Mehta Interiors", part: "6-door wardrobe, laminate", qty: 1, total: 84000, status: "won", fu: null, cat: "wardrobe" },
+    { customer: "Cafe Bloom", part: "8 dining tables + 32 chairs", qty: 8, total: 176000, status: "pending", fu: -2, cat: "dining" },
+    { customer: "Sethi Villa", part: "King bed with storage, teak", qty: 1, total: 58000, status: "pending", fu: 1, cat: "bed" },
+    { customer: "Singh House", part: "TV unit + console, walnut", qty: 1, total: 45000, status: "pending", fu: 3, cat: "tvunit" },
+    { customer: "Rao Office", part: "12 modular workstations", qty: 12, total: 240000, status: "lost", fu: null, cat: "office" },
   ];
   return null;
+};
+/* full quote objects for a trade's sample set (null for machining -> use seedData) */
+const buildSampleQuotes = (key) => {
+  const specs = industrySamples(key);
+  if (!specs) return null;
+  const now = Date.now();
+  return specs.map((s, i) => ({
+    id: uid(), at: now - i * 0.7 * DAY, status: s.status, customer: s.customer, phone: "",
+    part: s.part, qty: s.qty, pricePc: s.qty ? s.total / s.qty : 0, total: s.total,
+    followUp: s.fu == null ? null : now + s.fu * DAY, source: "sample", seed: true, image: "", category: s.cat || "",
+  }));
 };
 
 /* downscale a picked image to a small JPEG data URL for the pipeline thumbnail.
@@ -1039,6 +1092,7 @@ export default function App() {
   const [step, setStep] = useState(1);
   const [doneQuote, setDoneQuote] = useState(null);
   const [quotesFilter, setQuotesFilter] = useState("all");
+  const [quotesCat, setQuotesCat] = useState(null); // category filter set from Home tiles
   const [fabOpen, setFabOpen] = useState(false);
   const [enquiries, setEnquiries] = useState([]); // inbound WhatsApp messages (backend only)
   const [waOn, setWaOn] = useState(false); // true once the WhatsApp backend has answered
@@ -1276,17 +1330,8 @@ export default function App() {
   if (!data.industry)
     return <IndustryPicker onPick={(key) => setData((d) => {
       const untouched = !d.quotes.length || d.quotes.every((q) => q.seed);
-      const samples = industrySamples(key);
-      let quotes = d.quotes;
-      if (untouched && samples) {
-        const now = Date.now();
-        quotes = samples.map((s, i) => ({
-          id: uid(), at: now - i * 0.7 * DAY, status: s.status, customer: s.customer, phone: "",
-          part: s.part, qty: s.qty, pricePc: s.qty ? s.total / s.qty : 0, total: s.total,
-          followUp: s.fu == null ? null : now + s.fu * DAY, source: "sample", seed: true, image: "",
-        }));
-      }
-      return { ...d, industry: key, quotes };
+      const sq = buildSampleQuotes(key);
+      return { ...d, industry: key, quotes: untouched && sq ? sq : d.quotes };
     })} />;
 
   const startQuote = () => {
@@ -1354,7 +1399,7 @@ export default function App() {
   const setStatus = (id, status) => setData({ ...data, quotes: data.quotes.map((q) => (q.id === id ? { ...q, status } : q)) });
   const updateQuote = (id, patch) => setData({ ...data, quotes: data.quotes.map((q) => (q.id === id ? { ...q, ...patch } : q)) });
   const delQuote = (id) => setData({ ...data, quotes: data.quotes.filter((q) => q.id !== id) });
-  const goQuotes = (f) => { setQuotesFilter(f || "all"); setTab("quotes"); };
+  const goQuotes = (f, cat) => { setQuotesFilter(f || "all"); setQuotesCat(cat || null); setTab("quotes"); };
 
   /* in cloud mode the demo plan lives inside the synced data blob */
   const accountView = account ? { ...account, plan: sb ? (data && data.planId) : account.plan } : account;
@@ -1365,7 +1410,7 @@ export default function App() {
         {toast && <div className="toast">{toast}</div>}
 
         {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} />}
-        {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} tallyBal={tallyBal} />}
+        {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} cat={quotesCat} setCat={setQuotesCat} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} tallyBal={tallyBal} />}
         {tab === "log" && <QuickLog data={data} onSave={saveLogged} onExit={() => setTab("home")} ping={ping} />}
         {tab === "setup" && <Setup data={data} setData={setData} ping={ping} account={accountView} sync={sync} goSubscribe={() => setTab("subscribe")} onLogout={logout} />}
         {tab === "help" && <Help data={data} ping={ping} />}
@@ -1450,6 +1495,11 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, goSetup, g
   const dueList = data.quotes.filter((q) => { const st = followState(q); return st === "overdue" || st === "today"; })
     .sort((a, b) => a.followUp - b.followUp);
   const pendingValue = data.quotes.filter((q) => q.status === "pending").reduce((s, q) => s + q.total, 0);
+  const ind = industryOf(data);
+  const catStats = (ind.cats || []).map((c) => {
+    const qs = data.quotes.filter((x) => catOf(x, ind) === c.key);
+    return { ...c, total: qs.length, ongoing: qs.filter((x) => x.status === "pending").length };
+  }).filter((c) => c.total > 0);
 
   return (
     <div className="scr"><div className="pagepad">
@@ -1519,6 +1569,25 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, goSetup, g
         </button>
       )}
 
+      {catStats.length > 0 && (<>
+        <div className="anim-in st3" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "26px 0 10px" }}>
+          <span className="eyebrow">Browse by {ind.key === "furniture" ? "product" : ind.key === "printing" ? "job type" : "category"}</span>
+          <button onClick={() => goQuotes("all")} style={{ background: "none", border: "none", color: "var(--grn-d)", fontWeight: 600, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center" }}>All <I.chev /></button>
+        </div>
+        <div className="anim-in st3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {catStats.map((c) => (
+            <button key={c.key} onClick={() => goQuotes("all", c.key)} className="press cat-tile"
+              style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, padding: "14px 14px", background: "#fff", border: "1px solid var(--line)", borderRadius: 20, boxShadow: "var(--sh-s)" }}>
+              <span style={{ width: 44, height: 44, borderRadius: 13, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{c.emoji}</span>
+              <span style={{ minWidth: 0, flex: 1 }}>
+                <span style={{ display: "block", fontWeight: 700, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.label}</span>
+                <span style={{ display: "block", fontSize: 12, color: c.ongoing ? "var(--amber)" : "var(--faint)", fontWeight: 600, marginTop: 1 }}>{c.ongoing ? c.ongoing + " ongoing" : c.total + " done"}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </>)}
+
       <div className="anim-in st3" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "26px 0 10px" }}>
         <span className="eyebrow">Recent quotes</span>
         <button onClick={() => goQuotes("all")} style={{ background: "none", border: "none", color: "var(--grn-d)", fontWeight: 600, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center" }}>All <I.chev /></button>
@@ -1546,10 +1615,12 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, goSetup, g
         </button>
       )}
 
-      <div className="card-tint anim-in st7" style={{ padding: "15px 16px", display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}>
-        <span style={{ color: "var(--grn)" }}><I.bolt /></span>
-        <span style={{ fontSize: 13.5, color: "var(--dim)" }}>Your VMC 850's true rate is <b className="mono" style={{ color: "var(--grn-d)" }}>{inr(data.machines[0]?.rate || 0)}/hr</b> - every quote uses it automatically.</span>
-      </div>
+      {ind.key === "machining" && data.machines[0] && (
+        <div className="card-tint anim-in st7" style={{ padding: "15px 16px", display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}>
+          <span style={{ color: "var(--grn)" }}><I.bolt /></span>
+          <span style={{ fontSize: 13.5, color: "var(--dim)" }}>Your {data.machines[0].name}'s true rate is <b className="mono" style={{ color: "var(--grn-d)" }}>{inr(data.machines[0].rate || 0)}/hr</b> - every quote uses it automatically.</span>
+        </div>
+      )}
     </div></div>
   );
 }
@@ -1557,7 +1628,7 @@ const statBtn = { all: "unset", boxSizing: "border-box", cursor: "pointer", flex
 
 /* ================= QUICK LOG (tracker-first 30-second entry) ================= */
 function QuickLog({ data, onSave, onExit, ping }) {
-  const [f, setF] = useState({ customer: "", phone: "", part: "", total: "", qty: "", status: "pending", followUp: "", note: "", image: "" });
+  const [f, setF] = useState({ customer: "", phone: "", part: "", total: "", qty: "", status: "pending", followUp: "", note: "", image: "", category: "" });
   const [pasteOpen, setPasteOpen] = useState(false);
   const [paste, setPaste] = useState("");
   const [reading, setReading] = useState(false); // AI reading in progress
@@ -1592,6 +1663,7 @@ function QuickLog({ data, onSave, onExit, ping }) {
       id: uid(), at: Date.now(), status: f.status, customer: f.customer.trim(), phone: f.phone.replace(/\D/g, ""),
       part: f.part.trim() || "(no part)", qty, pricePc: qty ? total / qty : 0, total,
       followUp: f.followUp ? new Date(f.followUp).getTime() : null, source: "logged", note: f.note.trim() || "", image: f.image || "",
+      category: f.category || guessCategory(f.part, ind.key),
     });
   };
 
@@ -1629,6 +1701,16 @@ function QuickLog({ data, onSave, onExit, ping }) {
 
         <label className="lbl">{ind.item} <span style={{ fontWeight: 400, color: "var(--faint)", fontSize: 13 }}>(optional)</span></label>
         <input className="input" placeholder={"e.g. " + ind.eg} value={f.part} onChange={(e) => upd("part", e.target.value)} />
+        <div style={{ height: 14 }} />
+
+        <label className="lbl">Category</label>
+        <div className="cat-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+          {(ind.cats || []).map((c) => (
+            <button key={c.key} className={"catchip press " + (f.category === c.key ? "on" : "")} onClick={() => upd("category", f.category === c.key ? "" : c.key)}>
+              <span style={{ fontSize: 14 }}>{c.emoji}</span> {c.label}
+            </button>
+          ))}
+        </div>
         <div style={{ height: 14 }} />
 
         <label className="lbl">Photo <span style={{ fontWeight: 400, color: "var(--faint)", fontSize: 13 }}>(optional)</span></label>
@@ -1871,7 +1953,8 @@ function WaImage({ src }) {
   );
 }
 
-function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, filter, setFilter, onLog, enquiries = [], logEnquiry, dismissEnquiry, waOn, refreshEnquiries, tallyBal = null }) {
+function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, filter, setFilter, cat = null, setCat, onLog, enquiries = [], logEnquiry, dismissEnquiry, waOn, refreshEnquiries, tallyBal = null }) {
+  const ind = industryOf(data);
   const [open, setOpen] = useState(null);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1893,7 +1976,11 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
   const term = q.trim().toLowerCase();
   const list = data.quotes
     .filter((x) => filter === "all" || (filter === "due" ? (followState(x) === "overdue" || followState(x) === "today") : x.status === filter))
+    .filter((x) => !cat || catOf(x, ind) === cat)
     .filter((x) => !term || (x.customer + " " + x.part).toLowerCase().includes(term));
+  /* categories that actually have quotes, in the trade's defined order, with counts */
+  const catCounts = data.quotes.reduce((m, x) => { const k = catOf(x, ind); m[k] = (m[k] || 0) + 1; return m; }, {});
+  const catsPresent = (ind.cats || []).filter((c) => catCounts[c.key]);
 
   const doExport = async (kind) => {
     if (!data.quotes.length) return ping("No quotes to export yet");
@@ -1984,10 +2071,22 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
       </div>
 
       {/* filters */}
-      <div className="anim-in st1" style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+      <div className="anim-in st1" style={{ display: "flex", gap: 8, marginBottom: catsPresent.length ? 10 : 14, flexWrap: "wrap" }}>
         {["all", "pending", "won", "lost"].map((k) => (<button key={k} className={"fpill press " + (filter === k ? "on" : "")} onClick={() => setFilter(k)}>{k[0].toUpperCase() + k.slice(1)}</button>))}
         <button className={"fpill press " + (filter === "due" ? "on" : "")} style={dueCount && filter !== "due" ? { borderColor: "#F0DCB8", color: "var(--amber)" } : undefined} onClick={() => setFilter("due")}>Follow-ups{dueCount ? " · " + dueCount : ""}</button>
       </div>
+
+      {/* category chips - trade-specific, only categories that have quotes */}
+      {catsPresent.length > 0 && setCat && (
+        <div className="anim-in st1 cat-scroll" style={{ display: "flex", gap: 8, marginBottom: 14, overflowX: "auto", paddingBottom: 2 }}>
+          <button className={"catchip press " + (!cat ? "on" : "")} onClick={() => setCat(null)}>All {ind.item.split(" ")[0].toLowerCase() === "part" ? "parts" : "types"}</button>
+          {catsPresent.map((c) => (
+            <button key={c.key} className={"catchip press " + (cat === c.key ? "on" : "")} onClick={() => setCat(cat === c.key ? null : c.key)}>
+              <span style={{ fontSize: 14 }}>{c.emoji}</span> {c.label} <span className="mono" style={{ opacity: .6, fontSize: 11 }}>{catCounts[c.key]}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {list.length === 0 && (
         <div className="card-tint anim-in st2" style={{ padding: 28, textAlign: "center", color: "var(--dim)", fontSize: 14.5 }}>
@@ -2405,6 +2504,8 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
   const [tallyBusy, setTallyBusy] = useState(false);
   const s = data.settings;
   const setS = (k, v) => setData({ ...data, settings: { ...s, [k]: v } });
+  const ind = industryOf(data);
+  const isMach = ind.key === "machining";
 
   const [rc, setRc] = useState({ name: "", price: 1500000, life: 8, hrsDay: 8, daysMo: 25, kw: 8, unit: 8, operator: 30000, maint: 75000 });
   const mh = rc.hrsDay * rc.daysMo;
@@ -2486,12 +2587,26 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
       {/* trade focus - tunes labels + examples */}
       <label className="lbl anim-in st1" style={{ marginTop: 16 }}>Your trade</label>
       <div className="anim-in st1" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {Object.values(INDUSTRIES).map((ind) => (
-          <button key={ind.key} className={"fpill press " + (industryOf(data).key === ind.key ? "on" : "")}
-            onClick={() => { setData({ ...data, industry: ind.key }); ping(ind.label); }}>{ind.emoji} {ind.label}</button>
+        {Object.values(INDUSTRIES).map((it) => (
+          <button key={it.key} className={"fpill press " + (ind.key === it.key ? "on" : "")}
+            onClick={() => { setData({ ...data, industry: it.key }); ping(it.label); }}>{it.emoji} {it.label}</button>
         ))}
       </div>
 
+      {/* categories that power the Home tiles + pipeline filter */}
+      <div className="anim-in st2" style={{ margin: "24px 0 10px" }}><span className="eyebrow">Your categories</span></div>
+      <div className="card" style={{ padding: "14px 15px" }}>
+        <span className="hint" style={{ margin: "0 0 10px" }}>These power the tiles on your Home screen and the filters in your pipeline. Every quote is sorted into one automatically.</span>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {(ind.cats || []).map((c) => (
+            <span key={c.key} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 999, padding: "7px 12px", fontSize: 13.5, fontWeight: 600 }}>
+              <span style={{ fontSize: 14 }}>{c.emoji}</span> {c.label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {isMach && (<>
       {/* machines */}
       <div className="anim-in st2" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "24px 0 10px" }}>
         <span className="eyebrow">Machines</span>
@@ -2568,6 +2683,7 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
           </div>
         </div>
       )}
+      </>)}
 
       {/* defaults */}
       <div className="anim-in st4" style={{ margin: "24px 0 10px" }}><span className="eyebrow">Defaults</span></div>
@@ -2633,25 +2749,27 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
         </div>
       </>)}
 
-      {/* ===== Marketplace (concept / demo) ===== */}
-      <div className="anim-in st5" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "26px 0 6px" }}>
-        <span className="eyebrow" style={{ display: "flex", alignItems: "center", gap: 7 }}><I.store /> Local suppliers</span>
-        <span className="demo-ribbon">CONCEPT</span>
-      </div>
-      <span className="hint" style={{ marginBottom: 12 }}>A preview of raw-material suppliers near you with live rates. Sample data only - not real vendors yet.</span>
-      {SUPPLIERS.map((sp, i) => (
-        <div key={i} className="supplier anim-in" style={{ animationDelay: (i * .05 + .1) + "s" }}>
-          <div className="slogo" style={{ background: "linear-gradient(135deg," + sp.color + ",#0F4012)" }}>{sp.co.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>
-          <div className="smid"><div className="sname">{sp.co}</div><div className="smeta">{sp.mat}</div><div className="smeta" style={{ color: "var(--faint)" }}>{sp.area}</div></div>
-          <div className="sprice"><div className="sp">{inr(sp.rate)}</div><div className="spu">{sp.unit}</div></div>
+      {/* ===== Marketplace (concept / demo) - raw-material vendors, machining only ===== */}
+      {isMach && (<>
+        <div className="anim-in st5" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "26px 0 6px" }}>
+          <span className="eyebrow" style={{ display: "flex", alignItems: "center", gap: 7 }}><I.store /> Local suppliers</span>
+          <span className="demo-ribbon">CONCEPT</span>
         </div>
-      ))}
-      <button className="btn btn-ghost btn-sm press" style={{ width: "100%", marginTop: 4, color: "var(--faint)" }} disabled>Supplier marketplace - coming after launch</button>
+        <span className="hint" style={{ marginBottom: 12 }}>A preview of raw-material suppliers near you with live rates. Sample data only - not real vendors yet.</span>
+        {SUPPLIERS.map((sp, i) => (
+          <div key={i} className="supplier anim-in" style={{ animationDelay: (i * .05 + .1) + "s" }}>
+            <div className="slogo" style={{ background: "linear-gradient(135deg," + sp.color + ",#0F4012)" }}>{sp.co.split(" ").map((w) => w[0]).slice(0, 2).join("")}</div>
+            <div className="smid"><div className="sname">{sp.co}</div><div className="smeta">{sp.mat}</div><div className="smeta" style={{ color: "var(--faint)" }}>{sp.area}</div></div>
+            <div className="sprice"><div className="sp">{inr(sp.rate)}</div><div className="spu">{sp.unit}</div></div>
+          </div>
+        ))}
+        <button className="btn btn-ghost btn-sm press" style={{ width: "100%", marginTop: 4, color: "var(--faint)" }} disabled>Supplier marketplace - coming after launch</button>
+      </>)}
 
       {/* data */}
       <div className="anim-in st6" style={{ margin: "26px 0 10px" }}><span className="eyebrow">Data</span></div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 8 }}>
-        <button className="btn btn-ghost btn-sm press" onClick={() => { setData(seedData()); ping("Sample data loaded"); }}>Load sample</button>
+        <button className="btn btn-ghost btn-sm press" onClick={() => { const base = seedData(); const sq = buildSampleQuotes(ind.key); setData({ ...base, industry: ind.key, quotes: sq || base.quotes }); ping("Sample data loaded"); }}>Load sample</button>
         <button className="btn btn-ghost btn-sm press" style={{ color: "var(--red)" }} onClick={() => {
           if (!confirmClear) { setConfirmClear(true); setTimeout(() => setConfirmClear(false), 2500); return; }
           const d = seedData(); d.quotes = []; d.machines = []; d.shopName = "My Shop"; setData(d); setConfirmClear(false); ping("Cleared");
