@@ -550,9 +550,62 @@ const seedData = () => {
       { id: uid(), at: now - 13 * day, status: "pending", customer: "Verma Enterprises", phone: "9700011122", part: "SS 304 fittings", qty: 0, pricePc: 0, total: 76500, followUp: now, source: "excel" },
       { id: uid(), at: now - 40 * day, status: "won", customer: "Apex Hydraulics", phone: "9810012345", part: "End Cap - batch", qty: 300, pricePc: 96, total: 28800, followUp: null, source: "wizard" },
       { id: uid(), at: now - 52 * day, status: "lost", customer: "Om Forgings", phone: "", part: "Shaft turning job", qty: 60, pricePc: 780, total: 46800, followUp: null, source: "logged" },
-    ],
+    ].map((q) => ({ ...q, seed: true })),
   };
 };
+
+/* ---- industry / trade focus ----
+   The app is trade-agnostic at its core (pipeline, log, follow-ups); industry
+   only tunes vocabulary, examples and which sample data a fresh account shows.
+   emoji is intentional (matches the app's existing emoji use, e.g. Won toast). */
+const INDUSTRIES = {
+  machining: { key: "machining", emoji: "⚙️", label: "Machine shop / Trader", tag: "CNC, turning, fabrication, trading", item: "Part / item", eg: "MS Hex Bar lot", unit: "pcs" },
+  printing:  { key: "printing",  emoji: "🖨️", label: "Printing / Press", tag: "Cards, flyers, banners, boxes", item: "Design / job", eg: "500 visiting cards, matte", unit: "pcs" },
+  furniture: { key: "furniture", emoji: "🛋️", label: "Furniture / Interiors", tag: "Sofas, wardrobes, modular, fit-outs", item: "Piece / design", eg: "3-seater sofa, grey fabric", unit: "pcs" },
+};
+const industryOf = (data) => INDUSTRIES[data && data.industry] || INDUSTRIES.machining;
+
+/* trade-specific sample quotes, shown only when a fresh account picks a trade
+   (never overwrites real data - see the pick handler) */
+const industrySamples = (key) => {
+  if (key === "printing") return [
+    { customer: "Sharma Cards & Print", part: "500 visiting cards, matte", qty: 500, total: 1200, status: "won", fu: null },
+    { customer: "Gupta Sweets", part: "2000 boxes, 250gsm, 4-color", qty: 2000, total: 46000, status: "pending", fu: 2 },
+    { customer: "City Gym", part: "6x3 flex banner, urgent", qty: 2, total: 1400, status: "pending", fu: -1 },
+    { customer: "Verma Wedding", part: "150 wedding invites, gold foil", qty: 150, total: 18750, status: "pending", fu: 0 },
+    { customer: "Auto Parts Co", part: "1000 letterheads + envelopes", qty: 1000, total: 8500, status: "lost", fu: null },
+  ];
+  if (key === "furniture") return [
+    { customer: "Gupta Residence", part: "3-seater L-sofa, grey fabric", qty: 1, total: 62000, status: "pending", fu: 0 },
+    { customer: "Mehta Interiors", part: "6-door wardrobe, laminate", qty: 1, total: 84000, status: "won", fu: null },
+    { customer: "Cafe Bloom", part: "8 dining tables + 32 chairs", qty: 8, total: 176000, status: "pending", fu: -2 },
+    { customer: "Singh Villa", part: "TV unit + console, walnut", qty: 1, total: 45000, status: "pending", fu: 3 },
+    { customer: "Rao Office", part: "12 modular workstations", qty: 12, total: 240000, status: "lost", fu: null },
+  ];
+  return null;
+};
+
+/* downscale a picked image to a small JPEG data URL for the pipeline thumbnail.
+   Kept tiny (~240px) so many photos fit in localStorage / the synced blob;
+   full-resolution photo storage -> Supabase Storage is the documented next step. */
+const downscaleImage = (file, max = 240, quality = 0.55) => new Promise((resolve) => {
+  if (!file || !/^image\//.test(file.type || "")) return resolve(null);
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    let w = img.width, h = img.height;
+    if (w >= h && w > max) { h = Math.round(h * max / w); w = max; }
+    else if (h > w && h > max) { w = Math.round(w * max / h); h = max; }
+    try {
+      const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+      cv.getContext("2d").drawImage(img, 0, 0, w, h);
+      resolve(cv.toDataURL("image/jpeg", quality));
+    } catch { resolve(null); }
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+  img.src = url;
+});
 
 const calcQuote = (d, data) => {
   const mat = data.materials.find((m) => m.id === d.materialId);
@@ -954,6 +1007,30 @@ function Subscribe({ account, onSubscribe, onBack }) {
 }
 
 /* ================================================================ */
+/* one-time trade chooser shown to a fresh account (changeable later in Setup) */
+function IndustryPicker({ onPick }) {
+  return (
+    <div className="qk-root"><style>{CSS}</style>
+      <div className="app"><div className="scr"><div className="pagepad" style={{ paddingTop: 44 }}>
+        <div className="microlbl">WELCOME</div>
+        <div className="h-disp" style={{ fontSize: 27, fontWeight: 700, margin: "4px 0 6px" }}>What do you make?</div>
+        <div style={{ color: "var(--dim)", fontSize: 15, marginBottom: 22, lineHeight: 1.55 }}>Pick your trade so the app speaks your language and shows the right examples. You can change it anytime in Setup.</div>
+        {Object.values(INDUSTRIES).map((ind, i) => (
+          <button key={ind.key} className={"card press anim-in st" + (i + 1)} onClick={() => onPick(ind.key)}
+            style={{ display: "flex", alignItems: "center", gap: 15, width: "100%", textAlign: "left", padding: "18px 16px", marginBottom: 12, border: "1.5px solid var(--line2)", background: "#fff", cursor: "pointer" }}>
+            <span style={{ width: 52, height: 52, borderRadius: 15, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 27, flexShrink: 0 }}>{ind.emoji}</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: "block", fontWeight: 700, fontSize: 17 }}>{ind.label}</span>
+              <span style={{ display: "block", fontSize: 13, color: "var(--dim)", marginTop: 2 }}>{ind.tag}</span>
+            </span>
+            <I.chev style={{ color: "var(--faint)" }} />
+          </button>
+        ))}
+      </div></div></div>
+    </div>
+  );
+}
+
 export default function App() {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState("home");
@@ -1193,6 +1270,24 @@ export default function App() {
 
   if (!account)
     return (<div className="qk-root"><style>{CSS}</style><div className="app"><Auth onAuthed={saveAccount} authError={authError} /></div></div>);
+
+  /* first run: pick the trade. If the pipeline is still untouched seed/sample
+     data, swap in this trade's examples; real data is never overwritten. */
+  if (!data.industry)
+    return <IndustryPicker onPick={(key) => setData((d) => {
+      const untouched = !d.quotes.length || d.quotes.every((q) => q.seed);
+      const samples = industrySamples(key);
+      let quotes = d.quotes;
+      if (untouched && samples) {
+        const now = Date.now();
+        quotes = samples.map((s, i) => ({
+          id: uid(), at: now - i * 0.7 * DAY, status: s.status, customer: s.customer, phone: "",
+          part: s.part, qty: s.qty, pricePc: s.qty ? s.total / s.qty : 0, total: s.total,
+          followUp: s.fu == null ? null : now + s.fu * DAY, source: "sample", seed: true, image: "",
+        }));
+      }
+      return { ...d, industry: key, quotes };
+    })} />;
 
   const startQuote = () => {
     setFabOpen(false);
@@ -1462,12 +1557,20 @@ const statBtn = { all: "unset", boxSizing: "border-box", cursor: "pointer", flex
 
 /* ================= QUICK LOG (tracker-first 30-second entry) ================= */
 function QuickLog({ data, onSave, onExit, ping }) {
-  const [f, setF] = useState({ customer: "", phone: "", part: "", total: "", qty: "", status: "pending", followUp: "", note: "" });
+  const [f, setF] = useState({ customer: "", phone: "", part: "", total: "", qty: "", status: "pending", followUp: "", note: "", image: "" });
   const [pasteOpen, setPasteOpen] = useState(false);
   const [paste, setPaste] = useState("");
   const [reading, setReading] = useState(false); // AI reading in progress
+  const photoRef = useRef(null);
+  const ind = industryOf(data);
   const upd = (k, v) => setF((s) => ({ ...s, [k]: v }));
   const ok = f.customer.trim() && num(f.total) > 0;
+  const onPhoto = async (e) => {
+    const file = e.target.files && e.target.files[0]; e.target.value = "";
+    if (!file) return;
+    const url = await downscaleImage(file);
+    if (url) { upd("image", url); ping("Photo added"); } else ping("Could not read that image");
+  };
 
   const applyPaste = async () => {
     let p = parseEnquiry(paste);
@@ -1488,7 +1591,7 @@ function QuickLog({ data, onSave, onExit, ping }) {
     onSave({
       id: uid(), at: Date.now(), status: f.status, customer: f.customer.trim(), phone: f.phone.replace(/\D/g, ""),
       part: f.part.trim() || "(no part)", qty, pricePc: qty ? total / qty : 0, total,
-      followUp: f.followUp ? new Date(f.followUp).getTime() : null, source: "logged", note: f.note.trim() || "",
+      followUp: f.followUp ? new Date(f.followUp).getTime() : null, source: "logged", note: f.note.trim() || "", image: f.image || "",
     });
   };
 
@@ -1524,8 +1627,25 @@ function QuickLog({ data, onSave, onExit, ping }) {
         </div>
         <div style={{ height: 14 }} />
 
-        <label className="lbl">Part / item <span style={{ fontWeight: 400, color: "var(--faint)", fontSize: 13 }}>(optional)</span></label>
-        <input className="input" placeholder="e.g. MS Hex Bar lot" value={f.part} onChange={(e) => upd("part", e.target.value)} />
+        <label className="lbl">{ind.item} <span style={{ fontWeight: 400, color: "var(--faint)", fontSize: 13 }}>(optional)</span></label>
+        <input className="input" placeholder={"e.g. " + ind.eg} value={f.part} onChange={(e) => upd("part", e.target.value)} />
+        <div style={{ height: 14 }} />
+
+        <label className="lbl">Photo <span style={{ fontWeight: 400, color: "var(--faint)", fontSize: 13 }}>(optional)</span></label>
+        <span className="hint">Add the design or product photo - it shows on the pipeline card so you can spot it at a glance.</span>
+        <input ref={photoRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={onPhoto} />
+        {f.image ? (
+          <div style={{ position: "relative", width: 108, height: 108, borderRadius: 14, overflow: "hidden", border: "1px solid var(--line2)" }}>
+            <img src={f.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <button className="press" onClick={() => upd("image", "")} title="Remove photo"
+              style={{ position: "absolute", top: 5, right: 5, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(16,26,20,.62)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><I.trash style={{ width: 14, height: 14 }} /></button>
+          </div>
+        ) : (
+          <button className="btn btn-soft btn-sm press" onClick={() => photoRef.current && photoRef.current.click()}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 8h3l1.5-2h7L18 8h2a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><circle cx="12" cy="13" r="3.2" stroke="currentColor" strokeWidth="1.8"/></svg>
+            Add photo
+          </button>
+        )}
         <div style={{ height: 14 }} />
 
         <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 12 }}>
@@ -1756,8 +1876,18 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const [xlOpen, setXlOpen] = useState(false); // Excel import/export bottom sheet
+  const [viewImg, setViewImg] = useState(null); // tapped-to-enlarge pipeline photo
   const fileRef = useRef(null);
+  const photoForRef = useRef(null); // hidden picker for attaching a photo to an existing quote
+  const attachId = useRef(null);
   const fdate = (t) => new Date(t).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  const onAttachPhoto = async (e) => {
+    const file = e.target.files && e.target.files[0]; e.target.value = "";
+    if (!file || !attachId.current) return;
+    const url = await downscaleImage(file);
+    if (url) { updateQuote(attachId.current, { image: url }); ping("Photo added"); } else ping("Could not read that image");
+    attachId.current = null;
+  };
 
   const dueCount = data.quotes.filter((x) => { const s = followState(x); return s === "overdue" || s === "today"; }).length;
   const term = q.trim().toLowerCase();
@@ -1789,6 +1919,7 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
   return (<>
     <div className="scr"><div className="pagepad">
       <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={onFile} style={{ display: "none" }} />
+      <input ref={photoForRef} type="file" accept="image/*" capture="environment" onChange={onAttachPhoto} style={{ display: "none" }} />
       <div className="anim-in" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
         <div><span className="eyebrow">Pipeline</span><div className="h-disp" style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>All quotes</div></div>
         <button className="btn btn-sm btn-soft press" disabled={busy} onClick={() => setXlOpen(true)}>
@@ -1872,6 +2003,11 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
         return (
           <div key={q.id} className={"card anim-in st" + Math.min(8, i + 2)} style={{ padding: "16px 16px", marginBottom: 10, borderColor: fs === "overdue" ? "#F0DCB8" : undefined }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setOpen(open === q.id ? null : q.id)}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
+              {q.image && (
+                <img src={q.image} alt="" onClick={(ev) => { ev.stopPropagation(); setViewImg(q.image); }}
+                  style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover", flexShrink: 0, border: "1px solid var(--line2)", cursor: "zoom-in" }} />
+              )}
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 15.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.customer}</div>
                 <div style={{ fontSize: 13.5, color: "var(--dim)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.part}{q.qty ? " · " + q.qty + " pcs" : ""} · {fdate(q.at)}</div>
@@ -1880,6 +2016,7 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
                     <I.bell style={{ width: 12, height: 12 }} /> {fs === "overdue" ? "OVERDUE " + fdate(q.followUp) : fs === "today" ? "FOLLOW UP TODAY" : "FOLLOW " + fdate(q.followUp)}
                   </div>
                 )}
+              </div>
               </div>
               <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 12 }}>
                 <div className="mono" style={{ fontWeight: 600, fontSize: 15.5 }}>{inr(q.total)}</div>
@@ -1915,6 +2052,10 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
                   {q.status !== "lost" && <button className="btn btn-sm btn-ghost press" onClick={() => { setStatus(q.id, "lost"); ping("Marked as Lost"); }}>Mark Lost</button>}
                   {q.status !== "pending" && <button className="btn btn-sm btn-ghost press" onClick={() => { setStatus(q.id, "pending"); ping("Reopened"); }}>Reopen</button>}
                   {q.phone && <a className="btn btn-sm btn-ghost press" style={{ textDecoration: "none" }} href={"tel:+91" + q.phone}><I.phone /></a>}
+                  <button className="btn btn-sm btn-ghost press" onClick={() => { attachId.current = q.id; photoForRef.current && photoForRef.current.click(); }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 8h3l1.5-2h7L18 8h2a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><circle cx="12" cy="13" r="3.2" stroke="currentColor" strokeWidth="1.8"/></svg>
+                    {q.image ? "Change photo" : "Add photo"}
+                  </button>
                   <button className="btn btn-sm btn-ghost press" onClick={async () => { ping("Preparing PDF..."); try { await downloadQuotePDF(q, data); ping("PDF downloaded"); } catch { ping("PDF needs internet"); } }}><I.pdf /> PDF</button>
                   <button className="btn btn-sm btn-ghost press" onClick={async () => { try { await navigator.clipboard.writeText(waText(q, data.shopName, data.settings.validityDays)); ping("Message copied"); } catch { ping("Copy failed"); } }}><I.copy /></button>
                   <button className="btn btn-sm btn-ghost press" style={{ color: "var(--red)" }} onClick={() => { delQuote(q.id); ping("Deleted"); }}><I.trash /></button>
@@ -1963,6 +2104,13 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
             Download as CSV instead <span style={{ color: "var(--faint)", fontWeight: 400 }}>(works even offline)</span>
           </button>
         </div>
+      </div>
+    )}
+
+    {/* tap a pipeline photo to enlarge it */}
+    {viewImg && (
+      <div onClick={() => setViewImg(null)} style={{ position: "absolute", inset: 0, zIndex: 80, background: "rgba(16,26,20,.86)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <img src={viewImg} alt="" style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 16, boxShadow: "0 20px 60px -20px rgba(0,0,0,.6)" }} />
       </div>
     )}
     </>
@@ -2334,6 +2482,15 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
 
       <label className="lbl">Shop name</label>
       <input className="input anim-in st1" value={data.shopName} onChange={(e) => setData({ ...data, shopName: e.target.value })} />
+
+      {/* trade focus - tunes labels + examples */}
+      <label className="lbl anim-in st1" style={{ marginTop: 16 }}>Your trade</label>
+      <div className="anim-in st1" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {Object.values(INDUSTRIES).map((ind) => (
+          <button key={ind.key} className={"fpill press " + (industryOf(data).key === ind.key ? "on" : "")}
+            onClick={() => { setData({ ...data, industry: ind.key }); ping(ind.label); }}>{ind.emoji} {ind.label}</button>
+        ))}
+      </div>
 
       {/* machines */}
       <div className="anim-in st2" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "24px 0 10px" }}>
