@@ -567,20 +567,25 @@ const seedData = () => {
    emoji is intentional (matches the app's existing emoji use, e.g. Won toast). */
 const INDUSTRIES = {
   machining: { key: "machining", emoji: "⚙️", label: "Machine shop / Trader", tag: "CNC, turning, fabrication, trading", item: "Part / item", eg: "MS Hex Bar lot", unit: "pcs",
+    spec: { label: "Size / material / grade", eg: "Ø42 x 120mm · EN8" },
     cats: [
       { key: "turned", label: "Turned", emoji: "⚙️" }, { key: "milled", label: "Milled", emoji: "🔧" },
       { key: "sheet", label: "Sheet metal", emoji: "📐" }, { key: "fabrication", label: "Fabrication", emoji: "🏗️" },
       { key: "fasteners", label: "Fasteners", emoji: "🔩" }, { key: "trading", label: "Trading", emoji: "📦" },
       { key: "other", label: "Other", emoji: "🛠️" },
     ] },
-  printing: { key: "printing", emoji: "🖨️", label: "Printing / Press", tag: "Cards, flyers, banners, boxes", item: "Design / job", eg: "500 visiting cards, matte", unit: "pcs",
+  printing: { key: "printing", emoji: "🖨️", label: "Printing / Press", tag: "Flex, cards, boxes, signage", item: "Job", eg: "Flex banner 6x3 ft", unit: "pcs",
+    spec: { label: "Size / material / finish", eg: "6x3 ft · star flex · eyelets" },
     cats: [
-      { key: "cards", label: "Visiting cards", emoji: "🪪" }, { key: "flyers", label: "Flyers", emoji: "📄" },
-      { key: "banner", label: "Banner / flex", emoji: "🎏" }, { key: "hoarding", label: "Hoarding", emoji: "🖼️" },
-      { key: "boxes", label: "Boxes", emoji: "📦" }, { key: "invites", label: "Invites", emoji: "💌" },
-      { key: "stationery", label: "Stationery", emoji: "✉️" }, { key: "other", label: "Other", emoji: "🖨️" },
+      { key: "banner", label: "Flex banners", emoji: "🎏" }, { key: "signage", label: "Boards & signage", emoji: "🪧" },
+      { key: "standee", label: "Standees", emoji: "📜" }, { key: "cards", label: "Visiting cards", emoji: "🪪" },
+      { key: "flyers", label: "Pamphlets", emoji: "📄" }, { key: "posters", label: "Posters", emoji: "🖼️" },
+      { key: "billbook", label: "Bill books", emoji: "🧾" }, { key: "stationery", label: "Letterheads", emoji: "✉️" },
+      { key: "stickers", label: "Stickers & labels", emoji: "🏷️" }, { key: "invites", label: "Wedding cards", emoji: "💌" },
+      { key: "boxes", label: "Boxes & packaging", emoji: "📦" }, { key: "other", label: "Other jobs", emoji: "🖨️" },
     ] },
   furniture: { key: "furniture", emoji: "🛋️", label: "Furniture / Interiors", tag: "Sofas, wardrobes, modular, fit-outs", item: "Piece / design", eg: "3-seater sofa, grey fabric", unit: "pcs",
+    spec: { label: "Size / wood / fabric", eg: "7ft x 3ft · teak · fabric F-12" },
     cats: [
       { key: "sofa", label: "Sofa", emoji: "🛋️" }, { key: "bed", label: "Bed", emoji: "🛏️" },
       { key: "wardrobe", label: "Wardrobe", emoji: "🚪" }, { key: "dining", label: "Dining", emoji: "🍽️" },
@@ -593,7 +598,7 @@ const industryOf = (data) => INDUSTRIES[data && data.industry] || INDUSTRIES.mac
 /* keyword -> category, per trade (so old/sample quotes categorize themselves) */
 const CAT_RULES = {
   machining: [["turned", /turn|shaft|bush|nut|spacer|bar|rod|pin|bore|ø|dia/], ["milled", /mill|slot|pocket|face/], ["sheet", /sheet|laser|bend|press|plate/], ["fabrication", /fabricat|weld|structure|frame|grill|gate|railing/], ["fasteners", /bolt|screw|fastener|washer|stud|hex/], ["trading", /lot|supply|trading|resale/]],
-  printing: [["cards", /visiting|business card|v\.?card/], ["flyers", /flyer|pamphlet|leaflet|brochure|poster/], ["banner", /banner|flex|standee/], ["hoarding", /hoarding|unipole|billboard/], ["boxes", /box|carton|packag|mono/], ["invites", /invit|wedding|card/], ["stationery", /letterhead|envelope|stationery|bill book|receipt/]],
+  printing: [["standee", /standee|roll.?up|rollup/], ["banner", /banner|flex(?!i)/], ["signage", /hoarding|unipole|billboard|glow|acp|sun.?board|foam.?board|sign|led board|vinyl|one.?way/], ["cards", /visiting|business card|v\.?card/], ["billbook", /bill.?book|invoice book|challan|receipt book|ncr|carbonless/], ["posters", /poster/], ["flyers", /flyer|pamphlet|leaflet|brochure|menu/], ["stickers", /sticker|label|die.?cut/], ["boxes", /box|carton|packag|mono/], ["invites", /invit|wedding|shaadi/], ["stationery", /letterhead|envelope|stationery|certificate|id card/]],
   furniture: [["sofa", /sofa|couch|settee|recliner/], ["bed", /bed|mattress|cot|headboard/], ["wardrobe", /wardrobe|almirah|drawer|cupboard|closet/], ["dining", /dining|table|chair set/], ["tvunit", /tv unit|tv-unit|console|entertainment/], ["chair", /chair|stool|bench/], ["office", /office|desk|workstation|conference/]],
 };
 const guessCategory = (part, key) => {
@@ -625,21 +630,33 @@ const CAT_ART = {
   boxes: art("<rect x='34' y='48' width='52' height='42' fill='#C79A6B'/><polygon points='34,48 60,36 86,48 60,60' fill='#DDB588'/><rect x='57' y='48' width='6' height='42' fill='#A87E52'/><rect x='34' y='62' width='52' height='4' fill='#B98C5E'/>", "#F3EEE6"),
   invites: art("<rect x='42' y='28' width='40' height='26' rx='2' fill='#ffffff'/><rect x='48' y='36' width='28' height='4' rx='1' fill='#C9A24B'/><rect x='30' y='42' width='60' height='40' rx='3' fill='#E7D9EE'/><polygon points='30,42 60,66 90,42' fill='#D3BFDE'/>", "#F0EAF3"),
   stationery: art("<rect x='36' y='22' width='48' height='74' rx='2' fill='#F6F9FC'/><rect x='44' y='30' width='22' height='7' rx='2' fill='#155E18'/><rect x='44' y='46' width='32' height='3' fill='#9AB0C4'/><rect x='44' y='53' width='32' height='3' fill='#9AB0C4'/><rect x='44' y='60' width='24' height='3' fill='#9AB0C4'/>", "#EAF1F7"),
+  signage: art("<rect x='24' y='30' width='72' height='34' rx='5' fill='#1E2B36'/><rect x='30' y='36' width='60' height='22' rx='3' fill='#3FAE45'/><rect x='38' y='43' width='44' height='8' rx='2' fill='#ffffff'/><rect x='56' y='64' width='8' height='30' fill='#6E7E74'/><rect x='42' y='94' width='36' height='5' rx='2' fill='#8894A0'/>", "#E9EDF0"),
+  standee: art("<rect x='38' y='20' width='44' height='66' rx='2' fill='#F6F9FC'/><rect x='44' y='27' width='32' height='20' rx='2' fill='#3FAE45'/><rect x='44' y='52' width='32' height='4' fill='#9AB0C4'/><rect x='44' y='60' width='24' height='4' fill='#9AB0C4'/><polygon points='38,86 46,98 74,98 82,86' fill='#6E7E74'/><rect x='34' y='84' width='52' height='5' rx='2' fill='#4E5A64'/>", "#EAF1F7"),
+  posters: art("<rect x='32' y='20' width='56' height='78' rx='2' fill='#F6F9FC'/><rect x='38' y='26' width='44' height='34' rx='2' fill='#7CA9E0'/><circle cx='52' cy='40' r='7' fill='#F4C542'/><rect x='38' y='66' width='44' height='7' rx='2' fill='#2E3A44'/><rect x='38' y='78' width='32' height='4' fill='#9AB0C4'/>", "#EAF1F7"),
+  billbook: art("<rect x='30' y='26' width='58' height='70' rx='3' fill='#F6F9FC'/><rect x='30' y='26' width='58' height='12' rx='3' fill='#3FAE45'/><rect x='38' y='46' width='42' height='3' fill='#9AB0C4'/><rect x='38' y='54' width='42' height='3' fill='#9AB0C4'/><rect x='38' y='62' width='42' height='3' fill='#9AB0C4'/><rect x='38' y='70' width='28' height='3' fill='#9AB0C4'/><rect x='62' y='82' width='18' height='6' rx='2' fill='#155E18'/><circle cx='36' cy='32' r='2' fill='#ffffff'/><circle cx='44' cy='32' r='2' fill='#ffffff'/>", "#EAF1F7"),
+  stickers: art("<circle cx='48' cy='48' r='20' fill='#F4C542'/><circle cx='48' cy='48' r='13' fill='#ffffff'/><rect x='62' y='58' width='34' height='34' rx='6' fill='#7CA9E0' transform='rotate(12 79 75)'/><rect x='24' y='70' width='26' height='18' rx='4' fill='#3FAE45' transform='rotate(-8 37 79)'/>", "#F6F2E8"),
 };
 
 /* trade-specific sample quotes, shown only when a fresh account picks a trade
    (never overwrites real data - see the pick handler) */
 const industrySamples = (key) => {
   if (key === "printing") return [
-    { customer: "City Gym", part: "6x3 flex banner, sale offer", qty: 2, total: 1400, status: "pending", fu: -1, cat: "banner", note: "Urgent - wants it by this evening. Design ready, awaiting go-ahead." },
-    { customer: "Verma Wedding", part: "150 wedding invites, gold foil", qty: 150, total: 18750, status: "pending", fu: 0, cat: "invites", note: "Sample approved. Waiting on final names/date from the couple." },
-    { customer: "Gupta Sweets", part: "2000 sweet boxes, 250gsm, 4-color", qty: 2000, total: 46000, status: "pending", fu: 2, cat: "boxes", note: "Diwali order. Comparing our rate with one more press." },
-    { customer: "Royal Caterers", part: "5000 pamphlets, A5 both sides", qty: 5000, total: 6500, status: "pending", fu: -2, cat: "flyers", note: "Followed up once, no reply yet. Chase again." },
-    { customer: "Sharma & Sons", part: "500 visiting cards, matte lamination", qty: 500, total: 1200, status: "won", fu: null, cat: "cards", note: "Repeat customer - reordered same as last time." },
-    { customer: "Highway Motors", part: "Unipole hoarding, 20x10 flex", qty: 1, total: 32000, status: "won", fu: null, cat: "hoarding", note: "Confirmed, mounting next week." },
-    { customer: "Metro Mall", part: "3 backlit banners, entrance", qty: 3, total: 21000, status: "won", fu: null, cat: "banner", note: "" },
-    { customer: "Star Academy", part: "200 certificates + folders", qty: 200, total: 14000, status: "pending", fu: 4, cat: "stationery", note: "Annual day. Needs logo in gold." },
-    { customer: "Bharat Auto", part: "1000 letterheads + envelopes", qty: 1000, total: 8500, status: "lost", fu: null, cat: "stationery", note: "Lost - went with a cheaper online print." },
+    { customer: "Gupta Properties", part: "Shop opening flex banners", spec: "6x3 ft · star flex · eyelets", qty: 2, total: 1080, status: "pending", fu: 0, cat: "banner", note: "Aaj shaam 6 baje muhurat - 4 baje tak chahiye. Design final. Rs 30/sqft." },
+    { customer: "CA Rohit Jain", part: "Visiting cards - premium", spec: "3.5x2 in · 350gsm · velvet lam + spot UV", qty: 500, total: 2250, status: "pending", fu: 0, cat: "cards", note: "Proof approved. Spot UV bahar se hoga - 2 din extra." },
+    { customer: "Kapoor Family", part: "Wedding cards + inserts", spec: "mid-range card · gold foil inserts", qty: 300, total: 10500, status: "pending", fu: -1, cat: "invites", note: "3rd revision - naam ki spelling family check kar rahi hai. Shaadi 28 ki hai!" },
+    { customer: "Mahajan Traders", part: "GST bill books", spec: "A5 · duplicate NCR · 50 sets/book", qty: 20, total: 5000, status: "pending", fu: -2, cat: "billbook", note: "Advance 2000 mila, baki delivery pe. Numbering 501-1500 continue karni hai." },
+    { customer: "Royal Tutorials", part: "Admission pamphlets", spec: "A5 · 100gsm gloss art · both sides", qty: 5000, total: 5000, status: "pending", fu: -3, cat: "flyers", note: "Matter abhi tak nahi aaya - 3 din se unki taraf se pending." },
+    { customer: "Bansal Coaching", part: "Admission banners - 4 locations", spec: "8x4 ft · normal flex 240gsm", qty: 4, total: 1550, status: "pending", fu: 1, cat: "banner", note: "Rs 12/sqft final. Fitting alag - bans ke saath 4 jagah lagwana hai." },
+    { customer: "Aggarwal Sweets", part: "Glow sign board - shopfront", spec: "8x3 ft · backlit flex + LED box", qty: 1, total: 5500, status: "pending", fu: 1, cat: "signage", note: "Naya showroom. Frame + wiring included. Site measure ho gaya." },
+    { customer: "Kwality Pickles", part: "Product labels", spec: "3in round · die-cut vinyl · gloss lam", qty: 2000, total: 3000, status: "pending", fu: 3, cat: "stickers", note: "Sample sheet approved. Online rate se compare kar rahe - 1.50/pc pe final hoga." },
+    { customer: "Aggarwal Sweets", part: "Rakhi gift boxes", spec: "500g · duplex 300gsm · 4-color + gloss lam", qty: 2000, total: 8000, status: "pending", fu: 5, cat: "boxes", note: "Repeat customer. 40% advance mila. Die approval ke baad 15 din." },
+    { customer: "Walk-in - Sunita ji", part: "Photo mugs - birthday gift", spec: "11oz ceramic · photo print", qty: 2, total: 400, status: "won", fu: null, cat: "other", note: "1 ghante mein ready karke diya." },
+    { customer: "Krishna Pharma", part: "Roll-up standees - medical camp", spec: "2.5x6 ft · star flex + stand + bag", qty: 2, total: 2200, status: "won", fu: null, cat: "standee", note: "Kal subah camp tha - raat ko print karke diya. Repeat customer." },
+    { customer: "Verma Hardware", part: "Visiting cards - repeat", spec: "3.5x2 in · 300gsm · matte lam", qty: 1000, total: 1800, status: "won", fu: null, cat: "cards", note: "Same as last time - sirf mobile number change. Purani CDR file mil gayi." },
+    { customer: "Shri Ram Committee", part: "Jagran posters", spec: "A3 · 130gsm art paper", qty: 200, total: 3000, status: "won", fu: null, cat: "posters", note: "Overnight job. Cash payment ho gaya." },
+    { customer: "Green Valley School", part: "Student ID cards", spec: "PVC CR80 · both sides + lace", qty: 450, total: 6750, status: "won", fu: null, cat: "stationery", note: "12 photo missing the - school se mangwaye. 5 naye admission ke card baad mein." },
+    { customer: "Dr. Malhotra Clinic", part: "ACP board + acrylic LED letters", spec: "10x2.5 ft ACP · 12in letters", qty: 1, total: 17500, status: "lost", fu: null, cat: "signage", note: "Rate zyada laga - franchise vendor se 15k mein karwa liya." },
+    { customer: "Sethi & Associates", part: "Letterheads + envelopes set", spec: "A4 100gsm bond · 9x4 lifafa", qty: 1000, total: 4500, status: "lost", fu: null, cat: "stationery", note: "Online print se karwa liya - hum Rs 500 zyada the." },
   ];
   if (key === "furniture") return [
     { customer: "Gupta Residence", part: "3-seater L-sofa, grey fabric", qty: 1, total: 62000, status: "pending", fu: 0, cat: "sofa", note: "Sent fabric options. Waiting on colour choice." },
@@ -663,7 +680,7 @@ const buildSampleQuotes = (key) => {
     id: uid(), at: now - i * 0.7 * DAY, status: s.status, customer: s.customer, phone: "",
     part: s.part, qty: s.qty, pricePc: s.qty ? s.total / s.qty : 0, total: s.total,
     followUp: s.fu == null ? null : now + s.fu * DAY, source: "sample", seed: true,
-    image: CAT_ART[s.cat] || "", category: s.cat || "", note: s.note || "",
+    image: CAT_ART[s.cat] || "", category: s.cat || "", note: s.note || "", spec: s.spec || "",
   }));
 };
 
@@ -1606,7 +1623,7 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, goSetup, g
         <div className="anim-in st3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {catStats.map((c) => (
             <button key={c.key} onClick={() => goQuotes("all", c.key)} className="press cat-tile"
-              style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, padding: "14px 14px", background: "#fff", border: "1px solid var(--line)", borderRadius: 20, boxShadow: "var(--sh-s)" }}>
+              style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", alignItems: "center", gap: 11, padding: "13px 12px", background: "#fff", border: "1px solid var(--line)", borderRadius: 20, boxShadow: "var(--sh-s)", minWidth: 0 }}>
               <span style={{ width: 44, height: 44, borderRadius: 13, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{c.emoji}</span>
               <span style={{ minWidth: 0, flex: 1 }}>
                 <span style={{ display: "block", fontWeight: 700, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.label}</span>
@@ -1657,7 +1674,7 @@ const statBtn = { all: "unset", boxSizing: "border-box", cursor: "pointer", flex
 
 /* ================= QUICK LOG (tracker-first 30-second entry) ================= */
 function QuickLog({ data, onSave, onExit, ping }) {
-  const [f, setF] = useState({ customer: "", phone: "", part: "", total: "", qty: "", status: "pending", followUp: "", note: "", image: "", category: "" });
+  const [f, setF] = useState({ customer: "", phone: "", part: "", spec: "", total: "", qty: "", status: "pending", followUp: "", note: "", image: "", category: "" });
   const [pasteOpen, setPasteOpen] = useState(false);
   const [paste, setPaste] = useState("");
   const [reading, setReading] = useState(false); // AI reading in progress
@@ -1690,7 +1707,7 @@ function QuickLog({ data, onSave, onExit, ping }) {
     const total = num(f.total), qty = num(f.qty);
     onSave({
       id: uid(), at: Date.now(), status: f.status, customer: f.customer.trim(), phone: f.phone.replace(/\D/g, ""),
-      part: f.part.trim() || "(no part)", qty, pricePc: qty ? total / qty : 0, total,
+      part: f.part.trim() || "(no part)", spec: f.spec.trim() || "", qty, pricePc: qty ? total / qty : 0, total,
       followUp: f.followUp ? new Date(f.followUp).getTime() : null, source: "logged", note: f.note.trim() || "", image: f.image || "",
       category: f.category || guessCategory(f.part, ind.key),
     });
@@ -1731,6 +1748,12 @@ function QuickLog({ data, onSave, onExit, ping }) {
         <label className="lbl">{ind.item} <span style={{ fontWeight: 400, color: "var(--faint)", fontSize: 13 }}>(optional)</span></label>
         <input className="input" placeholder={"e.g. " + ind.eg} value={f.part} onChange={(e) => upd("part", e.target.value)} />
         <div style={{ height: 14 }} />
+
+        {ind.spec && (<>
+          <label className="lbl">{ind.spec.label} <span style={{ fontWeight: 400, color: "var(--faint)", fontSize: 13 }}>(optional)</span></label>
+          <input className="input" placeholder={"e.g. " + ind.spec.eg} value={f.spec} onChange={(e) => upd("spec", e.target.value)} />
+          <div style={{ height: 14 }} />
+        </>)}
 
         <label className="lbl">Category</label>
         <div className="cat-scroll" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
@@ -2141,6 +2164,9 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 15.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.customer}</div>
                 <div style={{ fontSize: 13.5, color: "var(--dim)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.part}{q.qty ? " · " + q.qty + " pcs" : ""} · {fdate(q.at)}</div>
+                {q.spec && (
+                  <div className="mono" style={{ fontSize: 11.5, color: "var(--grn-d)", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.spec}</div>
+                )}
                 {fs && (
                   <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, fontFamily: "var(--mono)", padding: "3px 9px", borderRadius: 999, background: fs === "overdue" ? "var(--red-bg)" : fs === "today" ? "var(--amber-bg)" : "var(--soft)", color: fs === "overdue" ? "var(--red)" : fs === "today" ? "var(--amber)" : "var(--dim)" }}>
                     <I.bell style={{ width: 12, height: 12 }} /> {fs === "overdue" ? "OVERDUE " + fdate(q.followUp) : fs === "today" ? "FOLLOW UP TODAY" : "FOLLOW " + fdate(q.followUp)}
