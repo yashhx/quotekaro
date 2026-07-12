@@ -597,7 +597,7 @@ const seedData = () => {
    only tunes vocabulary, examples and which sample data a fresh account shows.
    emoji is intentional (matches the app's existing emoji use, e.g. Won toast). */
 const INDUSTRIES = {
-  machining: { key: "machining", emoji: "⚙️", label: "Machine shop / Trader", tag: "CNC, turning, fabrication, trading", item: "Part / item", eg: "MS Hex Bar lot", unit: "pcs",
+  machining: { key: "machining", emoji: "⚙️", label: "Machine shop / Trader", tag: "CNC, turning, fabrication, trading", item: "Part / item", eg: "MS Hex Bar lot", unit: "pcs", tally: true,
     spec: { label: "Size / material / grade", eg: "Ø42 x 120mm · EN8" },
     cats: [
       { key: "turned", label: "Turned", emoji: "⚙️" }, { key: "milled", label: "Milled", emoji: "🔧" },
@@ -605,7 +605,15 @@ const INDUSTRIES = {
       { key: "fasteners", label: "Fasteners", emoji: "🔩" }, { key: "trading", label: "Trading", emoji: "📦" },
       { key: "other", label: "Other", emoji: "🛠️" },
     ] },
-  printing: { key: "printing", emoji: "🖨️", label: "Printing / Press", tag: "Flex, cards, boxes, signage", item: "Job", eg: "Flex banner 6x3 ft", unit: "pcs",
+  scrap: { key: "scrap", emoji: "♻️", label: "Scrap / Metal trading", tag: "MS, CI, aluminium - tonnes & trucks", item: "Material / lot", eg: "MS scrap (HMS-1) - 50 MT", unit: "MT", tally: true,
+    spec: { label: "Grade / weight / rate", eg: "HMS-1 · 50 MT · 33/kg" },
+    cats: [
+      { key: "ms", label: "MS / Iron", emoji: "⚙️" }, { key: "ci", label: "Cast iron", emoji: "🔩" },
+      { key: "alu", label: "Aluminium", emoji: "🥫" }, { key: "copper", label: "Copper / brass", emoji: "🔶" },
+      { key: "ss", label: "Stainless", emoji: "🍴" }, { key: "plastic", label: "Plastic", emoji: "♻️" },
+      { key: "ewaste", label: "E-waste", emoji: "💻" }, { key: "other", label: "Other", emoji: "📦" },
+    ] },
+  printing: { key: "printing", emoji: "🖨️", label: "Printing / Press", tag: "Flex, cards, boxes, signage", item: "Job", eg: "Flex banner 6x3 ft", unit: "pcs", tally: false,
     spec: { label: "Size / material / finish", eg: "6x3 ft · star flex · eyelets" },
     cats: [
       { key: "banner", label: "Flex banners", emoji: "🎏" }, { key: "signage", label: "Boards & signage", emoji: "🪧" },
@@ -615,7 +623,7 @@ const INDUSTRIES = {
       { key: "stickers", label: "Stickers & labels", emoji: "🏷️" }, { key: "invites", label: "Wedding cards", emoji: "💌" },
       { key: "boxes", label: "Boxes & packaging", emoji: "📦" }, { key: "other", label: "Other jobs", emoji: "🖨️" },
     ] },
-  furniture: { key: "furniture", emoji: "🛋️", label: "Furniture / Interiors", tag: "Sofas, wardrobes, modular, fit-outs", item: "Piece / design", eg: "3-seater sofa, grey fabric", unit: "pcs",
+  furniture: { key: "furniture", emoji: "🛋️", label: "Furniture / Interiors", tag: "Sofas, wardrobes, modular, fit-outs", item: "Piece / design", eg: "3-seater sofa, grey fabric", unit: "pcs", tally: false,
     spec: { label: "Size / wood / fabric", eg: "7ft x 3ft · teak · fabric F-12" },
     cats: [
       { key: "sofa", label: "Sofa", emoji: "🛋️" }, { key: "bed", label: "Bed", emoji: "🛏️" },
@@ -631,6 +639,7 @@ const CAT_RULES = {
   machining: [["turned", /turn|shaft|bush|nut|spacer|bar|rod|pin|bore|ø|dia/], ["milled", /mill|slot|pocket|face/], ["sheet", /sheet|laser|bend|press|plate/], ["fabrication", /fabricat|weld|structure|frame|grill|gate|railing/], ["fasteners", /bolt|screw|fastener|washer|stud|hex/], ["trading", /lot|supply|trading|resale/]],
   printing: [["standee", /standee|roll.?up|rollup/], ["banner", /banner|flex(?!i)/], ["signage", /hoarding|unipole|billboard|glow|acp|sun.?board|foam.?board|sign|led board|vinyl|one.?way/], ["cards", /visiting|business card|v\.?card/], ["billbook", /bill.?book|invoice book|challan|receipt book|ncr|carbonless/], ["posters", /poster/], ["flyers", /flyer|pamphlet|leaflet|brochure|menu/], ["stickers", /sticker|label|die.?cut/], ["boxes", /box|carton|packag|mono/], ["invites", /invit|wedding|shaadi/], ["stationery", /letterhead|envelope|stationery|certificate|id card/]],
   furniture: [["sofa", /sofa|couch|settee|recliner/], ["bed", /bed|mattress|cot|headboard/], ["wardrobe", /wardrobe|almirah|drawer|cupboard|closet/], ["dining", /dining|table|chair set/], ["tvunit", /tv unit|tv-unit|console|entertainment/], ["chair", /chair|stool|bench/], ["office", /office|desk|workstation|conference/]],
+  scrap: [["ms", /\bms\b|\bhms\b|iron|loha|mild steel|angle|channel|girder/], ["ci", /\bci\b|cast iron|casting/], ["alu", /alu|aluminium|aluminum|taar|wire scrap/], ["copper", /copper|brass|tamba|pital|cable/], ["ss", /\bss\b|stainless|304|202|steel utensil/], ["plastic", /plastic|\bpet\b|hdpe|\bpp\b|polythene/], ["ewaste", /e.?waste|pcb|battery|motor scrap|electronic/]],
 };
 const guessCategory = (part, key) => {
   const rules = CAT_RULES[key] || CAT_RULES.machining;
@@ -666,6 +675,13 @@ const CAT_ART = {
   posters: art("<rect x='32' y='20' width='56' height='78' rx='2' fill='#F6F9FC'/><rect x='38' y='26' width='44' height='34' rx='2' fill='#7CA9E0'/><circle cx='52' cy='40' r='7' fill='#F4C542'/><rect x='38' y='66' width='44' height='7' rx='2' fill='#2E3A44'/><rect x='38' y='78' width='32' height='4' fill='#9AB0C4'/>", "#EAF1F7"),
   billbook: art("<rect x='30' y='26' width='58' height='70' rx='3' fill='#F6F9FC'/><rect x='30' y='26' width='58' height='12' rx='3' fill='#3FAE45'/><rect x='38' y='46' width='42' height='3' fill='#9AB0C4'/><rect x='38' y='54' width='42' height='3' fill='#9AB0C4'/><rect x='38' y='62' width='42' height='3' fill='#9AB0C4'/><rect x='38' y='70' width='28' height='3' fill='#9AB0C4'/><rect x='62' y='82' width='18' height='6' rx='2' fill='#155E18'/><circle cx='36' cy='32' r='2' fill='#ffffff'/><circle cx='44' cy='32' r='2' fill='#ffffff'/>", "#EAF1F7"),
   stickers: art("<circle cx='48' cy='48' r='20' fill='#F4C542'/><circle cx='48' cy='48' r='13' fill='#ffffff'/><rect x='62' y='58' width='34' height='34' rx='6' fill='#7CA9E0' transform='rotate(12 79 75)'/><rect x='24' y='70' width='26' height='18' rx='4' fill='#3FAE45' transform='rotate(-8 37 79)'/>", "#F6F2E8"),
+  ms: art("<rect x='22' y='62' width='76' height='10' rx='3' fill='#6B7A8C' transform='rotate(-8 60 67)'/><rect x='30' y='44' width='60' height='10' rx='3' fill='#8A99AB' transform='rotate(5 60 49)'/><rect x='26' y='78' width='68' height='10' rx='3' fill='#55636F'/><circle cx='84' cy='36' r='9' fill='#9AA9BB'/>", "#EBEEF2"),
+  ci: art("<circle cx='45' cy='58' r='19' fill='#5A6570'/><circle cx='45' cy='58' r='8' fill='#39434C'/><rect x='62' y='44' width='34' height='28' rx='5' fill='#71808D' transform='rotate(10 79 58)'/><rect x='30' y='82' width='58' height='9' rx='3' fill='#4A555F'/>", "#EBEEF2"),
+  alu: art("<rect x='30' y='34' width='24' height='52' rx='9' fill='#C3CDD6'/><rect x='30' y='42' width='24' height='6' fill='#9FB0BD'/><rect x='60' y='42' width='26' height='44' rx='8' fill='#D6DEE5' transform='rotate(9 73 64)'/><ellipse cx='58' cy='92' rx='30' ry='6' fill='#AEBBC6'/>", "#F0F3F5"),
+  copper: art("<circle cx='48' cy='52' r='20' fill='#C97F4A'/><circle cx='48' cy='52' r='12' fill='#E8A56E'/><circle cx='48' cy='52' r='5' fill='#A96436'/><rect x='64' y='60' width='30' height='9' rx='4' fill='#B8763F' transform='rotate(14 79 64)'/><rect x='60' y='74' width='34' height='9' rx='4' fill='#D69257' transform='rotate(-6 77 78)'/>", "#F7EFE7"),
+  ss: art("<rect x='34' y='30' width='14' height='58' rx='6' fill='#B9C4CE'/><circle cx='41' cy='36' r='9' fill='#CDD7DF'/><rect x='58' y='30' width='30' height='42' rx='6' fill='#D5DEE5'/><rect x='58' y='42' width='30' height='5' fill='#AEBBC6'/><rect x='64' y='78' width='18' height='12' rx='3' fill='#98A8B4'/>", "#F0F3F5"),
+  plastic: art("<path d='M40 30h14l3 12c8 3 8 9 8 16v26a6 6 0 0 1-6 6H41a6 6 0 0 1-6-6V58c0-7 0-13 8-16Z' fill='#7CC5E8'/><rect x='40' y='30' width='14' height='7' rx='2' fill='#4E9FC4'/><rect x='64' y='52' width='26' height='34' rx='5' fill='#A5D8EF' transform='rotate(8 77 69)'/>", "#EAF4F9"),
+  ewaste: art("<rect x='26' y='34' width='48' height='34' rx='4' fill='#3D4A54'/><rect x='31' y='39' width='38' height='24' fill='#5B903F'/><rect x='36' y='44' width='10' height='6' fill='#7CC96A'/><rect x='52' y='44' width='12' height='4' fill='#7CC96A'/><rect x='40' y='72' width='20' height='6' rx='2' fill='#55636F'/><rect x='68' y='56' width='26' height='36' rx='5' fill='#71808D'/><rect x='72' y='62' width='18' height='12' rx='2' fill='#9AD1F0'/>", "#EDF1F0"),
 };
 
 /* trade-specific sample quotes, shown only when a fresh account picks a trade
@@ -699,6 +715,17 @@ const industrySamples = (key) => {
     { customer: "Singh Apartment", part: "TV unit + console, walnut", qty: 1, total: 45000, status: "won", fu: null, cat: "tvunit", note: "" },
     { customer: "Khanna Flat", part: "3-door wardrobe + dresser", qty: 1, total: 51000, status: "won", fu: null, cat: "wardrobe", note: "Repeat client." },
     { customer: "Rao Office", part: "12 modular workstations", qty: 12, total: 240000, status: "lost", fu: null, cat: "office", note: "Lost to a local carpenter on price." },
+  ];
+  if (key === "scrap") return [
+    { customer: "Apex Alloys", part: "MS scrap (HMS-1)", spec: "HMS-1 · 50 MT · 33/kg", qty: 50, total: 1650000, status: "won", fu: null, cat: "ms", note: "Rate final 33/kg. Dispatch truck-by-truck, weighbridge slip ke saath. 30% advance mila." },
+    { customer: "Bharat Steels", part: "CI scrap - foundry grade", spec: "CI · 25 MT · 34/kg", qty: 25, total: 850000, status: "won", fu: null, cat: "ci", note: "Unka truck aayega. Moisture cut 1% agreed. Payment 15 din." },
+    { customer: "Om Metals", part: "Aluminium wire scrap", spec: "Alu taar · 30 MT · 134/kg", qty: 30, total: 4020000, status: "pending", fu: 0, cat: "alu", note: "Rate LME se linked - aaj final karna hai. Bada order, advance pakka lena." },
+    { customer: "Shakti Traders", part: "MS turning boring", spec: "Turning · 10 MT · 27/kg", qty: 10, total: 270000, status: "pending", fu: -1, cat: "ms", note: "Kal se jawab nahi. Purana baki 15,200 pehle clear karwana hai." },
+    { customer: "JMD Enterprises", part: "Copper cable scrap", spec: "Cable · 2 MT · 610/kg", qty: 2, total: 1220000, status: "pending", fu: 2, cat: "copper", note: "Sample dekh ke rate denge. High value - cash deal nahi, RTGS only." },
+    { customer: "Verma Recyclers", part: "PET plastic lot", spec: "PET baled · 8 MT · 42/kg", qty: 8, total: 336000, status: "pending", fu: 4, cat: "plastic", note: "Baler ka time chahiye - agle hafte lot ready hoga." },
+    { customer: "Gupta Industries", part: "SS 304 sheet cutting", spec: "SS 304 · 5 MT · 148/kg", qty: 5, total: 740000, status: "won", fu: null, cat: "ss", note: "Repeat party. Same rate as last lot." },
+    { customer: "Delhi Metal Mart", part: "Mixed iron scrap", spec: "Mixed · 40 MT · 29/kg", qty: 40, total: 1160000, status: "lost", fu: null, cat: "ms", note: "Rate 1.50/kg se reh gaya - Ghaziabad wale ne utha liya." },
+    { customer: "Tech Recycle Co", part: "E-waste - motor + PCB lot", spec: "Motors+PCB · 3 MT", qty: 3, total: 450000, status: "pending", fu: 1, cat: "ewaste", note: "GST bill mandatory. Unki compliance team approve karegi." },
   ];
   return null;
 };
@@ -1508,7 +1535,7 @@ export default function App() {
         {tab === "setup" && <Setup data={data} setData={setData} ping={ping} account={accountView} sync={sync} goSubscribe={() => setTab("subscribe")} onLogout={logout} />}
         {tab === "help" && <Help data={data} ping={ping} />}
         {tab === "analytics" && <Analytics data={data} onBack={() => setTab("home")} goQuotes={goQuotes} />}
-        {tab === "tally" && <TallyInsights data={data} onBack={() => setTab("home")} />}
+        {tab === "tally" && <TallyInsights data={data} updateQuote={updateQuote} ping={ping} onBack={() => setTab("home")} />}
         {tab === "subscribe" && <Subscribe account={accountView} onSubscribe={(id) => { subscribe(id); ping("You're on the " + PLANS.find(p => p.id === id).name + " plan"); setTab("home"); }} onBack={() => setTab("home")} />}
         {tab === "new" && (<Wizard data={data} draft={draft} setDraft={setDraft} step={step} setStep={setStep}
           onExit={() => setTab("home")} onSave={saveQuote} doneQuote={doneQuote} ping={ping}
@@ -1663,15 +1690,15 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
         </button>
       )}
 
-      {/* Tally insights - the owner's simple window into the accountant's Tally */}
-      <button onClick={openTally} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 10, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "linear-gradient(135deg,#10240F,#1B5E20)", color: "#fff", boxShadow: "var(--sh-m)" }}>
+      {/* Tally insights - only for trades that actually run Tally */}
+      {ind.tally && <button onClick={openTally} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 10, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "linear-gradient(135deg,#10240F,#1B5E20)", color: "#fff", boxShadow: "var(--sh-m)" }}>
         <span style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(255,255,255,.14)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>📒</span>
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: "block", fontWeight: 700, fontSize: 15 }}>Tally - seedha hisaab</span>
           <span style={{ display: "block", fontSize: 12.5, color: "rgba(255,255,255,.8)" }}>Baki paisa, maal gaya, order kitna bacha - bina Tally khole.</span>
         </span>
         <I.chev style={{ color: "rgba(255,255,255,.8)" }} />
-      </button>
+      </button>}
 
       {catStats.length > 0 && (<>
         <div className="anim-in st3" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "26px 0 10px" }}>
@@ -2550,8 +2577,9 @@ const TALLY_SAMPLE = {
     { d: 9.4, vtype: "Sales", party: "Bharat Steels", amount: 340000, item: "CI Scrap", qty: 10, unit: "MT" },
   ],
   progress: [
-    { customer: "Apex Alloys", item: "MS Scrap", ordered: 50, unit: "MT", shipped: 32.5 },
-    { customer: "Bharat Steels", item: "CI Scrap", ordered: 25, unit: "MT", shipped: 18.2 },
+    { customer: "Apex Alloys", item: "MS Scrap", ordered: 50, unit: "MT", shipped: 32.5, atDays: 20, deadlineDays: 4, lastDays: 0.4, balance: 412000 },
+    { customer: "Bharat Steels", item: "CI Scrap", ordered: 25, unit: "MT", shipped: 18.2, atDays: 12, deadlineDays: 10, lastDays: 1.2, balance: 185500 },
+    { customer: "Om Metals", item: "Aluminium Scrap", ordered: 30, unit: "MT", shipped: 3.4, atDays: 16, deadlineDays: -1, lastDays: 3.5, balance: 96000 },
   ],
 };
 const fmtQty = (n) => {
@@ -2559,10 +2587,11 @@ const fmtQty = (n) => {
   return v.toLocaleString("en-IN", { maximumFractionDigits: 2 });
 };
 
-function TallyInsights({ data, onBack }) {
+function TallyInsights({ data, updateQuote, ping, onBack }) {
   const [led, setLed] = useState(null);   // ledger rows | null while loading
   const [vch, setVch] = useState(null);   // voucher rows
   const [demo, setDemo] = useState(!sb);  // sample mode (no cloud / nothing synced)
+  const [view, setView] = useState(null); // null overview | "recv" | "pay" drill-down
 
   useEffect(() => {
     let alive = true;
@@ -2604,21 +2633,124 @@ function TallyInsights({ data, onBack }) {
   const monthQty = mainUnit ? unitTotals[mainUnit] : 0;
   const monthValue = monthSales.reduce((s, x) => s + Number(x.amount), 0);
   const dispatches = V.filter((x) => isSale(x.vtype)).slice(0, 8);
+  const balanceOf = (name) => {
+    const hit = receivable.find((x) => String(x.name).trim().toLowerCase() === String(name).trim().toLowerCase());
+    return hit ? Number(hit.balance) : 0;
+  };
 
-  /* order progress: won app-orders with qty vs quantity shipped in Tally since */
-  const progress = demo ? TALLY_SAMPLE.progress : (data.quotes || [])
-    .filter((q) => q.status === "won" && q.qty > 0 && q.at > now - 90 * DAY)
-    .map((q) => {
-      const ship = V.filter((x) => isSale(x.vtype) && x.vdate >= q.at &&
-        String(x.party).trim().toLowerCase() === String(q.customer).trim().toLowerCase());
-      const shipped = ship.reduce((s, x) => s + Number(x.qty), 0);
-      return { customer: q.customer, item: q.part, ordered: q.qty, unit: (ship[0] && ship[0].unit) || "", shipped };
-    })
-    .filter((p) => p.shipped > 0)
-    .slice(0, 5);
+  /* ---- open orders for the dispatch planner ---- */
+  const orders = demo
+    ? TALLY_SAMPLE.progress.map((p, i) => ({
+        qid: "demo" + i, customer: p.customer, item: p.item, ordered: p.ordered, unit: p.unit,
+        shipped: p.shipped, remaining: Math.max(0, p.ordered - p.shipped),
+        at: now - p.atDays * DAY,
+        deliverBy: p.deadlineDays == null ? null : now + p.deadlineDays * DAY,
+        lastDispatchAt: now - p.lastDays * DAY, balance: p.balance,
+      }))
+    : (data.quotes || [])
+      .filter((q) => q.status === "won" && q.qty > 0 && q.at > now - 120 * DAY)
+      .map((q) => {
+        const ship = V.filter((x) => isSale(x.vtype) && x.vdate >= q.at &&
+          String(x.party).trim().toLowerCase() === String(q.customer).trim().toLowerCase());
+        const shipped = ship.reduce((s, x) => s + Number(x.qty), 0);
+        return {
+          qid: q.id, customer: q.customer, item: q.part, ordered: q.qty,
+          unit: (ship[0] && ship[0].unit) || "", shipped,
+          remaining: Math.max(0, q.qty - shipped), at: q.at,
+          deliverBy: q.deliverBy || null,
+          lastDispatchAt: ship.length ? Math.max(...ship.map((x) => x.vdate)) : null,
+          balance: balanceOf(q.customer),
+        };
+      });
+
+  /* ---- "kise pehle bhejein" scoring: deadline pressure + starvation +
+          remaining share, minus a credit caution. Every factor is also
+          SHOWN as a reason chip so the suggestion is never a black box. */
+  const planned = orders.filter((o) => o.remaining > 0).map((o) => {
+    const reasons = [];
+    let score = 0;
+    if (o.deliverBy) {
+      const daysLeft = Math.round((startOfDay(o.deliverBy) - startOfDay(now)) / DAY);
+      const pressure = Math.max(0, Math.min(1.2, 1 - daysLeft / 14));
+      score += 50 * pressure;
+      if (daysLeft < 0) reasons.push({ t: "Deadline nikal gayi (" + Math.abs(daysLeft) + " din)", c: "red" });
+      else if (daysLeft <= 5) reasons.push({ t: "Deadline in " + daysLeft + " din", c: "amber" });
+    } else {
+      score += 50 * Math.min(1, (now - o.at) / (30 * DAY));
+    }
+    const waitFrom = o.lastDispatchAt || o.at;
+    const waitDays = Math.round((now - waitFrom) / DAY);
+    score += 30 * Math.min(1, waitDays / 14);
+    if (waitDays >= 5) reasons.push({ t: o.lastDispatchAt ? waitDays + " din se koi dispatch nahi" : "Abhi tak kuch nahi bheja (" + waitDays + " din)", c: "amber" });
+    const remFrac = o.remaining / o.ordered;
+    score += 20 * remFrac;
+    if (remFrac <= 0.25) reasons.push({ t: "Sirf " + fmtQty(o.remaining) + " " + (o.unit || "") + " bacha - khatam karo", c: "grn" });
+    if (o.balance > 100000) { score -= Math.min(20, o.balance / 50000); reasons.push({ t: "Baki " + inr(o.balance) + " - payment ka dhyaan", c: "red" }); }
+    return { ...o, score, reasons };
+  }).sort((a, b) => b.score - a.score);
 
   const asOf = !demo && led && led.length ? led[0].as_of : null;
+  const chipStyle = (c) => ({
+    display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 600, fontFamily: "var(--mono)",
+    padding: "3px 9px", borderRadius: 999, marginRight: 6, marginTop: 6, whiteSpace: "nowrap",
+    background: c === "red" ? "var(--red-bg)" : c === "amber" ? "var(--amber-bg)" : "var(--grn-100)",
+    color: c === "red" ? "var(--red)" : c === "amber" ? "var(--amber)" : "var(--grn-d)",
+  });
 
+  /* ---------- drill-down: where the money is ---------- */
+  if (view) {
+    const isRecv = view === "recv";
+    const rows = (isRecv ? receivable : payable).slice().sort((a, b) => b.balance - a.balance);
+    const total = isRecv ? recvTotal : payTotal;
+    const lastActivity = (name) => {
+      const hit = V.find((x) => (isRecv ? isSale(x.vtype) : !isSale(x.vtype)) &&
+        String(x.party).trim().toLowerCase() === String(name).trim().toLowerCase());
+      if (!hit) return null;
+      return (isRecv ? "Last dispatch " : "Last purchase ") + fdateShort(hit.vdate) +
+        (hit.qty > 0 ? " · " + fmtQty(hit.qty) + " " + (hit.unit || "") : "") + " · " + inr(hit.amount);
+    };
+    return (
+      <div className="scr"><div className="pagepad">
+        <div className="anim-in" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+          <button className="iconbtn press" onClick={() => setView(null)}><I.back /></button>
+          <div style={{ flex: 1 }}>
+            <div className="microlbl">{isRecv ? "AANE WALE PAISE" : "DENE WALE PAISE"}</div>
+            <div className="h-disp" style={{ fontSize: 24, fontWeight: 700 }}>{isRecv ? "Kis-kis se lena hai" : "Kis-kis ko dena hai"}</div>
+          </div>
+          {demo && <span className="demo-ribbon">SAMPLE</span>}
+        </div>
+        <div className="card anim-in st1" style={{ padding: "16px 16px", margin: "12px 0 16px", background: isRecv ? "#F3FBF4" : "#FFFBF2", borderColor: isRecv ? "#CFE9D1" : "#F0DCB8", display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--dim)" }}>Total {isRecv ? "aayega" : "dena hai"}</span>
+          <b className="h-disp mono" style={{ fontSize: 26, color: isRecv ? "var(--grn-d)" : "var(--amber)" }}>{inr(total)}</b>
+        </div>
+        {rows.length === 0 && <div className="card-tint" style={{ padding: 24, textAlign: "center", color: "var(--dim)", fontSize: 14 }}>Kuch nahi - sab clear hai. 🎉</div>}
+        {rows.map((x, i) => {
+          const share = total ? (Number(x.balance) / total) * 100 : 0;
+          const act = lastActivity(x.name);
+          return (
+            <div key={i} className={"card anim-in st" + Math.min(6, i + 1)} style={{ padding: "14px 15px", marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                <div style={{ fontWeight: 600, fontSize: 15, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{x.name}</div>
+                <b className="mono" style={{ flexShrink: 0, fontSize: 15.5, color: isRecv ? "var(--grn-d)" : "var(--amber)" }}>{inr(x.balance)}</b>
+              </div>
+              <div style={{ height: 7, borderRadius: 999, background: "var(--soft)", border: "1px solid var(--line)", marginTop: 9, overflow: "hidden" }}>
+                <div style={{ width: Math.max(3, share) + "%", height: "100%", borderRadius: 999, background: isRecv ? "linear-gradient(90deg,#2E9E33,#7CCB80)" : "linear-gradient(90deg,#C98A2B,#E8C173)" }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, gap: 8 }}>
+                <span className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>{Math.round(share)}% of total</span>
+                {act && <span className="mono" style={{ fontSize: 11, color: "var(--faint)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{act}</span>}
+              </div>
+            </div>
+          );
+        })}
+        <div className="card-tint anim-in" style={{ padding: "13px 15px", fontSize: 12.5, color: "var(--dim)", lineHeight: 1.6, marginTop: 6 }}>
+          {isRecv ? "Ye Tally ke Sundry Debtors se aata hai - jinke naam bill kata hai par payment aana baki hai." : "Ye Tally ke Sundry Creditors se aata hai - jin suppliers ka payment aapki taraf baki hai."}
+        </div>
+      </div></div>
+    );
+  }
+
+  /* ---------- overview ---------- */
   return (
     <div className="scr"><div className="pagepad">
       <div className="anim-in" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
@@ -2636,18 +2768,18 @@ function TallyInsights({ data, onBack }) {
       {loading && <div className="mono" style={{ color: "var(--faint)", fontSize: 12, letterSpacing: ".2em", textAlign: "center", padding: 30 }}>LOADING...</div>}
       {!loading && (<>
 
-      {/* money in / money out */}
+      {/* money in / money out - tap for the full party-wise story */}
       <div className="anim-in st1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <div className="card" style={{ padding: "16px 15px", borderColor: "#CFE9D1", background: "#F3FBF4" }}>
+        <button className="card press" onClick={() => setView("recv")} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", padding: "16px 15px", borderRadius: 22, border: "1px solid #CFE9D1", background: "#F3FBF4", boxShadow: "var(--sh-s)" }}>
           <div className="microlbl" style={{ color: "var(--grn-d)" }}>AANE WALE (customers owe you)</div>
           <div className="h-disp mono" style={{ fontSize: 27, fontWeight: 700, color: "var(--grn-d)", marginTop: 5 }}>{inr(recvTotal)}</div>
-          <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 3 }}>{receivable.length} customer{receivable.length === 1 ? "" : "s"}</div>
-        </div>
-        <div className="card" style={{ padding: "16px 15px", borderColor: "#F0DCB8", background: "#FFFBF2" }}>
+          <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 3, display: "flex", alignItems: "center", gap: 3 }}>{receivable.length} customer{receivable.length === 1 ? "" : "s"} <I.chev style={{ width: 13 }} /></div>
+        </button>
+        <button className="card press" onClick={() => setView("pay")} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", padding: "16px 15px", borderRadius: 22, border: "1px solid #F0DCB8", background: "#FFFBF2", boxShadow: "var(--sh-s)" }}>
           <div className="microlbl" style={{ color: "var(--amber)" }}>DENE WALE (you owe suppliers)</div>
           <div className="h-disp mono" style={{ fontSize: 27, fontWeight: 700, color: "var(--amber)", marginTop: 5 }}>{inr(payTotal)}</div>
-          <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 3 }}>{payable.length} supplier{payable.length === 1 ? "" : "s"}</div>
-        </div>
+          <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 3, display: "flex", alignItems: "center", gap: 3 }}>{payable.length} supplier{payable.length === 1 ? "" : "s"} <I.chev style={{ width: 13 }} /></div>
+        </button>
       </div>
 
       {/* shipped this month */}
@@ -2662,28 +2794,38 @@ function TallyInsights({ data, onBack }) {
         </div>
       </div>
 
-      {/* order progress - kitna order baki hai */}
-      {progress.length > 0 && (<>
-        <div className="anim-in st3" style={{ margin: "22px 0 10px" }}><span className="eyebrow">Order kitna baki hai</span></div>
-        {progress.map((p, i) => {
-          const pct = Math.min(100, Math.round((p.shipped / p.ordered) * 100));
-          const left = Math.max(0, p.ordered - p.shipped);
+      {/* dispatch planner - kise pehle bhejein */}
+      {planned.length > 0 && (<>
+        <div className="anim-in st3" style={{ margin: "22px 0 4px" }}><span className="eyebrow">Agla dispatch kise bhejein?</span></div>
+        <div style={{ fontSize: 12.5, color: "var(--faint)", marginBottom: 10 }}>Deadline, kitne din se intezaar, aur kitna baki hai - sab jod kar order suggest hota hai.</div>
+        {planned.slice(0, 4).map((o, i) => {
+          const pct = Math.min(100, Math.round((o.shipped / o.ordered) * 100));
           return (
-            <div key={i} className="card anim-in" style={{ padding: "14px 15px", marginBottom: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.customer}</div>
-                  <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 1 }}>{p.item}</div>
+            <div key={o.qid} className="card anim-in" style={{ padding: "14px 15px", marginBottom: 10, borderColor: i === 0 ? "#CFE9D1" : undefined, background: i === 0 ? "#F7FCF8" : "#fff" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span className="mono" style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5, fontWeight: 700, background: i === 0 ? "linear-gradient(135deg,#2E9E33,#1B7A20)" : "var(--soft)", color: i === 0 ? "#fff" : "var(--dim)", border: i === 0 ? "none" : "1px solid var(--line)" }}>{i + 1}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{o.customer}</div>
+                  <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{o.item}</div>
                 </div>
-                <div className="mono" style={{ flexShrink: 0, fontSize: 13, fontWeight: 600, color: pct >= 100 ? "var(--grn-d)" : "var(--amber)" }}>
-                  {pct >= 100 ? "PURA HUA ✓" : fmtQty(left) + " " + (p.unit || "") + " baki"}
-                </div>
+                <div className="mono" style={{ flexShrink: 0, fontSize: 13, fontWeight: 600, color: "var(--amber)" }}>{fmtQty(o.remaining)} {o.unit || ""} baki</div>
               </div>
-              <div style={{ height: 10, borderRadius: 999, background: "var(--soft)", border: "1px solid var(--line)", marginTop: 10, overflow: "hidden" }}>
-                <div style={{ width: pct + "%", height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#2E9E33,#7CCB80)", transition: "width .6s" }} />
+              <div style={{ height: 8, borderRadius: 999, background: "var(--soft)", border: "1px solid var(--line)", marginTop: 10, overflow: "hidden" }}>
+                <div style={{ width: pct + "%", height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#2E9E33,#7CCB80)" }} />
               </div>
-              <div className="mono" style={{ fontSize: 11, color: "var(--faint)", marginTop: 6 }}>
-                {fmtQty(p.shipped)} / {fmtQty(p.ordered)} {p.unit} shipped ({pct}%)
+              <div className="mono" style={{ fontSize: 11, color: "var(--faint)", marginTop: 5 }}>{fmtQty(o.shipped)} / {fmtQty(o.ordered)} {o.unit} shipped ({pct}%)</div>
+              <div style={{ display: "flex", flexWrap: "wrap" }}>
+                {o.reasons.map((r, ri) => <span key={ri} style={chipStyle(r.c)}>{r.t}</span>)}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+                <span className="mono" style={{ fontSize: 10, letterSpacing: ".1em", color: "var(--faint)", flexShrink: 0 }}>DEADLINE</span>
+                {demo ? (
+                  <span className="mono" style={{ fontSize: 12.5, color: "var(--dim)" }}>{o.deliverBy ? fdateShort(o.deliverBy) : "-"} <span style={{ color: "var(--faint)" }}>(sample)</span></span>
+                ) : (
+                  <input className="input mono" type="date" style={{ padding: "7px 10px", fontSize: 13, flex: 1, maxWidth: 170 }}
+                    value={o.deliverBy ? isoDate(o.deliverBy) : ""}
+                    onChange={(e) => { updateQuote(o.qid, { deliverBy: e.target.value ? new Date(e.target.value).getTime() : null }); ping(e.target.value ? "Deadline set" : "Deadline hata di"); }} />
+                )}
               </div>
             </div>
           );
@@ -3051,6 +3193,7 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
 
       {/* ===== Tally connector (BETA) - cloud accounts only ===== */}
       {sb && account && account.method === "google" && (<>
+        {ind.tally && (<>
         <div className="anim-in" style={{ margin: "24px 0 10px" }}><span className="eyebrow">Tally (BETA)</span></div>
         <div className="card" style={{ padding: 16 }}>
           <div style={{ fontSize: 15, color: "var(--ink)", lineHeight: 1.55 }}>
@@ -3079,6 +3222,8 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
             3. start-connector.bat chalao.
           </div>
         </div>
+
+        </>)}
 
         {/* ===== Gmail RFQ inbox (BETA) ===== */}
         <div className="anim-in" style={{ margin: "24px 0 10px" }}><span className="eyebrow">Gmail (BETA)</span></div>
