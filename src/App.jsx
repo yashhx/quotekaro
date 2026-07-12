@@ -81,6 +81,37 @@ async function aiReadMedia(mediaId, caption) {
     return { fields: null, why };
   } catch { return { fields: null, why: "no internet" }; }
 }
+
+/* ---- Gmail connector (opt-in, cloud mode) ----
+   The refresh token is captured once after a scoped Google OAuth round-trip
+   and handed straight to the server; the browser never stores it. */
+const GMAIL_FLAG = "quotekaro:gmail:connecting";
+async function gmailStatus() {
+  try {
+    const r = await fetch(WA_API + "/gmail-connect", { headers: { accept: "application/json", ...(await authHeaders()) } });
+    if (!(r.headers.get("content-type") || "").includes("application/json")) return null;
+    const d = await r.json().catch(() => null);
+    return d && d.ok ? d : null;
+  } catch { return null; }
+}
+async function gmailSave(refreshToken, email) {
+  try {
+    const r = await fetch(WA_API + "/gmail-connect", { method: "POST", headers: { "content-type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ refreshToken, email }) });
+    const d = await r.json().catch(() => null);
+    return !!(d && d.ok);
+  } catch { return false; }
+}
+async function gmailDisconnect() {
+  try { await fetch(WA_API + "/gmail-connect", { method: "DELETE", headers: { ...(await authHeaders()) } }); } catch {}
+}
+async function gmailPollNow() {
+  try {
+    const r = await fetch(WA_API + "/gmail-poll", { method: "POST", headers: { accept: "application/json", ...(await authHeaders()) } });
+    const d = await r.json().catch(() => null);
+    return d && d.ok ? (d.found || 0) : null;
+  } catch { return null; }
+}
+
 /* AI wins where it found something; regex fills the gaps. Phone always comes
    from the regex/local side - it never went to the AI. Note: aiReadMedia's
    `transcript` is deliberately NOT merged here - the caller adds it to the
@@ -1199,8 +1230,20 @@ export default function App() {
           setAuthError(String(errDesc).replace(/\+/g, " "));
         } else if (code) {
           /* exchangeCodeForSession expects the bare code, not the URL */
-          const { error } = await sb.auth.exchangeCodeForSession(code);
+          const { data: xd, error } = await sb.auth.exchangeCodeForSession(code);
           if (error) setAuthError((error.message || "sign-in failed") + " [exchange]");
+          /* returning from the "Connect Gmail" scoped consent? hand the refresh
+             token to the server once, then forget it client-side */
+          else if (localStorage.getItem(GMAIL_FLAG)) {
+            const sess = xd && xd.session;
+            const rt = sess && sess.provider_refresh_token;
+            if (rt) {
+              const ok = await gmailSave(rt, (sess.user && sess.user.email) || "");
+              setToast(ok ? "Gmail connected - RFQ emails will appear in your pipeline" : "Gmail connect failed - try again from Setup");
+              setTimeout(() => setToast(null), 3000);
+            }
+          }
+          localStorage.removeItem(GMAIL_FLAG);
         }
         /* strip auth params from the address bar either way */
         if (code || errDesc || u.hash) window.history.replaceState({}, "", u.origin + u.pathname);
@@ -1423,8 +1466,12 @@ export default function App() {
       const ai = await aiParseEnquiry(enq.text);
       if (ai) p = mergeParsed(p, ai);
     }
-    const phone = String(enq.from || p.phone || "").replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+    /* gmail "from" is an email address, not a phone - only trust the parsed one there */
+    const phone = enq.source === "gmail"
+      ? String(p.phone || "").replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "")
+      : String(enq.from || p.phone || "").replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
     const bits = [];
+    if (enq.source === "gmail" && enq.from) bits.push("[Email: " + enq.from + "]");
     if (enq.type === "image") bits.push("[Photo on WhatsApp]");
     if (enq.type === "document") bits.push("[Doc: " + (enq.filename || "file") + "]");
     if (enq.text) bits.push(enq.text);
@@ -1434,7 +1481,7 @@ export default function App() {
       customer: enq.name || p.customer || "WhatsApp lead", phone,
       part: p.part || (enq.type === "document" && enq.filename ? enq.filename : "(from WhatsApp)"),
       qty, pricePc: p.rate ? num(p.rate) : (qty ? total / qty : 0), total,
-      followUp: p.followUp || null, source: "whatsapp", note: bits.join(" ") };
+      followUp: p.followUp || null, source: enq.source === "gmail" ? "gmail" : "whatsapp", note: bits.join(" ") };
     setData((d) => ({ ...d, quotes: [q, ...d.quotes] }));
     handledIds.current.add(enq.id);
     setEnquiries((list) => list.filter((x) => x.id !== enq.id));
@@ -2071,8 +2118,8 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
         <div className="anim-in" style={{ marginBottom: 18 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span className="eyebrow" style={{ display: "flex", alignItems: "center", gap: 7, color: "#128C4B" }}>
-              <I.wa /> Incoming on WhatsApp{enquiries.length > 0 ? " · " + enquiries.length : ""}
-              <i style={{ width: 7, height: 7, borderRadius: "50%", background: "#25A75B", display: "inline-block" }} title="WhatsApp backend connected" />
+              <I.wa /> Incoming enquiries{enquiries.length > 0 ? " · " + enquiries.length : ""}
+              <i style={{ width: 7, height: 7, borderRadius: "50%", background: "#25A75B", display: "inline-block" }} title="Backend connected" />
             </span>
             <button className="iconbtn press" style={{ width: 32, height: 32 }} title="Check for new messages"
               onClick={async () => { const ok = await refreshEnquiries(); ping(ok ? "Inbox refreshed" : "Could not reach WhatsApp backend"); }}>
@@ -2086,9 +2133,14 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
           )}
           {enquiries.map((e) => (
             <div key={e.id} className="card" style={{ padding: "14px 15px", marginTop: 10, border: "1px solid #CBEAD2", background: "#F3FBF4" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontWeight: 600, fontSize: 15 }}>{e.name || ("+" + e.from)}</div>
-                <span className="mono" style={{ fontSize: 11.5, color: "var(--faint)" }}>{fdateShort(e.at)}</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                <div style={{ fontWeight: 600, fontSize: 15, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.name || (e.source === "gmail" ? e.from : "+" + e.from)}</div>
+                <span style={{ display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
+                  <span className="mono" style={{ fontSize: 9, letterSpacing: ".1em", fontWeight: 600, color: e.source === "gmail" ? "#7A4FA8" : "#128C4B", background: e.source === "gmail" ? "#F3ECFA" : "#E7F6E9", border: "1px solid " + (e.source === "gmail" ? "#E2D3F0" : "#CBEAD2"), padding: "3px 8px", borderRadius: 999 }}>
+                    {e.source === "gmail" ? "GMAIL" : "WHATSAPP"}
+                  </span>
+                  <span className="mono" style={{ fontSize: 11.5, color: "var(--faint)" }}>{fdateShort(e.at)}</span>
+                </span>
               </div>
               {e.type === "image" && e.mediaId && (
                 <WaImage src={WA_API + "/whatsapp-media?id=" + encodeURIComponent(e.mediaId)} />
@@ -2108,7 +2160,9 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
               )}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button className="btn btn-sm btn-soft press" onClick={() => logEnquiry(e)}><I.bolt /> Log as quote</button>
-                <a className="btn btn-sm btn-ghost press" style={{ textDecoration: "none" }} href={waLink(e.from, "")} target="_blank" rel="noreferrer"><I.wa /> Reply</a>
+                {e.source === "gmail"
+                  ? <a className="btn btn-sm btn-ghost press" style={{ textDecoration: "none" }} href={"mailto:" + e.from} target="_blank" rel="noreferrer">✉️ Reply</a>
+                  : <a className="btn btn-sm btn-ghost press" style={{ textDecoration: "none" }} href={waLink(e.from, "")} target="_blank" rel="noreferrer"><I.wa /> Reply</a>}
                 <button className="btn btn-sm btn-ghost press" style={{ color: "var(--red)" }} onClick={() => dismissEnquiry(e)}><I.trash /></button>
               </div>
             </div>
@@ -2559,6 +2613,10 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
   const [confirmClear, setConfirmClear] = useState(false);
   const [tallyKey, setTallyKey] = useState(null);   // connector key, fetched on demand
   const [tallyBusy, setTallyBusy] = useState(false);
+  const [gmail, setGmail] = useState(null);         // { connected, email, error } | null
+  const [gmailBusy, setGmailBusy] = useState(false);
+  const cloudGoogle = !!(sb && account && account.method === "google");
+  useEffect(() => { let alive = true; if (cloudGoogle) gmailStatus().then((d) => { if (alive) setGmail(d); }); return () => { alive = false; }; }, [cloudGoogle]);
   const s = data.settings;
   const setS = (k, v) => setData({ ...data, settings: { ...s, [k]: v } });
   const ind = industryOf(data);
@@ -2803,6 +2861,48 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
             2. Key ko config.json mein daalo.<br />
             3. start-connector.bat chalao.
           </div>
+        </div>
+
+        {/* ===== Gmail RFQ inbox (BETA) ===== */}
+        <div className="anim-in" style={{ margin: "24px 0 10px" }}><span className="eyebrow">Gmail (BETA)</span></div>
+        <div className="card" style={{ padding: 16 }}>
+          <div style={{ fontSize: 15, color: "var(--ink)", lineHeight: 1.55 }}>
+            Email par aane wali RFQ/enquiry apne aap pipeline mein. Har 5 minute mein naye mail check hote hain - quote, rate, enquiry jaise words wale mail hi uthte hain.
+          </div>
+          {gmail && gmail.connected ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "var(--grn-100)", border: "1px solid #CFE9D1", color: "var(--grn-d)", fontSize: 13, fontWeight: 600, padding: "7px 13px", borderRadius: 999 }}>
+                  <i style={{ width: 7, height: 7, borderRadius: "50%", background: "#25A75B" }} /> {gmail.email || "Connected"}
+                </span>
+                {gmail.error && <span style={{ fontSize: 12.5, color: "var(--red)", fontWeight: 600 }}>Reconnect needed - token expire ho gaya</span>}
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                <button className="btn btn-sm btn-soft press" disabled={gmailBusy} onClick={async () => {
+                  setGmailBusy(true); const n = await gmailPollNow(); setGmailBusy(false);
+                  ping(n == null ? "Check failed - dobara try karo" : n === 0 ? "Koi nayi RFQ mail nahi mili" : n + " nayi enquiry - Pipeline dekho");
+                }}>{gmailBusy ? "Checking..." : "Check Gmail now"}</button>
+                {gmail.error && <button className="btn btn-sm btn-soft press" onClick={() => {
+                  localStorage.setItem(GMAIL_FLAG, "1");
+                  sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin, scopes: "https://www.googleapis.com/auth/gmail.readonly", queryParams: { access_type: "offline", prompt: "consent" } } });
+                }}>Reconnect</button>}
+                <button className="btn btn-sm btn-ghost press" style={{ color: "var(--red)" }} onClick={async () => {
+                  if (!window.confirm("Gmail disconnect karein? Purani enquiries pipeline mein rahengi.")) return;
+                  await gmailDisconnect(); setGmail({ connected: false, email: "", error: "" }); ping("Gmail disconnected");
+                }}>Disconnect</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <button className="btn btn-soft press" style={{ width: "100%", marginTop: 12 }} onClick={() => {
+                localStorage.setItem(GMAIL_FLAG, "1");
+                sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin, scopes: "https://www.googleapis.com/auth/gmail.readonly", queryParams: { access_type: "offline", prompt: "consent" } } });
+              }}>Connect Gmail</button>
+              <span className="hint" style={{ margin: "10px 0 0" }}>
+                Google se dobara permission maangega (sirf mail READ karne ki - bhejne ya delete ki nahi). App sirf RFQ-jaisi mails uthata hai; aapke mail kahin store nahi hote, sirf enquiry card banta hai.
+              </span>
+            </>
+          )}
         </div>
       </>)}
 

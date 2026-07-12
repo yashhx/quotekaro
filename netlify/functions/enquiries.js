@@ -45,8 +45,9 @@ async function getTenant(userId) {
   } catch (e) { console.warn("enquiries: getTenant threw -", e && e.message); return { wa_phone_id: null, is_admin: false }; }
 }
 
-const canSee = (v, tenant) => {
+const canSee = (v, tenant, callerId) => {
   if (!tenant) return true;                       /* open (single-tenant) mode */
+  if (v.userId) return v.userId === callerId || tenant.is_admin; /* per-user (Gmail) enquiries */
   if (tenant.is_admin) return true;               /* admin sees all, incl. unrouted */
   return !!v.phoneId && v.phoneId === tenant.wa_phone_id;
 };
@@ -76,7 +77,7 @@ export default async (req) => {
         await Promise.all(stale.map((v) => store.delete("msg_" + v.id).catch(() => {})));
       }
 
-      const fresh = items.filter((v) => (v.at || 0) >= cutoff).filter((v) => canSee(v, tenant)).slice(0, MAX_RETURNED);
+      const fresh = items.filter((v) => (v.at || 0) >= cutoff).filter((v) => canSee(v, tenant, user.id)).slice(0, MAX_RETURNED);
       return json({ enabled: true, enquiries: fresh });
     } catch (e) {
       console.error("enquiries: list failed -", e && e.message);
@@ -90,7 +91,7 @@ export default async (req) => {
       if (id) {
         /* ownership check: you can only mark YOUR enquiry handled */
         const rec = await store.get("msg_" + id, { type: "json" }).catch(() => null);
-        if (rec && !canSee(rec, tenant)) { console.warn("enquiries: blocked cross-tenant delete of", id); return json({ error: "not yours" }, 403); }
+        if (rec && !canSee(rec, tenant, user.id)) { console.warn("enquiries: blocked cross-tenant delete of", id); return json({ error: "not yours" }, 403); }
         await store.delete("msg_" + id);
         console.log("enquiries: marked handled", id);
       }

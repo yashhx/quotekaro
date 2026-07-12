@@ -7,6 +7,10 @@
 [functions]
   node_bundler = "esbuild"
 
+# Gmail inbox poller - every 5 minutes (also invokable from the app with a JWT)
+[functions."gmail-poll"]
+  schedule = "*/5 * * * *"
+
 # SPA fallback for the client-side app (must NOT catch /.netlify/functions/*)
 [[redirects]]
   from = "/*"
