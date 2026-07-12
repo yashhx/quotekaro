@@ -1502,12 +1502,13 @@ export default function App() {
       <div className="app">
         {toast && <div className="toast">{toast}</div>}
 
-        {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} />}
+        {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} openTally={() => setTab("tally")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} />}
         {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} cat={quotesCat} setCat={setQuotesCat} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} tallyBal={tallyBal} />}
         {tab === "log" && <QuickLog data={data} onSave={saveLogged} onExit={() => setTab("home")} ping={ping} />}
         {tab === "setup" && <Setup data={data} setData={setData} ping={ping} account={accountView} sync={sync} goSubscribe={() => setTab("subscribe")} onLogout={logout} />}
         {tab === "help" && <Help data={data} ping={ping} />}
         {tab === "analytics" && <Analytics data={data} onBack={() => setTab("home")} goQuotes={goQuotes} />}
+        {tab === "tally" && <TallyInsights data={data} onBack={() => setTab("home")} />}
         {tab === "subscribe" && <Subscribe account={accountView} onSubscribe={(id) => { subscribe(id); ping("You're on the " + PLANS.find(p => p.id === id).name + " plan"); setTab("home"); }} onBack={() => setTab("home")} />}
         {tab === "new" && (<Wizard data={data} draft={draft} setDraft={setDraft} step={step} setStep={setStep}
           onExit={() => setTab("home")} onSave={saveQuote} doneQuote={doneQuote} ping={ping}
@@ -1534,7 +1535,7 @@ export default function App() {
           </div>
         )}
 
-        {tab !== "new" && tab !== "analytics" && tab !== "subscribe" && tab !== "log" && (
+        {tab !== "new" && tab !== "analytics" && tab !== "subscribe" && tab !== "log" && tab !== "tally" && (
           <nav className="navbar" ref={navRef}>
             <div className="nav-pill" style={pillStyle} />
             <button ref={setNavRef("home")} className={"nav-it " + (tab === "home" ? "on" : "")} onClick={() => setTab("home")}><I.home /><span>Home</span></button>
@@ -1550,7 +1551,7 @@ export default function App() {
 }
 
 /* ================= HOME ================= */
-function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, goSetup, goSubscribe }) {
+function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally, goSetup, goSubscribe }) {
   /* animated hero lines - flow speed tracks scroll velocity */
   const flowRefs = useRef([]);
   useEffect(() => {
@@ -1661,6 +1662,16 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, goSetup, g
           <b className="mono" style={{ color: "var(--grn-d)", fontSize: 16 }}>{inr(pendingValue)}</b>
         </button>
       )}
+
+      {/* Tally insights - the owner's simple window into the accountant's Tally */}
+      <button onClick={openTally} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 10, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "linear-gradient(135deg,#10240F,#1B5E20)", color: "#fff", boxShadow: "var(--sh-m)" }}>
+        <span style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(255,255,255,.14)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>📒</span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: "block", fontWeight: 700, fontSize: 15 }}>Tally - seedha hisaab</span>
+          <span style={{ display: "block", fontSize: 12.5, color: "rgba(255,255,255,.8)" }}>Baki paisa, maal gaya, order kitna bacha - bina Tally khole.</span>
+        </span>
+        <I.chev style={{ color: "rgba(255,255,255,.8)" }} />
+      </button>
 
       {catStats.length > 0 && (<>
         <div className="anim-in st3" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "26px 0 10px" }}>
@@ -2510,6 +2521,212 @@ function Analytics({ data, onBack, goQuotes }) {
 
       <button className="btn btn-soft press" style={{ width: "100%", marginTop: 4 }} onClick={() => goQuotes("all")}>See all quotes</button>
       <div style={{ fontSize: 11.5, color: "var(--faint)", textAlign: "center", margin: "16px 0 6px" }} className="mono">{rangeLbl.toUpperCase()} · {scoped.length} QUOTES</div>
+    </div></div>
+  );
+}
+
+/* ================= TALLY INSIGHTS ================= */
+/* The accountant works in Tally; the owner sees this. Reads the tally_ledgers
+   + tally_vouchers tables the desktop connector fills (RLS: own rows only).
+   With nothing connected it shows a clearly-labelled SAMPLE so the page can
+   be demoed before any Tally exists. */
+const TALLY_SAMPLE = {
+  ledgers: [
+    { name: "Apex Alloys", balance: 412000, grp: "debtor" },
+    { name: "Bharat Steels", balance: 185500, grp: "debtor" },
+    { name: "Om Metals", balance: 96000, grp: "debtor" },
+    { name: "Shakti Traders", balance: 15200, grp: "debtor" },
+    { name: "Yard Suppliers Co", balance: 240000, grp: "creditor" },
+    { name: "Highway Transport Co", balance: 38500, grp: "creditor" },
+  ],
+  vouchers: [
+    { d: 0.4, vtype: "Sales", party: "Apex Alloys", amount: 412500, item: "MS Scrap", qty: 12.5, unit: "MT" },
+    { d: 1.2, vtype: "Sales", party: "Bharat Steels", amount: 278800, item: "CI Scrap", qty: 8.2, unit: "MT" },
+    { d: 2.1, vtype: "Purchase", party: "Yard Suppliers Co", amount: 560000, item: "Mixed Scrap", qty: 20, unit: "MT" },
+    { d: 3.5, vtype: "Sales", party: "Om Metals", amount: 455600, item: "Aluminium Scrap", qty: 3.4, unit: "MT" },
+    { d: 5.0, vtype: "Sales", party: "Apex Alloys", amount: 660000, item: "MS Scrap", qty: 20, unit: "MT" },
+    { d: 6.3, vtype: "Sales", party: "Shakti Traders", amount: 49600, item: "MS Scrap", qty: 1.5, unit: "MT" },
+    { d: 8.1, vtype: "Purchase", party: "Yard Suppliers Co", amount: 392000, item: "Mixed Scrap", qty: 14, unit: "MT" },
+    { d: 9.4, vtype: "Sales", party: "Bharat Steels", amount: 340000, item: "CI Scrap", qty: 10, unit: "MT" },
+  ],
+  progress: [
+    { customer: "Apex Alloys", item: "MS Scrap", ordered: 50, unit: "MT", shipped: 32.5 },
+    { customer: "Bharat Steels", item: "CI Scrap", ordered: 25, unit: "MT", shipped: 18.2 },
+  ],
+};
+const fmtQty = (n) => {
+  const v = Math.round((Number(n) || 0) * 100) / 100;
+  return v.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+};
+
+function TallyInsights({ data, onBack }) {
+  const [led, setLed] = useState(null);   // ledger rows | null while loading
+  const [vch, setVch] = useState(null);   // voucher rows
+  const [demo, setDemo] = useState(!sb);  // sample mode (no cloud / nothing synced)
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!sb) { setDemo(true); return; }
+      try {
+        const [l, v] = await Promise.all([
+          sb.from("tally_ledgers").select("name,balance,grp,as_of"),
+          sb.from("tally_vouchers").select("vdate,vtype,party,amount,item,qty,unit").order("vdate", { ascending: false }).limit(400),
+        ]);
+        if (!alive) return;
+        const lr = (!l.error && l.data) || [], vr = (!v.error && v.data) || [];
+        if (!lr.length && !vr.length) { setDemo(true); return; }
+        setLed(lr); setVch(vr); setDemo(false);
+      } catch { if (alive) setDemo(true); }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  /* pick the data source: real rows or the labelled sample */
+  const now = Date.now();
+  const L = demo ? TALLY_SAMPLE.ledgers : (led || []);
+  const V = demo
+    ? TALLY_SAMPLE.vouchers.map((x) => ({ ...x, vdate: now - x.d * DAY }))
+    : (vch || []);
+  const loading = !demo && led === null;
+
+  const isSale = (t) => !/purchase/i.test(String(t || ""));
+  const receivable = L.filter((x) => x.grp !== "creditor" && x.balance > 0);
+  const payable = L.filter((x) => x.grp === "creditor" && x.balance > 0);
+  const recvTotal = receivable.reduce((s, x) => s + Number(x.balance), 0);
+  const payTotal = payable.reduce((s, x) => s + Number(x.balance), 0);
+  const m0 = new Date(); m0.setDate(1); m0.setHours(0, 0, 0, 0);
+  const monthSales = V.filter((x) => isSale(x.vtype) && x.vdate >= m0.getTime());
+  /* tonnage in the dominant unit this month (scrap shops live in MT) */
+  const unitTotals = {};
+  monthSales.forEach((x) => { if (x.qty > 0) { const u = x.unit || "?"; unitTotals[u] = (unitTotals[u] || 0) + Number(x.qty); } });
+  const mainUnit = Object.keys(unitTotals).sort((a, b) => unitTotals[b] - unitTotals[a])[0] || "";
+  const monthQty = mainUnit ? unitTotals[mainUnit] : 0;
+  const monthValue = monthSales.reduce((s, x) => s + Number(x.amount), 0);
+  const dispatches = V.filter((x) => isSale(x.vtype)).slice(0, 8);
+
+  /* order progress: won app-orders with qty vs quantity shipped in Tally since */
+  const progress = demo ? TALLY_SAMPLE.progress : (data.quotes || [])
+    .filter((q) => q.status === "won" && q.qty > 0 && q.at > now - 90 * DAY)
+    .map((q) => {
+      const ship = V.filter((x) => isSale(x.vtype) && x.vdate >= q.at &&
+        String(x.party).trim().toLowerCase() === String(q.customer).trim().toLowerCase());
+      const shipped = ship.reduce((s, x) => s + Number(x.qty), 0);
+      return { customer: q.customer, item: q.part, ordered: q.qty, unit: (ship[0] && ship[0].unit) || "", shipped };
+    })
+    .filter((p) => p.shipped > 0)
+    .slice(0, 5);
+
+  const asOf = !demo && led && led.length ? led[0].as_of : null;
+
+  return (
+    <div className="scr"><div className="pagepad">
+      <div className="anim-in" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+        <button className="iconbtn press" onClick={onBack}><I.back /></button>
+        <div style={{ flex: 1 }}>
+          <div className="microlbl">TALLY · SEEDHA HISAAB</div>
+          <div className="h-disp" style={{ fontSize: 24, fontWeight: 700 }}>Business at a glance</div>
+        </div>
+        {demo && <span className="demo-ribbon">SAMPLE</span>}
+      </div>
+      <div style={{ fontSize: 12.5, color: "var(--faint)", margin: "0 0 16px 46px" }}>
+        {demo ? "Connect Tally in Setup to see your real numbers here." : asOf ? "From your Tally, updated " + new Date(asOf).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "From your Tally."}
+      </div>
+
+      {loading && <div className="mono" style={{ color: "var(--faint)", fontSize: 12, letterSpacing: ".2em", textAlign: "center", padding: 30 }}>LOADING...</div>}
+      {!loading && (<>
+
+      {/* money in / money out */}
+      <div className="anim-in st1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div className="card" style={{ padding: "16px 15px", borderColor: "#CFE9D1", background: "#F3FBF4" }}>
+          <div className="microlbl" style={{ color: "var(--grn-d)" }}>AANE WALE (customers owe you)</div>
+          <div className="h-disp mono" style={{ fontSize: 27, fontWeight: 700, color: "var(--grn-d)", marginTop: 5 }}>{inr(recvTotal)}</div>
+          <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 3 }}>{receivable.length} customer{receivable.length === 1 ? "" : "s"}</div>
+        </div>
+        <div className="card" style={{ padding: "16px 15px", borderColor: "#F0DCB8", background: "#FFFBF2" }}>
+          <div className="microlbl" style={{ color: "var(--amber)" }}>DENE WALE (you owe suppliers)</div>
+          <div className="h-disp mono" style={{ fontSize: 27, fontWeight: 700, color: "var(--amber)", marginTop: 5 }}>{inr(payTotal)}</div>
+          <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 3 }}>{payable.length} supplier{payable.length === 1 ? "" : "s"}</div>
+        </div>
+      </div>
+
+      {/* shipped this month */}
+      <div className="hero-card anim-in st2" style={{ padding: "20px 20px", marginTop: 12 }}>
+        <div className="mono" style={{ fontSize: 10, letterSpacing: ".16em", color: "rgba(255,255,255,.82)", position: "relative", zIndex: 1 }}>MAAL GAYA IS MAHINE (sales)</div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, position: "relative", zIndex: 1 }}>
+          <span className="h-disp mono" style={{ fontSize: 40, fontWeight: 700 }}>{monthQty > 0 ? fmtQty(monthQty) : monthSales.length}</span>
+          <span className="h-disp" style={{ fontSize: 19, fontWeight: 700, color: "rgba(255,255,255,.9)" }}>{monthQty > 0 ? mainUnit : "dispatches"}</span>
+        </div>
+        <div style={{ fontSize: 13, color: "rgba(255,255,255,.88)", marginTop: 4, position: "relative", zIndex: 1 }}>
+          {monthSales.length} dispatch{monthSales.length === 1 ? "" : "es"} · {inr(monthValue)} ka maal
+        </div>
+      </div>
+
+      {/* order progress - kitna order baki hai */}
+      {progress.length > 0 && (<>
+        <div className="anim-in st3" style={{ margin: "22px 0 10px" }}><span className="eyebrow">Order kitna baki hai</span></div>
+        {progress.map((p, i) => {
+          const pct = Math.min(100, Math.round((p.shipped / p.ordered) * 100));
+          const left = Math.max(0, p.ordered - p.shipped);
+          return (
+            <div key={i} className="card anim-in" style={{ padding: "14px 15px", marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.customer}</div>
+                  <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 1 }}>{p.item}</div>
+                </div>
+                <div className="mono" style={{ flexShrink: 0, fontSize: 13, fontWeight: 600, color: pct >= 100 ? "var(--grn-d)" : "var(--amber)" }}>
+                  {pct >= 100 ? "PURA HUA ✓" : fmtQty(left) + " " + (p.unit || "") + " baki"}
+                </div>
+              </div>
+              <div style={{ height: 10, borderRadius: 999, background: "var(--soft)", border: "1px solid var(--line)", marginTop: 10, overflow: "hidden" }}>
+                <div style={{ width: pct + "%", height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#2E9E33,#7CCB80)", transition: "width .6s" }} />
+              </div>
+              <div className="mono" style={{ fontSize: 11, color: "var(--faint)", marginTop: 6 }}>
+                {fmtQty(p.shipped)} / {fmtQty(p.ordered)} {p.unit} shipped ({pct}%)
+              </div>
+            </div>
+          );
+        })}
+      </>)}
+
+      {/* top dues */}
+      {receivable.length > 0 && (<>
+        <div className="anim-in st3" style={{ margin: "22px 0 10px" }}><span className="eyebrow">Sabse zyada baki</span></div>
+        <div className="card anim-in" style={{ padding: "4px 16px" }}>
+          {receivable.slice().sort((a, b) => b.balance - a.balance).slice(0, 5).map((x, i) => (
+            <div key={i} className="rowline" style={{ alignItems: "center" }}>
+              <span className="rl" style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ink)" }}>{x.name}</span>
+              <b className="mono" style={{ color: "var(--red)", fontSize: 15 }}>{inr(x.balance)}</b>
+            </div>
+          ))}
+        </div>
+      </>)}
+
+      {/* recent dispatches */}
+      {dispatches.length > 0 && (<>
+        <div className="anim-in st4" style={{ margin: "22px 0 10px" }}><span className="eyebrow">Recent dispatches</span></div>
+        {dispatches.map((x, i) => (
+          <div key={i} className="card anim-in" style={{ padding: "13px 15px", marginBottom: 9, display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ width: 42, height: 42, borderRadius: 12, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🚚</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{x.party || "(no party)"}</div>
+              <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {x.qty > 0 ? fmtQty(x.qty) + " " + (x.unit || "") + (x.item ? " · " + x.item : "") : (x.item || "sale")} · {fdateShort(x.vdate)}
+              </div>
+            </div>
+            <b className="mono" style={{ flexShrink: 0, fontSize: 14.5, color: "var(--grn-d)" }}>{inr(x.amount)}</b>
+          </div>
+        ))}
+      </>)}
+
+      <div className="card-tint anim-in st5" style={{ padding: "14px 16px", display: "flex", gap: 10, alignItems: "flex-start", marginTop: 14, marginBottom: 8 }}>
+        <span style={{ color: "var(--grn)", flexShrink: 0, marginTop: 1 }}><I.bolt /></span>
+        <span style={{ fontSize: 13, color: "var(--dim)", lineHeight: 1.6 }}>
+          Ye page aapke accountant ke Tally se apne aap banta hai - aapko Tally kholne ki zaroorat nahi. Setup mein "Tally (BETA)" se connect hota hai.
+        </span>
+      </div>
+      </>)}
     </div></div>
   );
 }

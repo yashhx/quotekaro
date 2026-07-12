@@ -78,3 +78,31 @@ create policy "own ledgers select" on public.tally_ledgers
 --   delete from public.tally_sync
 --   where quote_id = 'THE_QUOTE_ID' and status = 'error';
 -- ============================================================
+
+-- ============================================================
+-- 4. Insights additions (2026-07-12): ledger group + vouchers.
+--    Safe to re-run; run this whole file again if you ran the
+--    older version before.
+-- ============================================================
+alter table public.tally_ledgers add column if not exists grp text default 'debtor';
+
+create table if not exists public.tally_vouchers (
+  user_id uuid references auth.users(id) on delete cascade,
+  vkey    text,                -- stable voucher identity (guid/number+date)
+  vdate   bigint,              -- ms epoch
+  vtype   text,                -- Sales / Purchase
+  party   text,
+  amount  numeric,
+  item    text default '',
+  qty     numeric default 0,
+  unit    text default '',
+  as_of   timestamptz default now(),
+  primary key (user_id, vkey)
+);
+
+alter table public.tally_vouchers enable row level security;
+
+drop policy if exists "own vouchers select" on public.tally_vouchers;
+create policy "own vouchers select" on public.tally_vouchers
+  for select using (auth.uid() = user_id);
+-- writes only via the tally-sync function (service role bypasses RLS)

@@ -225,22 +225,44 @@ function voucherXml(q, voucherType, salesLedger, dateOverrideMs) {
   return { xml: importEnvelope("Vouchers", tallyMsg(voucher)), qtyNote };
 }
 
-/* TDL Collection export: all ledgers under Sundry Debtors with their
-   closing balances. */
-function ledgerExportXml() {
+/* TDL Collection export: all ledgers under a group (Sundry Debtors or
+   Sundry Creditors) with their closing balances. */
+function ledgerExportXml(group) {
   return XML_PROLOG + "<ENVELOPE>" +
-    "<HEADER><VERSION>1</VERSION><TALLYREQUEST>Export</TALLYREQUEST><TYPE>Collection</TYPE><ID>QuoteKaro Debtors</ID></HEADER>" +
+    "<HEADER><VERSION>1</VERSION><TALLYREQUEST>Export</TALLYREQUEST><TYPE>Collection</TYPE><ID>QuoteKaro Ledgers</ID></HEADER>" +
     "<BODY><DESC>" +
     "<STATICVARIABLES><SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT></STATICVARIABLES>" +
     "<TDL><TDLMESSAGE>" +
-    '<COLLECTION NAME="QuoteKaro Debtors" ISMODIFY="No">' +
+    '<COLLECTION NAME="QuoteKaro Ledgers" ISMODIFY="No">' +
     "<TYPE>Ledger</TYPE>" +
-    "<CHILDOF>Sundry Debtors</CHILDOF>" +
-    "<BELONGSTO>Yes</BELONGSTO>" + /* include debtors filed under sub-groups too */
+    "<CHILDOF>" + xmlEsc(group) + "</CHILDOF>" +
+    "<BELONGSTO>Yes</BELONGSTO>" + /* include ledgers filed under sub-groups too */
     "<NATIVEMETHOD>Name</NATIVEMETHOD>" +
     "<NATIVEMETHOD>ClosingBalance</NATIVEMETHOD>" +
     "<FETCH>NAME,CLOSINGBALANCE</FETCH>" +
     "</COLLECTION>" +
+    "</TDLMESSAGE></TDL>" +
+    "</DESC></BODY>" +
+    "</ENVELOPE>";
+}
+
+/* TDL Collection export: Sales + Purchase vouchers in a date window, with
+   party, amount and inventory lines (item, quantity like "12.500 MT").
+   Powers the app's Tally Insights page. */
+function voucherExportXml(fromYmd, toYmd) {
+  return XML_PROLOG + "<ENVELOPE>" +
+    "<HEADER><VERSION>1</VERSION><TALLYREQUEST>Export</TALLYREQUEST><TYPE>Collection</TYPE><ID>QuoteKaro Vouchers</ID></HEADER>" +
+    "<BODY><DESC>" +
+    "<STATICVARIABLES><SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>" +
+    '<SVFROMDATE TYPE="Date">' + fromYmd + "</SVFROMDATE>" +
+    '<SVTODATE TYPE="Date">' + toYmd + "</SVTODATE></STATICVARIABLES>" +
+    "<TDL><TDLMESSAGE>" +
+    '<COLLECTION NAME="QuoteKaro Vouchers" ISMODIFY="No">' +
+    "<TYPE>Voucher</TYPE>" +
+    "<FILTERS>QKSalePur</FILTERS>" +
+    "<FETCH>DATE,GUID,VOUCHERNUMBER,VOUCHERTYPENAME,PARTYLEDGERNAME,PARTYNAME,AMOUNT,ALLINVENTORYENTRIES.LIST</FETCH>" +
+    "</COLLECTION>" +
+    '<SYSTEM TYPE="Formulae" NAME="QKSalePur">$$IsSales:$VoucherTypeName OR $$IsPurchase:$VoucherTypeName</SYSTEM>' +
     "</TDLMESSAGE></TDL>" +
     "</DESC></BODY>" +
     "</ENVELOPE>";
@@ -270,7 +292,7 @@ const isDuplicateErr = (s) => /already exists|duplicated?\b/i.test(String(s));
 /* Tally XML output is quirky: BOM, stray control characters, sometimes
    numeric character references for control chars. Scrub, then pick
    NAME / CLOSINGBALANCE pairs per <LEDGER> block with regex. */
-function parseLedgers(rawText) {
+function parseLedgers(rawText, flip = true) {
   let t = String(rawText || "");
   t = t.replace(/^\uFEFF/, "");
   t = t.replace(/&#(\d+);/g, (full, d) => (Number(d) >= 32 ? String.fromCharCode(Number(d)) : ""));
@@ -302,9 +324,62 @@ function parseLedgers(rawText) {
         else raw = n;
       }
     }
-    /* Tally XML shows debit balances as NEGATIVE numbers. A debtor who owes
-       money is a debit, so flip the sign: positive = customer owes money. */
-    out.push({ name: name.slice(0, 80), balance: -raw });
+    /* Tally XML shows debit balances as NEGATIVE numbers. For debtors we flip
+       so positive = customer owes us; for creditors we keep the raw credit
+       sign so positive = we owe them. */
+    out.push({ name: name.slice(0, 80), balance: flip ? -raw : raw });
+  }
+  return out;
+}
+
+/* scrub + parse the voucher collection into flat rows (one per item line) */
+function parseVouchers(rawText) {
+  let t = String(rawText || "");
+  t = t.replace(/^\uFEFF/, "");
+  t = t.replace(/&#(\d+);/g, (full, d) => (Number(d) >= 32 ? String.fromCharCode(Number(d)) : ""));
+  t = t.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+  const tag = (body, name) => {
+    const m = body.match(new RegExp("<" + name + "[^>]*>([\\s\\S]*?)</" + name + ">", "i"));
+    return m ? xmlUnesc(m[1]).replace(/\s+/g, " ").trim() : "";
+  };
+  const money2 = (s) => { const n = parseFloat(String(s).replace(/,/g, "")); return Number.isFinite(n) ? Math.abs(n) : 0; };
+  const out = [];
+  const vRe = /<VOUCHER\b[^>]*>([\s\S]*?)<\/VOUCHER>/gi;
+  let vm;
+  while ((vm = vRe.exec(t))) {
+    const body = vm[1];
+    /* voucher-level fields live before the first inventory list */
+    const head = body.split(/<ALLINVENTORYENTRIES/i)[0];
+    const d = tag(head, "DATE"); /* yyyymmdd */
+    const dm = /^(\d{4})(\d{2})(\d{2})$/.exec(d);
+    const vdate = dm ? new Date(+dm[1], +dm[2] - 1, +dm[3]).getTime() : 0;
+    const vtype = tag(head, "VOUCHERTYPENAME");
+    const party = tag(head, "PARTYLEDGERNAME") || tag(head, "PARTYNAME");
+    const vAmount = money2(tag(head, "AMOUNT"));
+    const baseKey = tag(head, "GUID") || (vtype + "-" + tag(head, "VOUCHERNUMBER") + "-" + d);
+    if (!baseKey || !vdate) continue;
+    const items = [];
+    const iRe = /<ALLINVENTORYENTRIES\.LIST[^>]*>([\s\S]*?)<\/ALLINVENTORYENTRIES\.LIST>/gi;
+    let im;
+    while ((im = iRe.exec(body))) {
+      const ib = im[1];
+      const qm = /(-?[\d.,]+)\s*([A-Za-z]{0,12})/.exec(tag(ib, "ACTUALQTY") || tag(ib, "BILLEDQTY") || "");
+      items.push({
+        item: tag(ib, "STOCKITEMNAME").slice(0, 80),
+        qty: qm ? Math.abs(parseFloat(qm[1].replace(/,/g, ""))) || 0 : 0,
+        unit: qm && qm[2] ? qm[2] : "",
+        amount: money2(tag(ib, "AMOUNT")),
+      });
+    }
+    if (!items.length) items.push({ item: "", qty: 0, unit: "", amount: 0 });
+    items.forEach((it, idx) => {
+      out.push({
+        vkey: items.length > 1 ? baseKey + "#" + idx : baseKey,
+        vdate, vtype, party,
+        amount: it.amount || (idx === 0 ? vAmount : 0),
+        item: it.item, qty: it.qty, unit: it.unit,
+      });
+    });
   }
   return out;
 }
@@ -468,26 +543,43 @@ async function cycle(cfg) {
     }
   }
 
-  /* e) customer outstanding balances from Tally */
-  let ledgers = null;
+  /* e) insights pull: debtor + creditor balances and recent Sales/Purchase
+        vouchers (last 45 days, with item quantities) */
+  let ledgers = null, vouchers = null;
   if (cfg.pullOutstanding && ping.ok) {
     try {
-      const reply = await tallyPost(cfg, ledgerExportXml());
-      ledgers = parseLedgers(reply).slice(0, 500);
-      log("Read " + ledgers.length + " customer balance(s) from Tally (Sundry Debtors)");
+      const deb = parseLedgers(await tallyPost(cfg, ledgerExportXml("Sundry Debtors")), true)
+        .map((l) => ({ ...l, grp: "debtor" }));
+      let cred = [];
+      try {
+        cred = parseLedgers(await tallyPost(cfg, ledgerExportXml("Sundry Creditors")), false)
+          .map((l) => ({ ...l, grp: "creditor" }));
+      } catch (e) { warn("could not read creditor balances - " + ((e && e.message) || "error")); }
+      ledgers = deb.concat(cred).slice(0, 500);
+      log("Read " + deb.length + " debtor + " + cred.length + " creditor balance(s) from Tally");
     } catch (e) {
       warn("could not read outstanding balances from Tally - " + ((e && e.message) || "error"));
       ledgers = null;
     }
+    try {
+      const to = new Date(), from = new Date(Date.now() - 45 * 86400000);
+      const ymd = (dd) => "" + dd.getFullYear() + pad(dd.getMonth() + 1) + pad(dd.getDate());
+      vouchers = parseVouchers(await tallyPost(cfg, voucherExportXml(ymd(from), ymd(to)))).slice(0, 400);
+      log("Read " + vouchers.length + " sales/purchase line(s) from Tally (last 45 days)");
+    } catch (e) {
+      warn("could not read vouchers from Tally - " + ((e && e.message) || "error"));
+      vouchers = null;
+    }
   }
 
-  /* f) report anything still unreported, plus the balances */
+  /* f) report anything still unreported, plus the balances + vouchers */
   if (cfg.dryRun) {
     log("DRY RUN - nothing was sent to Tally and nothing was saved to the cloud" +
-      (Array.isArray(ledgers) ? " (would have sent " + ledgers.length + " balances)" : ""));
+      (Array.isArray(ledgers) ? " (would have sent " + ledgers.length + " balances" +
+        (Array.isArray(vouchers) ? ", " + vouchers.length + " voucher lines" : "") + ")" : ""));
     return;
   }
-  if (!unreported.length && !Array.isArray(ledgers)) {
+  if (!unreported.length && !Array.isArray(ledgers) && !Array.isArray(vouchers)) {
     if (pushed) log("All " + pushed + " result(s) already saved to the cloud.");
     else log("Nothing to report to the cloud this round.");
     return;
@@ -495,8 +587,9 @@ async function cycle(cfg) {
   try {
     const body = { results: unreported };
     if (Array.isArray(ledgers)) body.ledgers = ledgers;
+    if (Array.isArray(vouchers)) body.vouchers = vouchers;
     const resp = await cloudPostResults(cfg, body);
-    log("Saved to cloud: " + (resp.saved || 0) + " sync result(s), " + (resp.ledgers || 0) + " balance(s)");
+    log("Saved to cloud: " + (resp.saved || 0) + " sync result(s), " + (resp.ledgers || 0) + " balance(s), " + (resp.vouchers || 0) + " voucher line(s)");
   } catch (e) {
     err("could not save results to the cloud - " + e.message + " (the same quotes may be retried next round)");
   }

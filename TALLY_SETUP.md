@@ -139,3 +139,21 @@ runs on your PC and only it talks to Tally), cannot see other users' data, and
 cannot touch payments or passwords. If a key ever leaks, open the app
 **Setup > Tally > Regenerate key** - the old key stops working immediately, then
 paste the new one into config.json.
+
+
+## Tally Insights page (added 2026-07-13)
+
+The connector now also pulls, every cycle:
+- **Debtor + creditor balances** (Sundry Debtors / Sundry Creditors, sub-groups included)
+- **Sales + Purchase vouchers of the last 45 days** with item, quantity and unit
+  (e.g. "12.5 MT") - one line per item.
+
+The app turns this into the **Tally - seedha hisaab** page (Home > green Tally
+card): money to collect, money to pay, tonnage shipped this month, recent
+dispatches, and order-progress bars (won order qty in the app vs quantity
+actually shipped in Tally, matched by customer name).
+
+Nothing to configure - it rides the same connector key and `pullOutstanding`
+flag. Run the updated `supabase/tally.sql` once (adds the `grp` column and the
+`tally_vouchers` table). For order-progress bars to work, the customer name on
+the app quote must match the Tally party ledger name (case-insensitive).

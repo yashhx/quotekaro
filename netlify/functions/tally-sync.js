@@ -22,6 +22,7 @@
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json" } });
 const MAX_PENDING = 25;
 const MAX_LEDGERS = 500;
+const MAX_VOUCHERS = 500;
 const MAX_DETAIL = 300;
 const MAX_ATTEMPTS = 5;
 
@@ -144,7 +145,7 @@ export default async (req) => {
         if (!name) { console.warn("tally-sync: skipped a ledger row without a name"); continue; }
         if (seen.has(name)) { console.warn("tally-sync: skipped duplicate ledger name", name); continue; }
         seen.add(name);
-        lrows.push({ user_id: tenant.user_id, name, balance: Number(l.balance) || 0 });
+        lrows.push({ user_id: tenant.user_id, name, balance: Number(l.balance) || 0, grp: l.grp === "creditor" ? "creditor" : "debtor" });
         if (lrows.length >= MAX_LEDGERS) { console.warn("tally-sync: ledger list capped at", MAX_LEDGERS); break; }
       }
       try {
@@ -165,7 +166,46 @@ export default async (req) => {
       } catch (e) { console.error("tally-sync: ledger update failed -", e && e.message); }
     }
 
-    return json({ ok: true, saved, ledgers });
+    /* 3. replace the recent-vouchers window (drives the Tally Insights page:
+          tonnage shipped, recent dispatches, order progress) */
+    let vouchers = 0;
+    if (Array.isArray(body.vouchers)) {
+      const seenV = new Set();
+      const vrows = [];
+      for (const v of body.vouchers) {
+        const vkey = v && v.vkey != null ? String(v.vkey).trim().slice(0, 120) : "";
+        if (!vkey || seenV.has(vkey)) continue;
+        seenV.add(vkey);
+        vrows.push({
+          user_id: tenant.user_id, vkey,
+          vdate: Number(v.vdate) || 0,
+          vtype: String(v.vtype || "").slice(0, 30),
+          party: String(v.party || "").trim().slice(0, 80),
+          amount: Number(v.amount) || 0,
+          item: String(v.item || "").trim().slice(0, 80),
+          qty: Number(v.qty) || 0,
+          unit: String(v.unit || "").trim().slice(0, 12),
+          as_of: new Date().toISOString(),
+        });
+        if (vrows.length >= MAX_VOUCHERS) { console.warn("tally-sync: voucher list capped at", MAX_VOUCHERS); break; }
+      }
+      try {
+        const del = await fetch(url + "/rest/v1/tally_vouchers?user_id=eq." + uid, { method: "DELETE", headers: hdrs });
+        if (!del.ok) {
+          console.error("tally-sync: voucher clear failed -", del.status, "- keeping old window (run supabase/tally.sql again?)");
+        } else if (vrows.length) {
+          const ins = await fetch(url + "/rest/v1/tally_vouchers", {
+            method: "POST",
+            headers: { ...hdrs, "content-type": "application/json", prefer: "return=minimal" },
+            body: JSON.stringify(vrows),
+          });
+          if (!ins.ok) console.error("tally-sync: voucher insert failed -", ins.status, (await ins.text()).slice(0, 200));
+          else { vouchers = vrows.length; console.log("tally-sync: stored", vouchers, "voucher(s) for", tenant.user_id); }
+        }
+      } catch (e) { console.error("tally-sync: voucher update failed -", e && e.message); }
+    }
+
+    return json({ ok: true, saved, ledgers, vouchers });
   }
 
   return json({ ok: false, error: "method not allowed" }, 405);
