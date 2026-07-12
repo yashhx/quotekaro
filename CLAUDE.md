@@ -1,4 +1,6 @@
-# QuoteKaro — project context for Claude Code
+# QuoteKaro / TrackRakho — project context for Claude Code
+
+**RENAMED to TrackRakho (2026-07-13, domain trackrakho.com bought):** all user-visible branding (title, manifest, Auth screen, PDF footer, export filenames, Help/plan copy, marketing-site canonical) says TrackRakho. INTERNAL names deliberately unchanged: localStorage keys (`quotekaro:v5` etc. - renaming would orphan user data), repo/function/store names, `quotekaro-dev` launch config, quotekaroo.netlify.app (stays as an alias once trackrakho.com is connected). Footer label is now "TRACKRAKHO · EARLY ACCESS".
 
 Read this fully before making changes. It carries the context of six weeks of product work and field validation.
 

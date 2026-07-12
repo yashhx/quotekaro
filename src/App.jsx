@@ -783,7 +783,7 @@ const calcQuote = (d, data) => {
 
 const waText = (q, shop, validity) =>
   `*QUOTATION - ${shop}*\n` + `Part: ${q.part}\nQuantity: ${q.qty} pcs\nRate: ${inr(q.pricePc, 2)} / pc\n` +
-  `*Total: ${inr(q.total)} + GST*\n` + `Valid ${validity} days\n- Sent via QuoteKaro`;
+  `*Total: ${inr(q.total)} + GST*\n` + `Valid ${validity} days\n- Sent via TrackRakho`;
 
 /* ---- PDF: drawn with jsPDF and downloaded as a real .pdf file.
    No window.open / no print dialog, so it works inside the artifact sandbox. ---- */
@@ -882,7 +882,7 @@ async function downloadQuotePDF(q, data) {
 
   /* footer */
   doc.setFont("courier", "normal").setFontSize(9).setTextColor(134, 149, 139);
-  doc.text("GENERATED WITH QUOTEKARO", W / 2, doc.internal.pageSize.getHeight() - 40, { align: "center" });
+  doc.text("GENERATED WITH TRACKRAKHO", W / 2, doc.internal.pageSize.getHeight() - 40, { align: "center" });
 
   doc.save(num + ".pdf");
   return true;
@@ -918,7 +918,7 @@ function exportQuotesCSV(quotes) {
   const body = [SHEET_COLS, ...rows.map((r) => SHEET_COLS.map((c) => r[c]))].map((r) => r.map(csvCell).join(",")).join("\r\n");
   const blob = new Blob(["﻿" + body], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a"); a.href = url; a.download = "QuoteKaro-pipeline.csv"; a.click();
+  const a = document.createElement("a"); a.href = url; a.download = "TrackRakho-pipeline.csv"; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 async function exportQuotesXLSX(quotes) {
@@ -927,7 +927,7 @@ async function exportQuotesXLSX(quotes) {
   ws["!cols"] = [{ wch: 12 }, { wch: 22 }, { wch: 14 }, { wch: 24 }, { wch: 7 }, { wch: 10 }, { wch: 12 }, { wch: 9 }, { wch: 12 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Pipeline");
-  XLSX.writeFile(wb, "QuoteKaro-pipeline.xlsx");
+  XLSX.writeFile(wb, "TrackRakho-pipeline.xlsx");
 }
 
 /* map a spreadsheet row (any column casing / synonyms) to a quote */
@@ -1017,7 +1017,7 @@ function Auth({ onAuthed, authError }) {
       <div className="auth">
         <div className="auth-top">
           <div className="auth-logo">QK</div>
-          <h1>QuoteKaro</h1>
+          <h1>Track<span style={{ color: "var(--grn)" }}>Rakho</span></h1>
           <p>Quotations in five minutes - built for India's job-shops.</p>
         </div>
         <div className="auth-body">
@@ -1062,7 +1062,7 @@ function Auth({ onAuthed, authError }) {
     <div className="auth">
       <div className="auth-top">
         <div className="auth-logo">QK</div>
-        <h1>QuoteKaro</h1>
+        <h1>Track<span style={{ color: "var(--grn)" }}>Rakho</span></h1>
         <p>Quotations in five minutes - built for India's job-shops.</p>
       </div>
       <div className="auth-body">
@@ -1131,7 +1131,7 @@ function Subscribe({ account, onSubscribe, onBack }) {
         <div><div className="microlbl">PLANS</div><div className="h-disp" style={{ fontSize: 23, fontWeight: 700 }}>Choose your plan</div></div>
       </div>
       <p style={{ fontSize: 14, color: "var(--dim)", marginBottom: 22, lineHeight: 1.6 }}>
-        One underquoted job can cost more than a year of QuoteKaro. Prices per month, billed yearly. GST extra.
+        One underquoted job can cost more than a year of TrackRakho. Prices per month, billed yearly. GST extra.
       </p>
 
       {PLANS.map((pl) => (
@@ -1341,7 +1341,7 @@ export default function App() {
               const n = (parsed.quotes || []).length;
               /* explicit consent: this device may have SOMEONE ELSE'S prototype
                  data - never silently absorb it into the wrong account */
-              if (window.confirm("This device has QuoteKaro data from before login (" + n + " quote" + (n === 1 ? "" : "s") + ", shop: " + (parsed.shopName || "unnamed") + "). Import it into THIS account?")) {
+              if (window.confirm("This device has TrackRakho data from before login (" + n + " quote" + (n === 1 ? "" : "s") + ", shop: " + (parsed.shopName || "unnamed") + "). Import it into THIS account?")) {
                 seed = parsed; localStorage.removeItem(KEY);
               }
             }
@@ -2948,7 +2948,7 @@ function Help({ data, ping }) {
       {/* contact - at the bottom */}
       <span className="eyebrow anim-in" style={{ display: "block", margin: "26px 0 12px" }}>Talk to a person</span>
       <div className="anim-in" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <a className="press" href={"https://wa.me/" + waNum + "?text=" + encodeURIComponent("Hi, I need help with QuoteKaro")} target="_blank" rel="noreferrer"
+        <a className="press" href={"https://wa.me/" + waNum + "?text=" + encodeURIComponent("Hi, I need help with TrackRakho")} target="_blank" rel="noreferrer"
           style={{ textDecoration: "none", background: "linear-gradient(135deg,#2E9E33,#1B7A20)", color: "#fff", borderRadius: 20, padding: "18px 16px", display: "flex", flexDirection: "column", gap: 8, boxShadow: "var(--sh-m)" }}>
           <I.wa /><div><div style={{ fontWeight: 700, fontSize: 15 }}>Chat with us</div><div style={{ fontSize: 12, color: "rgba(255,255,255,.85)", marginTop: 1 }}>WhatsApp · in Hindi</div></div>
         </a>
@@ -2960,7 +2960,7 @@ function Help({ data, ping }) {
       <div className="card-tint anim-in" style={{ padding: "16px 16px", marginTop: 12, textAlign: "center" }}>
         <div style={{ fontSize: 13.5, color: "var(--dim)" }}>Founding shops get priority support, in Hindi, from the people who built this.</div>
       </div>
-      <div style={{ fontSize: 11.5, color: "var(--faint)", textAlign: "center", margin: "18px 0 6px" }} className="mono">QUOTEKARO · PROTOTYPE V4</div>
+      <div style={{ fontSize: 11.5, color: "var(--faint)", textAlign: "center", margin: "18px 0 6px" }} className="mono">TRACKRAKHO · EARLY ACCESS</div>
     </div></div>
   );
 }
@@ -3295,7 +3295,7 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
         }}>{confirmClear ? "Tap again to confirm" : "Clear everything"}</button>
       </div>
       <button className="btn btn-ghost btn-sm press" style={{ width: "100%", marginTop: 14, color: "var(--dim)" }} onClick={onLogout}><I.logout /> Log out</button>
-      <div style={{ fontSize: 11.5, color: "var(--faint)", textAlign: "center", paddingBottom: 6, marginTop: 14 }} className="mono">QUOTEKARO · PROTOTYPE V5</div>
+      <div style={{ fontSize: 11.5, color: "var(--faint)", textAlign: "center", paddingBottom: 6, marginTop: 14 }} className="mono">TRACKRAKHO · EARLY ACCESS</div>
     </div></div>
   );
 }
