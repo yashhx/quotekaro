@@ -687,6 +687,17 @@ const CAT_ART = {
 /* trade-specific sample quotes, shown only when a fresh account picks a trade
    (never overwrites real data - see the pick handler) */
 const industrySamples = (key) => {
+  if (key === "machining") return [
+    { customer: "Apex Hydraulics", part: "Gland Nut - 60mm", spec: "EN8 · Ø60 · CNC turned", qty: 200, total: 34878, status: "won", fu: null, cat: "turned", note: "Repeat customer. PO mila, delivery 2 lots mein." },
+    { customer: "Krishna Pumps", part: "Bush Ø42", spec: "EN8 · Ø42 x 55mm", qty: 500, total: 30600, status: "pending", fu: 2, cat: "turned", note: "Rate sheet bheji. Unke purchase se approval aana hai." },
+    { customer: "Bharat Traders", part: "MS Hex Bar lot", spec: "EN1A · 24AF · 1.2 T", qty: 0, total: 128000, status: "pending", fu: -1, cat: "trading", note: "Advance pe atka hai. Mill rate badh gaya - shayad dobara quote karna pade." },
+    { customer: "Gupta Fabricators", part: "Gate + railing job", spec: "MS 40x40 box · 22 ft", qty: 1, total: 58000, status: "pending", fu: 3, cat: "fabrication", note: "Site measure ho gaya. Design ki photo WhatsApp pe aayi hai." },
+    { customer: "Verma Enterprises", part: "SS 304 fittings", spec: "SS 304 · assorted", qty: 0, total: 76500, status: "pending", fu: 0, cat: "fasteners", note: "Material rate confirm karke final karna hai." },
+    { customer: "Singh Auto Parts", part: "Spacer Ø18 (repeat)", spec: "Alu 6061 · anodized", qty: 1000, total: 22500, status: "won", fu: null, cat: "turned", note: "Har mahine ka repeat order. Anodizing bahar se." },
+    { customer: "Faridabad Auto Comp", part: "Laser cut brackets", spec: "CRC 2mm · nested", qty: 5000, total: 42000, status: "won", fu: null, cat: "sheet", note: "Nesting optimize kiya - margin theek hai." },
+    { customer: "Om Forgings", part: "Flange 6 inch", spec: "MS forged · machined", qty: 120, total: 49500, status: "lost", fu: null, cat: "milled", note: "L1 nahi bane - Ludhiana wale ne 380/pc quote kiya." },
+    { customer: "Mehta Industries", part: "Shaft turning job", spec: "EN19 · Ø35 x 400", qty: 60, total: 46800, status: "lost", fu: null, cat: "turned", note: "Cycle time zyada lag raha tha - capacity issue." },
+  ];
   if (key === "printing") return [
     { customer: "Gupta Properties", part: "Shop opening flex banners", spec: "6x3 ft · star flex · eyelets", qty: 2, total: 1080, status: "pending", fu: 0, cat: "banner", note: "Aaj shaam 6 baje muhurat - 4 baje tak chahiye. Design final. Rs 30/sqft." },
     { customer: "CA Rohit Jain", part: "Visiting cards - premium", spec: "3.5x2 in · 350gsm · velvet lam + spot UV", qty: 500, total: 2250, status: "pending", fu: 0, cat: "cards", note: "Proof approved. Spot UV bahar se hoga - 2 din extra." },
@@ -1567,7 +1578,7 @@ export default function App() {
             <div className="nav-pill" style={pillStyle} />
             <button ref={setNavRef("home")} className={"nav-it " + (tab === "home" ? "on" : "")} onClick={() => setTab("home")}><I.home /><span>Home</span></button>
             <button ref={setNavRef("quotes")} className={"nav-it " + (tab === "quotes" ? "on" : "")} onClick={() => setTab("quotes")}><I.list /><span>Pipeline</span></button>
-            <button className="fab press" onClick={() => setFabOpen(true)} aria-label="Add a quote"><I.plus /></button>
+            <button className="fab press" onClick={() => (industryOf(data).key === "machining" ? setFabOpen(true) : startLog())} aria-label="Add a quote"><I.plus /></button>
             <button ref={setNavRef("setup")} className={"nav-it " + (tab === "setup" ? "on" : "")} onClick={() => setTab("setup")}><I.gear /><span>Setup</span></button>
             <button ref={setNavRef("help")} className={"nav-it " + (tab === "help" ? "on" : "")} onClick={() => setTab("help")}><I.help /><span>Help</span></button>
           </nav>
@@ -1579,101 +1590,120 @@ export default function App() {
 
 /* ================= HOME ================= */
 function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally, goSetup, goSubscribe }) {
-  /* animated hero lines - flow speed tracks scroll velocity */
-  const flowRefs = useRef([]);
-  useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) return;
-    const scroller = flowRefs.current[0] ? flowRefs.current[0].closest(".scr") : null;
-    let off = 0, vel = 0, base = 0.35, lastY = scroller ? scroller.scrollTop : 0, raf;
-    const onScroll = () => { const y = scroller ? scroller.scrollTop : 0; vel += Math.min(Math.abs(y - lastY) * 0.12, 6); lastY = y; };
-    if (scroller) scroller.addEventListener("scroll", onScroll, { passive: true });
-    const tick = () => {
-      off -= base + vel;
-      vel *= 0.92; /* smooth ease-out back to base speed */
-      flowRefs.current.forEach((p, i) => { if (p) p.style.strokeDashoffset = (off * (1 + i * 0.18)).toFixed(1); });
-      raf = requestAnimationFrame(tick);
-    };
-    tick();
-    return () => { cancelAnimationFrame(raf); if (scroller) scroller.removeEventListener("scroll", onScroll); };
-  }, []);
-
+  const ind = industryOf(data);
+  const isMach = ind.key === "machining";
   const h = new Date().getHours();
   const greet = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+
+  /* ---- the numbers that actually matter to an owner ---- */
   const m0 = new Date(); m0.setDate(1); m0.setHours(0, 0, 0, 0);
   const month = data.quotes.filter((q) => q.at >= m0.getTime());
-  const value = month.reduce((s, q) => s + q.total, 0);
-  const won = month.filter((q) => q.status === "won").length;
-  const lost = month.filter((q) => q.status === "lost").length;
-  const winRate = won + lost ? Math.round((won / (won + lost)) * 100) : null;
+  const monthQuoted = month.reduce((s, q) => s + q.total, 0);
+  const monthWon = month.filter((q) => q.status === "won");
+  const monthWonVal = monthWon.reduce((s, q) => s + q.total, 0);
+  const monthLost = month.filter((q) => q.status === "lost").length;
+  const winRate = monthWon.length + monthLost ? Math.round((monthWon.length / (monthWon.length + monthLost)) * 100) : null;
+  const pendingQs = data.quotes.filter((q) => q.status === "pending");
+  const pendingValue = pendingQs.reduce((s, q) => s + q.total, 0);
+  const wonQs = data.quotes.filter((q) => q.status === "won");
+  const wonValue = wonQs.reduce((s, q) => s + q.total, 0);
   const days = [...Array(7)].map((_, i) => {
     const d0 = new Date(); d0.setHours(0, 0, 0, 0); d0.setDate(d0.getDate() - (6 - i));
     const d1 = new Date(d0); d1.setDate(d1.getDate() + 1);
     return data.quotes.filter((q) => q.at >= d0 && q.at < d1).length;
   });
-  const max = Math.max(1, ...days);
-  const recent = data.quotes.slice(0, 3);
+  const dmax = Math.max(1, ...days);
   const dueList = data.quotes.filter((q) => { const st = followState(q); return st === "overdue" || st === "today"; })
     .sort((a, b) => a.followUp - b.followUp);
-  const pendingValue = data.quotes.filter((q) => q.status === "pending").reduce((s, q) => s + q.total, 0);
-  const ind = industryOf(data);
-  const catStats = (ind.cats || []).map((c) => {
-    const qs = data.quotes.filter((x) => catOf(x, ind) === c.key);
-    return { ...c, total: qs.length, ongoing: qs.filter((x) => x.status === "pending").length };
-  }).filter((c) => c.total > 0);
+  const recent = data.quotes.slice(0, 3);
+
+  /* category tiles: printing shows active ones, furniture shows the full range */
+  const showCats = ind.key === "printing" || ind.key === "furniture";
+  const catStats = showCats
+    ? (ind.cats || []).filter((c) => c.key !== "other").map((c) => {
+        const qs = data.quotes.filter((x) => catOf(x, ind) === c.key);
+        return { ...c, total: qs.length, ongoing: qs.filter((x) => x.status === "pending").length };
+      }).filter((c) => ind.key === "furniture" || c.total > 0)
+    : [];
+
+  const kpis = [
+    [inr(pendingValue), "PENDING VALUE", "var(--amber)", () => goQuotes("pending")],
+    [inr(monthWonVal), "WON THIS MONTH", "#1B7A20", () => goQuotes("won")],
+    [inr(monthQuoted), "QUOTED THIS MONTH", "var(--grn-d)", () => goQuotes("all")],
+    [winRate == null ? "—" : winRate + "%", "WIN RATE", "var(--ink)", openAnalytics],
+  ];
 
   return (
     <div className="scr"><div className="pagepad">
-      <div className="anim-in" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+      <div className="anim-in" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <div>
           <div className="microlbl">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}</div>
-          <div className="h-disp" style={{ fontSize: 26, fontWeight: 700, marginTop: 3 }}>{greet} 👋</div>
-          <div style={{ fontSize: 14.5, color: "var(--dim)" }}>{data.shopName}</div>
+          <div className="h-disp" style={{ fontSize: 25, fontWeight: 700, marginTop: 3 }}>{greet}</div>
+          <div style={{ fontSize: 14, color: "var(--dim)" }}>{data.shopName} · {ind.label}</div>
         </div>
-        <button onClick={goSetup} className="press" style={{ width: 48, height: 48, borderRadius: 15, background: "linear-gradient(135deg,#2E9E33,#155E18)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontWeight: 600, fontSize: 14, boxShadow: "var(--sh-s)", border: "none", cursor: "pointer" }}>
+        <button onClick={goSetup} className="press" style={{ width: 46, height: 46, borderRadius: 15, background: "linear-gradient(135deg,#2E9E33,#155E18)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontWeight: 600, fontSize: 14, boxShadow: "var(--sh-s)", border: "none", cursor: "pointer" }}>
           {data.shopName.split(" ").map((w) => w[0]).slice(0, 2).join("")}
         </button>
       </div>
 
-      {/* hero - bigger numbers + larger labels; whole strip tappable */}
-      <div className="hero-card anim-in st1" style={{ padding: "24px 22px 22px", marginBottom: 14 }}>
-        <div className="hero-lines" aria-hidden="true">
-          <svg viewBox="0 0 400 220" preserveAspectRatio="none">
-            <path ref={(el) => (flowRefs.current[0] = el)} d="M-20 40 C 80 10, 150 70, 240 40 S 420 30, 460 55" />
-            <path ref={(el) => (flowRefs.current[1] = el)} d="M-20 95 C 70 70, 160 120, 250 92 S 410 88, 460 105" />
-            <path ref={(el) => (flowRefs.current[2] = el)} d="M-20 150 C 90 130, 150 175, 250 148 S 420 140, 460 165" />
-            <path ref={(el) => (flowRefs.current[3] = el)} d="M-20 200 C 80 185, 160 215, 260 195 S 410 192, 460 205" />
-          </svg>
+      {/* at a glance - same KPI language as Analytics */}
+      <div className="card anim-in st1" style={{ padding: "16px 16px 12px", marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <span className="eyebrow">At a glance</span>
+          <span className="mono" style={{ fontSize: 10, letterSpacing: ".12em", color: "var(--faint)" }}>{new Date().toLocaleDateString("en-IN", { month: "long" }).toUpperCase()}</span>
         </div>
-        <button onClick={() => goQuotes("all")} style={{ all: "unset", cursor: "pointer", display: "block", width: "100%" }}>
-          <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: ".04em", color: "rgba(255,255,255,.85)", display: "flex", alignItems: "center", gap: 5 }}>QUOTED THIS MONTH <I.chev style={{ width: 15, opacity: .8 }} /></div>
-          <div className="h-disp mono" style={{ fontSize: 46, fontWeight: 700, margin: "8px 0 18px" }}><CountUp value={value} /></div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+          {kpis.map(([v, l, c, fn], i) => (
+            <button key={i} className="press" onClick={fn} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", padding: "13px 13px", borderRadius: 15, background: "var(--soft)", border: "1px solid var(--line)" }}>
+              <div className="h-disp mono" style={{ fontSize: 20, fontWeight: 700, color: c, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{v}</div>
+              <div style={{ fontSize: 10.5, fontWeight: 600, color: "var(--faint)", marginTop: 3, letterSpacing: ".05em" }}>{l}</div>
+            </button>
+          ))}
+        </div>
+        <button className="press" onClick={openAnalytics} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "11px 4px 4px", marginTop: 4 }}>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 26, flex: 1 }}>
+            {days.map((v, i) => (<i key={i} style={{ flex: 1, borderRadius: 3, background: v ? "var(--grn)" : "var(--line2)", opacity: v ? 0.35 + (v / dmax) * 0.65 : 1, height: 5 + (v / dmax) * 20, display: "block" }} />))}
+          </div>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--grn-d)", display: "flex", alignItems: "center", flexShrink: 0 }}>Analytics <I.chev style={{ width: 14 }} /></span>
         </button>
-        <div style={{ display: "flex", gap: 9, position: "relative", zIndex: 1 }}>
-          <button onClick={() => goQuotes("all")} style={statBtn}>
-            <div className="mono" style={{ fontSize: 26, fontWeight: 700 }}>{month.length}</div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.82)", marginTop: 3 }}>Quotes</div>
-          </button>
-          <button onClick={() => goQuotes("won")} style={statBtn}>
-            <div className="mono" style={{ fontSize: 26, fontWeight: 700 }}>{winRate == null ? "-" : winRate + "%"}</div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.82)", marginTop: 3 }}>Win rate</div>
-          </button>
-          <button onClick={openAnalytics} style={{ ...statBtn, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 28 }}>
-              {days.map((v, i) => (<i key={i} style={{ width: 5, borderRadius: 3, background: "rgba(255,255,255," + (v ? ".95" : ".28") + ")", height: 5 + (v / max) * 22, display: "block" }} />))}
-            </div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.82)", marginTop: 4, display: "flex", alignItems: "center", gap: 3 }}>7 days <I.chev style={{ width: 13, opacity: .8 }} /></div>
-          </button>
-        </div>
       </div>
 
-      <div className="anim-in st2" style={{ display: "grid", gridTemplateColumns: "1.35fr 1fr", gap: 10 }}>
-        <button className="btn btn-grn press" style={{ padding: 17 }} onClick={onLog}><I.bolt /> Log a quote</button>
-        <button className="btn btn-ghost press" style={{ padding: 17 }} onClick={onNew}><I.plus style={{ width: 17 }} /> Full quote</button>
-      </div>
+      {/* actions */}
+      {isMach ? (
+        <div className="anim-in st2" style={{ display: "grid", gridTemplateColumns: "1.35fr 1fr", gap: 10 }}>
+          <button className="btn btn-grn press" style={{ padding: 16 }} onClick={onLog}><I.bolt /> Log a quote</button>
+          <button className="btn btn-ghost press" style={{ padding: 16 }} onClick={onNew}><I.plus style={{ width: 17 }} /> Full quote</button>
+        </div>
+      ) : (
+        <button className="btn btn-grn press anim-in st2" style={{ width: "100%", padding: 16 }} onClick={onLog}><I.bolt /> Log a quote</button>
+      )}
+
+      {/* machining: the day runs on RFQs and orders */}
+      {isMach && (
+        <div className="anim-in st2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+          <button className="press" onClick={() => goQuotes("pending")} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", padding: "16px 15px", borderRadius: 20, background: "#fff", border: "1px solid var(--line)", boxShadow: "var(--sh-s)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--amber-bg)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19 }}>📨</span>
+              <I.chev style={{ color: "var(--faint)" }} />
+            </div>
+            <div className="h-disp mono" style={{ fontSize: 24, fontWeight: 700, marginTop: 10 }}>{pendingQs.length}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, marginTop: 1 }}>RFQs open</div>
+            <div className="mono" style={{ fontSize: 11.5, color: "var(--faint)", marginTop: 2 }}>{inr(pendingValue)} on the table</div>
+          </button>
+          <button className="press" onClick={() => goQuotes("won")} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", padding: "16px 15px", borderRadius: 20, background: "#fff", border: "1px solid var(--line)", boxShadow: "var(--sh-s)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19 }}>📦</span>
+              <I.chev style={{ color: "var(--faint)" }} />
+            </div>
+            <div className="h-disp mono" style={{ fontSize: 24, fontWeight: 700, marginTop: 10 }}>{wonQs.length}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, marginTop: 1 }}>Orders ongoing</div>
+            <div className="mono" style={{ fontSize: 11.5, color: "var(--faint)", marginTop: 2 }}>{inr(wonValue)} won</div>
+          </button>
+        </div>
+      )}
 
       {dueList.length > 0 && (
-        <button onClick={() => goQuotes("pending")} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "var(--amber-bg)", border: "1px solid #F0DCB8" }}>
+        <button onClick={() => goQuotes("due")} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "var(--amber-bg)", border: "1px solid #F0DCB8" }}>
           <span style={{ width: 40, height: 40, borderRadius: 12, background: "#fff", color: "var(--amber)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><I.bell /></span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: "block", fontWeight: 700, fontSize: 15, color: "var(--amber)" }}>{dueList.length} follow-up{dueList.length === 1 ? "" : "s"} due</span>
@@ -1683,15 +1713,8 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
         </button>
       )}
 
-      {pendingValue > 0 && (
-        <button onClick={() => goQuotes("pending")} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "15px 16px", borderRadius: 18, background: "var(--soft)", border: "1px solid var(--line)" }}>
-          <span style={{ fontSize: 14, color: "var(--dim)", fontWeight: 600 }}>Open pipeline value <span style={{ fontSize: 12, color: "var(--faint)", fontWeight: 400 }}>(pending)</span></span>
-          <b className="mono" style={{ color: "var(--grn-d)", fontSize: 16 }}>{inr(pendingValue)}</b>
-        </button>
-      )}
-
       {/* Tally insights - only for trades that actually run Tally */}
-      {ind.tally && <button onClick={openTally} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 10, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "linear-gradient(135deg,#10240F,#1B5E20)", color: "#fff", boxShadow: "var(--sh-m)" }}>
+      {ind.tally && <button onClick={openTally} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "linear-gradient(135deg,#10240F,#1B5E20)", color: "#fff", boxShadow: "var(--sh-m)" }}>
         <span style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(255,255,255,.14)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>📒</span>
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: "block", fontWeight: 700, fontSize: 15 }}>Tally - seedha hisaab</span>
@@ -1701,40 +1724,45 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
       </button>}
 
       {catStats.length > 0 && (<>
-        <div className="anim-in st3" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "26px 0 10px" }}>
-          <span className="eyebrow">Browse by {ind.key === "furniture" ? "product" : ind.key === "printing" ? "job type" : "category"}</span>
+        <div className="anim-in st3" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "24px 0 10px" }}>
+          <span className="eyebrow">Browse by {ind.key === "furniture" ? "product" : "job type"}</span>
           <button onClick={() => goQuotes("all")} style={{ background: "none", border: "none", color: "var(--grn-d)", fontWeight: 600, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center" }}>All <I.chev /></button>
         </div>
         <div className="anim-in st3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {catStats.map((c) => (
             <button key={c.key} onClick={() => goQuotes("all", c.key)} className="press cat-tile"
-              style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", alignItems: "center", gap: 11, padding: "13px 12px", background: "#fff", border: "1px solid var(--line)", borderRadius: 20, boxShadow: "var(--sh-s)", minWidth: 0 }}>
+              style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", alignItems: "center", gap: 11, padding: "13px 12px", background: "#fff", border: "1px solid var(--line)", borderRadius: 20, boxShadow: "var(--sh-s)", minWidth: 0, opacity: c.total ? 1 : 0.65 }}>
               <span style={{ width: 44, height: 44, borderRadius: 13, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{c.emoji}</span>
               <span style={{ minWidth: 0, flex: 1 }}>
                 <span style={{ display: "block", fontWeight: 700, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.label}</span>
-                <span style={{ display: "block", fontSize: 12, color: c.ongoing ? "var(--amber)" : "var(--faint)", fontWeight: 600, marginTop: 1 }}>{c.ongoing ? c.ongoing + " ongoing" : c.total + " done"}</span>
+                <span style={{ display: "block", fontSize: 12, color: c.ongoing ? "var(--amber)" : "var(--faint)", fontWeight: 600, marginTop: 1 }}>{c.total ? (c.ongoing ? c.ongoing + " ongoing" : c.total + " done") : "—"}</span>
               </span>
             </button>
           ))}
         </div>
       </>)}
 
-      <div className="anim-in st3" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "26px 0 10px" }}>
+      <div className="anim-in st3" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "24px 0 10px" }}>
         <span className="eyebrow">Recent quotes</span>
         <button onClick={() => goQuotes("all")} style={{ background: "none", border: "none", color: "var(--grn-d)", fontWeight: 600, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center" }}>All <I.chev /></button>
       </div>
 
       {recent.map((q, i) => (
         <button key={q.id} onClick={() => goQuotes("all")} className={"card press anim-in st" + (4 + i)}
-          style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 16px", marginBottom: 10, background: "#fff", border: "1px solid var(--line)", borderRadius: 22, width: "100%", boxShadow: "var(--sh-s)" }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 15.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.customer}</div>
-            <div style={{ fontSize: 13.5, color: "var(--dim)", marginTop: 2 }}>{q.part} · {q.qty} pcs</div>
-          </div>
-          <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 12 }}>
-            <div className="mono" style={{ fontWeight: 600, fontSize: 15.5 }}>{inr(q.total)}</div>
+          style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, padding: "14px 15px", marginBottom: 10, background: "#fff", border: "1px solid var(--line)", borderRadius: 22, width: "100%", boxShadow: "var(--sh-s)" }}>
+          {q.image ? (
+            <img src={q.image} alt="" style={{ width: 44, height: 44, borderRadius: 12, objectFit: "cover", flexShrink: 0, border: "1px solid var(--line2)" }} />
+          ) : (
+            <span style={{ width: 44, height: 44, borderRadius: 12, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{catMeta(ind, catOf(q, ind)).emoji}</span>
+          )}
+          <span style={{ minWidth: 0, flex: 1 }}>
+            <span style={{ display: "block", fontWeight: 600, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.customer}</span>
+            <span style={{ display: "block", fontSize: 13, color: "var(--dim)", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.part}{q.qty ? " · " + q.qty + " " + (ind.unit || "pcs") : ""}</span>
+          </span>
+          <span style={{ textAlign: "right", flexShrink: 0 }}>
+            <span className="mono" style={{ display: "block", fontWeight: 600, fontSize: 15 }}>{inr(q.total)}</span>
             <span className={"pill " + (q.status === "won" ? "won" : q.status === "lost" ? "lost" : "pend")} style={{ marginTop: 4 }}><i className="dot" />{q.status.toUpperCase()}</span>
-          </div>
+          </span>
         </button>
       ))}
 
@@ -1746,7 +1774,7 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
         </button>
       )}
 
-      {ind.key === "machining" && data.machines[0] && (
+      {isMach && data.machines[0] && (
         <div className="card-tint anim-in st7" style={{ padding: "15px 16px", display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}>
           <span style={{ color: "var(--grn)" }}><I.bolt /></span>
           <span style={{ fontSize: 13.5, color: "var(--dim)" }}>Your {data.machines[0].name}'s true rate is <b className="mono" style={{ color: "var(--grn-d)" }}>{inr(data.machines[0].rate || 0)}/hr</b> - every quote uses it automatically.</span>
@@ -1755,7 +1783,6 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
     </div></div>
   );
 }
-const statBtn = { all: "unset", boxSizing: "border-box", cursor: "pointer", flex: 1, background: "rgba(255,255,255,.13)", border: "1px solid rgba(255,255,255,.18)", borderRadius: 16, padding: "13px 10px", textAlign: "center" };
 
 /* ================= QUICK LOG (tracker-first 30-second entry) ================= */
 function QuickLog({ data, onSave, onExit, ping }) {
@@ -3063,7 +3090,15 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
       <div className="anim-in st1" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {Object.values(INDUSTRIES).map((it) => (
           <button key={it.key} className={"fpill press " + (ind.key === it.key ? "on" : "")}
-            onClick={() => { setData({ ...data, industry: it.key }); ping(it.label); }}>{it.emoji} {it.label}</button>
+            onClick={() => {
+              setData((d) => {
+                /* fresh/untouched pipeline follows the trade; real data never overwritten */
+                const untouched = !d.quotes.length || d.quotes.every((q) => q.seed);
+                const sq = untouched ? buildSampleQuotes(it.key) : null;
+                return { ...d, industry: it.key, quotes: sq || d.quotes };
+              });
+              ping(it.label);
+            }}>{it.emoji} {it.label}</button>
         ))}
       </div>
 
