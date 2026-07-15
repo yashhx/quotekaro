@@ -98,8 +98,9 @@ async function gmailSave(refreshToken, email) {
   try {
     const r = await fetch(WA_API + "/gmail-connect", { method: "POST", headers: { "content-type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ refreshToken, email }) });
     const d = await r.json().catch(() => null);
-    return !!(d && d.ok);
-  } catch { return false; }
+    if (d && d.ok) return { ok: true };
+    return { ok: false, why: (d && d.error) || ("server said " + r.status) };
+  } catch { return { ok: false, why: "no internet / backend missing" }; }
 }
 async function gmailDisconnect() {
   try { await fetch(WA_API + "/gmail-connect", { method: "DELETE", headers: { ...(await authHeaders()) } }); } catch {}
@@ -1268,17 +1269,23 @@ export default function App() {
           setAuthError(String(errDesc).replace(/\+/g, " "));
         } else if (code) {
           /* exchangeCodeForSession expects the bare code, not the URL */
+          const gmailIntent = localStorage.getItem(GMAIL_FLAG) || u.searchParams.get("gmail_connect") === "1";
+          const say = (m, ms) => { setToast(m); setTimeout(() => setToast(null), ms || 6000); };
           const { data: xd, error } = await sb.auth.exchangeCodeForSession(code);
-          if (error) setAuthError((error.message || "sign-in failed") + " [exchange]");
+          if (error) {
+            setAuthError((error.message || "sign-in failed") + " [exchange]");
+            if (gmailIntent) say("Gmail connect failed at sign-in: " + (error.message || "exchange error"));
+          }
           /* returning from the "Connect Gmail" scoped consent? hand the refresh
              token to the server once, then forget it client-side */
-          else if (localStorage.getItem(GMAIL_FLAG) || u.searchParams.get("gmail_connect") === "1") {
+          else if (gmailIntent) {
             const sess = xd && xd.session;
             const rt = sess && sess.provider_refresh_token;
-            if (rt) {
-              const ok = await gmailSave(rt, (sess.user && sess.user.email) || "");
-              setToast(ok ? "Gmail connected - RFQ emails will appear in your pipeline" : "Gmail connect failed - try again from Setup");
-              setTimeout(() => setToast(null), 3000);
+            if (!rt) {
+              say("Google didn't return a refresh token. Fix: open myaccount.google.com/permissions, REMOVE this app's access, then Connect Gmail again.", 12000);
+            } else {
+              const res = await gmailSave(rt, (sess.user && sess.user.email) || "");
+              say(res.ok ? "Gmail connected - RFQ emails will appear in your pipeline" : "Gmail connect failed: " + res.why, res.ok ? 4000 : 10000);
             }
           }
           localStorage.removeItem(GMAIL_FLAG);
