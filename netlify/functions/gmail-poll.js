@@ -93,7 +93,10 @@ async function pollTenant(t, store, hdrs, sbUrl) {
     return { stored: 0, err: "token refresh failed: " + String(why).slice(0, 120) };
   }
   const gh = { authorization: "Bearer " + token };
-  const sinceSec = Math.max(1, Math.floor((Number(t.gmail_last_ts) || Date.now()) / 1000));
+  /* first successful poll after connect: look back 24h so a test mail sent
+     just before connecting still shows up (later polls resume forward-only) */
+  const last = Number(t.gmail_last_ts) || 0;
+  const sinceSec = Math.max(1, Math.floor((last || (Date.now() - 24 * 3600 * 1000)) / 1000));
   const q = encodeURIComponent("in:inbox after:" + sinceSec + " " + RFQ_QUERY);
   const list = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=" + MAX_MSGS_PER_USER + "&q=" + q, { headers: gh });
   const ld = await list.json().catch(() => ({}));
@@ -155,7 +158,7 @@ export default async (req) => {
       diag.push(res.err ? { err: res.err } : { stored: res.stored, matched: res.matched, searchedSince: res.searchedSince });
     }
     console.log("gmail-poll: done -", tenants.length, "inbox(es),", total, "new enquiry(ies)", caller ? "(manual)" : "(scheduled)");
-    return json({ ok: true, found: total, inboxes: tenants.length, diag });
+    return json({ ok: true, found: total, inboxes: tenants.length, diag, ver: 2 });
   } catch (e) {
     console.error("gmail-poll: failed -", e && e.message);
     return json({ ok: false, error: "poll failed" }, 500);
