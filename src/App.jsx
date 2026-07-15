@@ -1271,10 +1271,19 @@ export default function App() {
           /* exchangeCodeForSession expects the bare code, not the URL */
           const gmailIntent = localStorage.getItem(GMAIL_FLAG) || u.searchParams.get("gmail_connect") === "1";
           const say = (m, ms) => { setToast(m); setTimeout(() => setToast(null), ms || 6000); };
-          const { data: xd, error } = await sb.auth.exchangeCodeForSession(code);
+          const netErr = (e) => /load failed|failed to fetch|network|timed? ?out/i.test((e && e.message) || "");
+          let { data: xd, error } = await sb.auth.exchangeCodeForSession(code);
+          if (error && netErr(error)) {
+            /* Safari sometimes drops the first fetch fired right after an
+               OAuth redirect lands; the code is still unused, so try again */
+            await new Promise((r) => setTimeout(r, 900));
+            ({ data: xd, error } = await sb.auth.exchangeCodeForSession(code));
+          }
           if (error) {
             setAuthError((error.message || "sign-in failed") + " [exchange]");
-            if (gmailIntent) say("Gmail connect failed at sign-in: " + (error.message || "exchange error"));
+            if (gmailIntent) say(netErr(error)
+              ? "Your browser blocked the sign-in call (twice). Try in Chrome, or turn off content blockers / VPN for this site and retry."
+              : "Gmail connect failed at sign-in: " + (error.message || "exchange error"), 12000);
           }
           /* returning from the "Connect Gmail" scoped consent? hand the refresh
              token to the server once, then forget it client-side */
