@@ -90,14 +90,14 @@ async function pollTenant(t, store, hdrs, sbUrl) {
   if (!token) {
     console.warn("gmail-poll:", t.user_id, "token refresh failed -", why);
     if (dead) await patch({ gmail_error: "reconnect needed" });
-    return 0;
+    return { stored: 0, err: "token refresh failed: " + String(why).slice(0, 120) };
   }
   const gh = { authorization: "Bearer " + token };
   const sinceSec = Math.max(1, Math.floor((Number(t.gmail_last_ts) || Date.now()) / 1000));
   const q = encodeURIComponent("in:inbox after:" + sinceSec + " " + RFQ_QUERY);
   const list = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=" + MAX_MSGS_PER_USER + "&q=" + q, { headers: gh });
   const ld = await list.json().catch(() => ({}));
-  if (!list.ok) { console.error("gmail-poll:", t.user_id, "list failed", list.status, JSON.stringify(ld).slice(0, 150)); return 0; }
+  if (!list.ok) { console.error("gmail-poll:", t.user_id, "list failed", list.status, JSON.stringify(ld).slice(0, 150)); return { stored: 0, err: "gmail list failed " + list.status + ": " + JSON.stringify((ld && ld.error && ld.error.message) || ld).slice(0, 160) }; }
   const ids = (ld.messages || []).map((m) => m.id);
   let stored = 0, newest = Number(t.gmail_last_ts) || 0;
   for (const id of ids) {
@@ -127,7 +127,7 @@ async function pollTenant(t, store, hdrs, sbUrl) {
   /* advance checkpoint even with zero matches so the search window stays small;
      +1s so the newest stored mail is not re-fetched forever */
   await patch({ gmail_last_ts: stored ? newest + 1000 : Date.now() - 60000, gmail_error: "" });
-  return stored;
+  return { stored, err: null, searchedSince: new Date(sinceSec * 1000).toISOString(), matched: ids.length };
 }
 
 export default async (req) => {
@@ -148,9 +148,14 @@ export default async (req) => {
     const r = await fetch(sbUrl + "/rest/v1/tenants?gmail_refresh_token=not.is.null&select=user_id,gmail_refresh_token,gmail_last_ts&limit=20" + filter, { headers: hdrs });
     const tenants = r.ok ? await r.json() : [];
     let total = 0;
-    for (const t of tenants) total += await pollTenant(t, store, hdrs, sbUrl);
+    const diag = [];
+    for (const t of tenants) {
+      const res = await pollTenant(t, store, hdrs, sbUrl);
+      total += res.stored;
+      diag.push(res.err ? { err: res.err } : { stored: res.stored, matched: res.matched, searchedSince: res.searchedSince });
+    }
     console.log("gmail-poll: done -", tenants.length, "inbox(es),", total, "new enquiry(ies)", caller ? "(manual)" : "(scheduled)");
-    return json({ ok: true, found: total });
+    return json({ ok: true, found: total, inboxes: tenants.length, diag });
   } catch (e) {
     console.error("gmail-poll: failed -", e && e.message);
     return json({ ok: false, error: "poll failed" }, 500);
