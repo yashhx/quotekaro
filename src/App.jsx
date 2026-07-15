@@ -1272,7 +1272,7 @@ export default function App() {
           if (error) setAuthError((error.message || "sign-in failed") + " [exchange]");
           /* returning from the "Connect Gmail" scoped consent? hand the refresh
              token to the server once, then forget it client-side */
-          else if (localStorage.getItem(GMAIL_FLAG)) {
+          else if (localStorage.getItem(GMAIL_FLAG) || u.searchParams.get("gmail_connect") === "1") {
             const sess = xd && xd.session;
             const rt = sess && sess.provider_refresh_token;
             if (rt) {
@@ -3281,7 +3281,7 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
                 }}>{gmailBusy ? "Checking..." : "Check Gmail now"}</button>
                 {gmail.error && <button className="btn btn-sm btn-soft press" onClick={() => {
                   localStorage.setItem(GMAIL_FLAG, "1");
-                  sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin, scopes: "https://www.googleapis.com/auth/gmail.readonly", queryParams: { access_type: "offline", prompt: "consent" } } });
+                  sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin + "/?gmail_connect=1", scopes: "https://www.googleapis.com/auth/gmail.readonly", queryParams: { access_type: "offline", prompt: "consent" } } });
                 }}>Reconnect</button>}
                 <button className="btn btn-sm btn-ghost press" style={{ color: "var(--red)" }} onClick={async () => {
                   if (!window.confirm("Gmail disconnect karein? Purani enquiries pipeline mein rahengi.")) return;
@@ -3293,7 +3293,7 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
             <>
               <button className="btn btn-soft press" style={{ width: "100%", marginTop: 12 }} onClick={() => {
                 localStorage.setItem(GMAIL_FLAG, "1");
-                sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin, scopes: "https://www.googleapis.com/auth/gmail.readonly", queryParams: { access_type: "offline", prompt: "consent" } } });
+                sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin + "/?gmail_connect=1", scopes: "https://www.googleapis.com/auth/gmail.readonly", queryParams: { access_type: "offline", prompt: "consent" } } });
               }}>Connect Gmail</button>
               <span className="hint" style={{ margin: "10px 0 0" }}>
                 Google se dobara permission maangega (sirf mail READ karne ki - bhejne ya delete ki nahi). App sirf RFQ-jaisi mails uthata hai; aapke mail kahin store nahi hote, sirf enquiry card banta hai.
