@@ -566,6 +566,12 @@ const SUPPLIERS = [
   { co: "Sharma Non-Ferrous", area: "Ballabgarh", mat: "Brass / Copper / Gunmetal", rate: 555, unit: "/kg · cash", color: "#3FAE45" },
 ];
 
+/* ---- app language (Setup > Language): "en" | "hi-en" (Hinglish) | "hi" ----
+   LANG is stamped from settings on every App render; tx() picks the variant.
+   Missing variants fall back hindi -> hinglish -> english. */
+let LANG = "hi-en";
+const tx = (en, hg, hi) => (LANG === "en" ? en : LANG === "hi" ? (hi || hg || en) : (hg || en));
+
 /* common machines on NCR shop floors - dropdown seeds for Setup > Add machine.
    Names only prefill the calculator; the true-rate math stays the owner's. */
 const MACHINE_LIB = [
@@ -596,42 +602,53 @@ const jobShares = (job) => {
   const q = Math.max(0, Math.floor(job.qty || 0));
   return (job.units || []).map((_, i) => Math.floor(q / n) + (i < q % n ? 1 : 0));
 };
+/* per-machine allocation. Legacy jobs (flat units array, even split) are
+   normalised on the fly; pause/transfer write the explicit alloc form.
+   pausedAt/pausedMin freeze a unit's clock; stopped = work moved elsewhere. */
+const jobAlloc = (job) => job.alloc || (() => {
+  const sh = jobShares(job);
+  return (job.units || []).map((u, i) => ({ uid: u, share: sh[i], startedAt: job.startedAt, pausedMin: 0, pausedAt: null, stopped: false }));
+})();
+const unitElapsedMin = (job, a, now) => {
+  const pausedNow = a.pausedAt ? (now - a.pausedAt) / 60000 : 0;
+  return Math.max(0, (now - (a.startedAt || job.startedAt)) / 60000 - (a.pausedMin || 0) - pausedNow);
+};
 const jobStats = (job, now) => {
+  const t = now || Date.now();
   const per = (+job.cycleMin || 0) + (+job.manualMin || 0);
   const denom = per * JOB_BUFFER;
-  const shares = jobShares(job);
-  const elapsedMin = Math.max(0, ((now || Date.now()) - job.startedAt) / 60000);
-  const units = (job.units || []).map((u, i) => {
-    const totalMin = shares[i] * denom;
-    const pct = job.done ? 100 : totalMin ? Math.min(100, (elapsedMin / totalMin) * 100) : 0;
-    const pcsDone = job.done ? shares[i] : denom > 0 ? Math.min(shares[i], Math.floor(elapsedMin / denom)) : 0;
-    return { uid: u, share: shares[i], totalMin, pct, pcsDone, remainMin: job.done ? 0 : Math.max(0, totalMin - elapsedMin) };
+  const units = jobAlloc(job).map((a) => {
+    const totalMin = a.share * denom;
+    const fin = job.done || a.stopped;
+    const elapsed = unitElapsedMin(job, a, t);
+    const pct = fin ? 100 : totalMin ? Math.min(100, (elapsed / totalMin) * 100) : 0;
+    const pcsDone = fin ? a.share : denom > 0 ? Math.min(a.share, Math.floor(elapsed / denom)) : 0;
+    return { uid: a.uid, share: a.share, totalMin, pct, pcsDone, paused: !!a.pausedAt && !fin, stopped: !!a.stopped, remainMin: fin ? 0 : Math.max(0, totalMin - elapsed) };
   });
-  const totalMin = Math.max(0, ...units.map((x) => x.totalMin));
-  const remainMin = Math.max(0, ...units.map((x) => x.remainMin));
-  const pct = job.done ? 100 : totalMin ? Math.min(100, ((totalMin - remainMin) / totalMin) * 100) : 0;
-  return { units, pct, remainMin, eta: (now || Date.now()) + remainMin * 60000, pcsDone: units.reduce((a, x) => a + x.pcsDone, 0) };
+  const live = units.filter((x) => !x.stopped);
+  const remainMin = Math.max(0, ...live.map((x) => x.remainMin));
+  return { units, remainMin, eta: t + remainMin * 60000, pcsDone: units.reduce((a2, x) => a2 + x.pcsDone, 0) };
 };
 const fmtDur = (min) => {
   const m = Math.round(min);
-  if (m < 1) return "khatam";
+  if (m < 1) return tx("done", "khatam", "खत्म");
   if (m < 60) return m + " min";
   const h = Math.floor(m / 60), d = Math.floor(h / 24);
-  if (d >= 1) return d + " din " + (h % 24) + " hr";
+  if (d >= 1) return d + tx(" day ", " din ", " दिन ") + (h % 24) + " hr";
   return h + " hr" + (m % 60 ? " " + (m % 60) + " min" : "");
 };
 const fmtEta = (t) => {
   const d = new Date(t), today = new Date(); today.setHours(0, 0, 0, 0);
   const dd = Math.floor((t - today.getTime()) / 86400000);
   const hm = d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
-  return dd === 0 ? "aaj " + hm : dd === 1 ? "kal " + hm : d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) + ", " + hm;
+  return dd === 0 ? tx("today ", "aaj ", "आज ") + hm : dd === 1 ? tx("tomorrow ", "kal ", "कल ") + hm : d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) + ", " + hm;
 };
 
 const seedData = () => {
   const now = Date.now(), day = 86400000;
   return {
     shopName: "Sharma Precision Works",
-    settings: { overheadPct: 18, marginPct: 25, labourRate: 80, validityDays: 7, gstPct: 18 },
+    settings: { overheadPct: 18, marginPct: 25, labourRate: 80, validityDays: 7, gstPct: 18, lang: "hi-en" },
     machines: [{ id: "m1", name: "VMC 850", rate: 366, count: 1 }],
     jobs: [],
     materials: [
@@ -1229,17 +1246,17 @@ function Subscribe({ account, onSubscribe, onBack }) {
     <div className="scr"><div className="pagepad" style={{ paddingBottom: 40 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
         <button className="iconbtn press" onClick={onBack}><I.back /></button>
-        <div><div className="microlbl">PRICING</div><div className="h-disp" style={{ fontSize: 23, fontWeight: 700 }}>One plan. Sab kuch.</div></div>
+        <div><div className="microlbl">{tx("PRICING", "PRICING", "कीमत")}</div><div className="h-disp" style={{ fontSize: 23, fontWeight: 700 }}>{tx("One plan. Everything.", "One plan. Sab kuch.", "एक प्लान। सब कुछ।")}</div></div>
       </div>
       <p style={{ fontSize: 14, color: "var(--dim)", marginBottom: 22, lineHeight: 1.6 }}>
-        One missed follow-up costs more than a year of TrackRakho. No tiers, no add-ons - har feature, ek plan. GST extra.
+        {tx("One missed follow-up costs more than a year of TrackRakho. No tiers, no add-ons - every feature, one plan. GST extra.", "One missed follow-up costs more than a year of TrackRakho. No tiers, no add-ons - har feature, ek plan. GST extra.", "एक भूला फॉलो-अप TrackRakho के पूरे साल से महंगा पड़ता है। न टियर, न ऐड-ऑन - हर फीचर, एक प्लान। GST अलग।")}
       </p>
 
       {PLANS.map((pl) => (
         <div key={pl.id} className={"plan " + (pl.popular ? "pop" : "")}>
           {pl.popular && <span className="badge"><I.star /> MOST POPULAR</span>}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div><div className="pname">{pl.name}</div><div className="ptag">{pl.tagline}</div></div>
+            <div><div className="pname">{pl.name}</div><div className="ptag">{tx("One plan - everything included", pl.tagline, "एक प्लान - सब कुछ शामिल")}</div></div>
             {current === pl.id && <span className="plan-current">CURRENT</span>}
           </div>
           <div className="prow"><span className="pcur">₹</span><span className="pamt">{pl.price.toLocaleString("en-IN")}</span><span className="pper">/ month</span></div>
@@ -1249,7 +1266,7 @@ function Subscribe({ account, onSubscribe, onBack }) {
           </ul>
           <button className={"btn press " + (pl.popular ? "btn-grn" : "btn-ghost")} style={{ width: "100%" }}
             onClick={() => onSubscribe(pl.id)} disabled={current === pl.id}>
-            {current === pl.id ? "Your current plan" : <>Start - ₹{pl.price.toLocaleString("en-IN")}/month</>}
+            {current === pl.id ? tx("Your current plan", "Your current plan", "आपका मौजूदा प्लान") : <>{tx("Start - ", "Start - ", "शुरू करें - ")}₹{pl.price.toLocaleString("en-IN")}{tx("/month", "/month", "/माह")}</>}
           </button>
         </div>
       ))}
@@ -1638,6 +1655,7 @@ export default function App() {
   const goQuotes = (f, cat) => { setQuotesFilter(f || "all"); setQuotesCat(cat || null); setTab("quotes"); };
 
   /* in cloud mode the demo plan lives inside the synced data blob */
+  LANG = (data && data.settings && data.settings.lang) || "hi-en";
   const accountView = account ? { ...account, plan: sb ? (data && data.planId) : account.plan } : account;
 
   return (
@@ -1663,16 +1681,16 @@ export default function App() {
           <div onClick={() => setFabOpen(false)} style={{ position: "absolute", inset: 0, zIndex: 60, background: "rgba(16,26,20,.42)", backdropFilter: "blur(3px)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
             <div className="anim-in" onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: "26px 26px 0 0", padding: "22px 18px calc(20px + env(safe-area-inset-bottom))", boxShadow: "0 -20px 50px -20px rgba(21,94,24,.4)" }}>
               <div style={{ width: 40, height: 4, borderRadius: 3, background: "var(--line2)", margin: "0 auto 16px" }} />
-              <div className="microlbl" style={{ marginLeft: 2 }}>ADD TO PIPELINE</div>
-              <div className="h-disp" style={{ fontSize: 21, fontWeight: 700, margin: "3px 0 16px 2px" }}>How do you want to add it?</div>
+              <div className="microlbl" style={{ marginLeft: 2 }}>{tx("ADD TO PIPELINE", "ADD TO PIPELINE", "पाइपलाइन में जोड़ें")}</div>
+              <div className="h-disp" style={{ fontSize: 21, fontWeight: 700, margin: "3px 0 16px 2px" }}>{tx("How do you want to add it?", "How do you want to add it?", "कैसे जोड़ना चाहेंगे?")}</div>
               <button className="press" onClick={startLog} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 18, background: "linear-gradient(135deg,#1B7A20,#2E9E33)", color: "#fff", marginBottom: 10, boxShadow: "var(--sh-m)" }}>
                 <span style={{ width: 42, height: 42, borderRadius: 13, background: "rgba(255,255,255,.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><I.bolt /></span>
-                <span style={{ flex: 1 }}><span style={{ display: "block", fontWeight: 700, fontSize: 16 }}>Log a quote</span><span style={{ fontSize: 12.5, color: "rgba(255,255,255,.85)" }}>Made it in Excel or on call? Add it in 30 seconds.</span></span>
+                <span style={{ flex: 1 }}><span style={{ display: "block", fontWeight: 700, fontSize: 16 }}>{tx("Log a quote", "Log a quote", "कोटेशन लिखें")}</span><span style={{ fontSize: 12.5, color: "rgba(255,255,255,.85)" }}>{tx("Made it in Excel or on call? Add it in 30 seconds.", "Made it in Excel or on call? Add it in 30 seconds.", "Excel में या फोन पर बनाया? 30 सेकंड में जोड़ें।")}</span></span>
                 <I.chev />
               </button>
               <button className="press" onClick={startQuote} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 18, background: "#fff", border: "1.5px solid var(--line2)", boxShadow: "var(--sh-s)" }}>
                 <span style={{ width: 42, height: 42, borderRadius: 13, background: "var(--grn-100)", color: "var(--grn-d)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><I.chart /></span>
-                <span style={{ flex: 1 }}><span style={{ display: "block", fontWeight: 700, fontSize: 16 }}>New quotation</span><span style={{ fontSize: 12.5, color: "var(--dim)" }}>Full costing wizard - material, machine, margin.</span></span>
+                <span style={{ flex: 1 }}><span style={{ display: "block", fontWeight: 700, fontSize: 16 }}>{tx("New quotation", "New quotation", "नया कोटेशन")}</span><span style={{ fontSize: 12.5, color: "var(--dim)" }}>{tx("Full costing wizard - material, machine, margin.", "Full costing wizard - material, machine, margin.", "पूरा कॉस्टिंग विज़ार्ड - मटीरियल, मशीन, मार्जिन।")}</span></span>
                 <I.chev style={{ color: "var(--faint)" }} />
               </button>
             </div>
@@ -1682,11 +1700,11 @@ export default function App() {
         {tab !== "new" && tab !== "analytics" && tab !== "subscribe" && tab !== "log" && tab !== "tally" && tab !== "floor" && (
           <nav className="navbar" ref={navRef}>
             <div className="nav-pill" style={pillStyle} />
-            <button ref={setNavRef("home")} className={"nav-it " + (tab === "home" ? "on" : "")} onClick={() => setTab("home")}><I.home /><span>Home</span></button>
-            <button ref={setNavRef("quotes")} className={"nav-it " + (tab === "quotes" ? "on" : "")} onClick={() => setTab("quotes")}><I.list /><span>Pipeline</span></button>
+            <button ref={setNavRef("home")} className={"nav-it " + (tab === "home" ? "on" : "")} onClick={() => setTab("home")}><I.home /><span>{tx("Home", "Home", "होम")}</span></button>
+            <button ref={setNavRef("quotes")} className={"nav-it " + (tab === "quotes" ? "on" : "")} onClick={() => setTab("quotes")}><I.list /><span>{tx("Pipeline", "Pipeline", "पाइपलाइन")}</span></button>
             <button className="fab press" onClick={() => (industryOf(data).key === "machining" ? setFabOpen(true) : startLog())} aria-label="Add a quote"><I.plus /></button>
-            <button ref={setNavRef("setup")} className={"nav-it " + (tab === "setup" ? "on" : "")} onClick={() => setTab("setup")}><I.gear /><span>Setup</span></button>
-            <button ref={setNavRef("help")} className={"nav-it " + (tab === "help" ? "on" : "")} onClick={() => setTab("help")}><I.help /><span>Help</span></button>
+            <button ref={setNavRef("setup")} className={"nav-it " + (tab === "setup" ? "on" : "")} onClick={() => setTab("setup")}><I.gear /><span>{tx("Setup", "Setup", "सेटअप")}</span></button>
+            <button ref={setNavRef("help")} className={"nav-it " + (tab === "help" ? "on" : "")} onClick={() => setTab("help")}><I.help /><span>{tx("Help", "Help", "मदद")}</span></button>
           </nav>
         )}
       </div>
@@ -1699,7 +1717,7 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
   const ind = industryOf(data);
   const isMach = ind.key === "machining";
   const h = new Date().getHours();
-  const greet = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  const greet = h < 12 ? tx("Good morning", "Good morning", "सुप्रभात") : h < 17 ? tx("Good afternoon", "Good afternoon", "नमस्कार") : tx("Good evening", "Good evening", "शुभ संध्या");
 
   /* ---- the numbers that actually matter to an owner ---- */
   const m0 = new Date(); m0.setDate(1); m0.setHours(0, 0, 0, 0);
@@ -1726,7 +1744,7 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
   /* machine floor at a glance (machining only) */
   const flUnits = machineUnits(data);
   const flActive = (data.jobs || []).filter((j) => !j.done);
-  const flBusy = new Set(flActive.flatMap((j) => j.units || []));
+  const flBusy = new Set(flActive.flatMap((j) => jobAlloc(j).filter((a) => !a.stopped).map((a) => a.uid)));
 
   /* category tiles: printing shows active ones, furniture shows the full range */
   const showCats = ind.key === "printing" || ind.key === "furniture";
@@ -1738,10 +1756,10 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
     : [];
 
   const kpis = [
-    [inr(pendingValue), "PENDING VALUE", "var(--amber)", () => goQuotes("pending")],
-    [inr(monthWonVal), "WON THIS MONTH", "#1B7A20", () => goQuotes("won")],
-    [inr(monthQuoted), "QUOTED THIS MONTH", "var(--grn-d)", () => goQuotes("all")],
-    [winRate == null ? "—" : winRate + "%", "WIN RATE", "var(--ink)", openAnalytics],
+    [inr(pendingValue), tx("PENDING VALUE", "PENDING VALUE", "पेंडिंग रकम"), "var(--amber)", () => goQuotes("pending")],
+    [inr(monthWonVal), tx("WON THIS MONTH", "WON THIS MONTH", "इस महीने जीते"), "#1B7A20", () => goQuotes("won")],
+    [inr(monthQuoted), tx("QUOTED THIS MONTH", "QUOTED THIS MONTH", "इस महीने के कोटेशन"), "var(--grn-d)", () => goQuotes("all")],
+    [winRate == null ? "—" : winRate + "%", tx("WIN RATE", "WIN RATE", "जीत दर"), "var(--ink)", openAnalytics],
   ];
 
   return (
@@ -1760,7 +1778,7 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
       {/* at a glance - same KPI language as Analytics */}
       <div className="card anim-in st1" style={{ padding: "16px 16px 12px", marginBottom: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <span className="eyebrow">At a glance</span>
+          <span className="eyebrow">{tx("At a glance", "At a glance", "एक नज़र में")}</span>
           <span className="mono" style={{ fontSize: 10, letterSpacing: ".12em", color: "var(--faint)" }}>{new Date().toLocaleDateString("en-IN", { month: "long" }).toUpperCase()}</span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
@@ -1782,11 +1800,11 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
       {/* actions */}
       {isMach ? (
         <div className="anim-in st2" style={{ display: "grid", gridTemplateColumns: "1.35fr 1fr", gap: 10 }}>
-          <button className="btn btn-grn press" style={{ padding: 16 }} onClick={onLog}><I.bolt /> Log a quote</button>
-          <button className="btn btn-ghost press" style={{ padding: 16 }} onClick={onNew}><I.plus style={{ width: 17 }} /> Full quote</button>
+          <button className="btn btn-grn press" style={{ padding: 16 }} onClick={onLog}><I.bolt /> {tx("Log a quote", "Log a quote", "कोटेशन लिखें")}</button>
+          <button className="btn btn-ghost press" style={{ padding: 16 }} onClick={onNew}><I.plus style={{ width: 17 }} /> {tx("Full quote", "Full quote", "पूरा कोटेशन")}</button>
         </div>
       ) : (
-        <button className="btn btn-grn press anim-in st2" style={{ width: "100%", padding: 16 }} onClick={onLog}><I.bolt /> Log a quote</button>
+        <button className="btn btn-grn press anim-in st2" style={{ width: "100%", padding: 16 }} onClick={onLog}><I.bolt /> {tx("Log a quote", "Log a quote", "कोटेशन लिखें")}</button>
       )}
 
       {/* machining: the day runs on RFQs and orders */}
@@ -1798,8 +1816,8 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
               <I.chev style={{ color: "var(--faint)" }} />
             </div>
             <div className="h-disp mono" style={{ fontSize: 24, fontWeight: 700, marginTop: 10 }}>{pendingQs.length}</div>
-            <div style={{ fontSize: 13.5, fontWeight: 700, marginTop: 1 }}>RFQs open</div>
-            <div className="mono" style={{ fontSize: 11.5, color: "var(--faint)", marginTop: 2 }}>{inr(pendingValue)} on the table</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, marginTop: 1 }}>{tx("RFQs open", "RFQs open", "RFQ खुले")}</div>
+            <div className="mono" style={{ fontSize: 11.5, color: "var(--faint)", marginTop: 2 }}>{inr(pendingValue)}{tx(" on the table", " on the table", " दांव पर")}</div>
           </button>
           <button className="press" onClick={() => goQuotes("won")} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", padding: "16px 15px", borderRadius: 20, background: "#fff", border: "1px solid var(--line)", boxShadow: "var(--sh-s)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -1807,8 +1825,8 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
               <I.chev style={{ color: "var(--faint)" }} />
             </div>
             <div className="h-disp mono" style={{ fontSize: 24, fontWeight: 700, marginTop: 10 }}>{wonQs.length}</div>
-            <div style={{ fontSize: 13.5, fontWeight: 700, marginTop: 1 }}>Orders ongoing</div>
-            <div className="mono" style={{ fontSize: 11.5, color: "var(--faint)", marginTop: 2 }}>{inr(wonValue)} won</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, marginTop: 1 }}>{tx("Orders ongoing", "Orders ongoing", "ऑर्डर चालू")}</div>
+            <div className="mono" style={{ fontSize: 11.5, color: "var(--faint)", marginTop: 2 }}>{inr(wonValue)}{tx(" won", " won", " जीते")}</div>
           </button>
         </div>
       )}
@@ -1818,8 +1836,8 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
         <button onClick={openFloor} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "#fff", border: "1px solid var(--line)", boxShadow: "var(--sh-s)" }}>
           <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>🛠️</span>
           <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: "block", fontWeight: 700, fontSize: 15 }}>Machine floor</span>
-            <span style={{ display: "block", fontSize: 12.5, color: "var(--dim)" }}>{flUnits.length ? flBusy.size + "/" + flUnits.length + " machines par kaam chal raha" : "Kaun si machine par kya chal raha hai - live"}</span>
+            <span style={{ display: "block", fontWeight: 700, fontSize: 15 }}>{tx("Machine floor", "Machine floor", "मशीन फ्लोर")}</span>
+            <span style={{ display: "block", fontSize: 12.5, color: "var(--dim)" }}>{flUnits.length ? flBusy.size + "/" + flUnits.length + tx(" machines running work", " machines par kaam chal raha", " मशीनों पर काम चल रहा") : tx("Which machine is running what - live", "Kaun si machine par kya chal raha hai - live", "कौन सी मशीन पर क्या चल रहा है - लाइव")}</span>
           </span>
           {flActive.length > 0 && <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: "var(--grn-d)", background: "var(--grn-100)", padding: "4px 9px", borderRadius: 999, flexShrink: 0 }}>{flActive.length} ON</span>}
           <I.chev style={{ color: "var(--faint)" }} />
@@ -1830,7 +1848,7 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
         <button onClick={() => goQuotes("due")} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "var(--amber-bg)", border: "1px solid #F0DCB8" }}>
           <span style={{ width: 40, height: 40, borderRadius: 12, background: "#fff", color: "var(--amber)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><I.bell /></span>
           <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: "block", fontWeight: 700, fontSize: 15, color: "var(--amber)" }}>{dueList.length} follow-up{dueList.length === 1 ? "" : "s"} due</span>
+            <span style={{ display: "block", fontWeight: 700, fontSize: 15, color: "var(--amber)" }}>{LANG === "hi" ? dueList.length + " फॉलो-अप बाकी" : dueList.length + " follow-up" + (dueList.length === 1 ? "" : "s") + " due"}</span>
             <span style={{ display: "block", fontSize: 13, color: "#7A5510", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{dueList.slice(0, 2).map((q) => q.customer).join(", ")}{dueList.length > 2 ? " +" + (dueList.length - 2) + " more" : ""}</span>
           </span>
           <I.chev style={{ color: "var(--amber)" }} />
@@ -1841,16 +1859,16 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
       {ind.tally && <button onClick={openTally} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "linear-gradient(135deg,#10240F,#1B5E20)", color: "#fff", boxShadow: "var(--sh-m)" }}>
         <span style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(255,255,255,.14)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>📒</span>
         <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: "block", fontWeight: 700, fontSize: 15 }}>Tally - seedha hisaab</span>
-          <span style={{ display: "block", fontSize: 12.5, color: "rgba(255,255,255,.8)" }}>Baki paisa, maal gaya, order kitna bacha - bina Tally khole.</span>
+          <span style={{ display: "block", fontWeight: 700, fontSize: 15 }}>{tx("Tally - the plain picture", "Tally - seedha hisaab", "Tally - सीधा हिसाब")}</span>
+          <span style={{ display: "block", fontSize: 12.5, color: "rgba(255,255,255,.8)" }}>{tx("Money due, goods shipped, orders left - without opening Tally.", "Baki paisa, maal gaya, order kitna bacha - bina Tally khole.", "बाकी पैसा, माल गया, ऑर्डर कितना बचा - बिना Tally खोले।")}</span>
         </span>
         <I.chev style={{ color: "rgba(255,255,255,.8)" }} />
       </button>}
 
       {catStats.length > 0 && (<>
         <div className="anim-in st3" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "24px 0 10px" }}>
-          <span className="eyebrow">Browse by {ind.key === "furniture" ? "product" : "job type"}</span>
-          <button onClick={() => goQuotes("all")} style={{ background: "none", border: "none", color: "var(--grn-d)", fontWeight: 600, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center" }}>All <I.chev /></button>
+          <span className="eyebrow">{LANG === "hi" ? "श्रेणी से देखें" : "Browse by " + (ind.key === "furniture" ? "product" : "job type")}</span>
+          <button onClick={() => goQuotes("all")} style={{ background: "none", border: "none", color: "var(--grn-d)", fontWeight: 600, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center" }}>{tx("All", "All", "सभी")} <I.chev /></button>
         </div>
         <div className="anim-in st3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {catStats.map((c) => (
@@ -1867,8 +1885,8 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
       </>)}
 
       <div className="anim-in st3" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "24px 0 10px" }}>
-        <span className="eyebrow">Recent quotes</span>
-        <button onClick={() => goQuotes("all")} style={{ background: "none", border: "none", color: "var(--grn-d)", fontWeight: 600, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center" }}>All <I.chev /></button>
+        <span className="eyebrow">{tx("Recent quotes", "Recent quotes", "हाल के कोटेशन")}</span>
+        <button onClick={() => goQuotes("all")} style={{ background: "none", border: "none", color: "var(--grn-d)", fontWeight: 600, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center" }}>{tx("All", "All", "सभी")} <I.chev /></button>
       </div>
 
       {recent.map((q, i) => (
@@ -1893,7 +1911,7 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
       {!account?.plan && (
         <button onClick={goSubscribe} className="press anim-in st6" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 6, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "linear-gradient(135deg,#1B7A20,#2E9E33)", color: "#fff", boxShadow: "var(--sh-m)" }}>
           <span style={{ flexShrink: 0 }}><I.crown /></span>
-          <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>Sab kuch unlock karo - ek hi plan</span>
+          <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>{tx("Unlock everything - one plan", "Sab kuch unlock karo - ek hi plan", "सब कुछ अनलॉक करें - एक ही प्लान")}</span>
           <span style={{ fontFamily: "var(--mono)", fontSize: 12, background: "rgba(255,255,255,.2)", padding: "5px 10px", borderRadius: 999 }}>₹999/mo ›</span>
         </button>
       )}
@@ -1901,7 +1919,7 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
       {isMach && data.machines[0] && (
         <div className="card-tint anim-in st7" style={{ padding: "15px 16px", display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}>
           <span style={{ color: "var(--grn)" }}><I.bolt /></span>
-          <span style={{ fontSize: 13.5, color: "var(--dim)" }}>Your {data.machines[0].name}'s true rate is <b className="mono" style={{ color: "var(--grn-d)" }}>{inr(data.machines[0].rate || 0)}/hr</b> - every quote uses it automatically.</span>
+          <span style={{ fontSize: 13.5, color: "var(--dim)" }}>{tx("Your ", "Your ", "आपकी ")}{data.machines[0].name}{tx("'s true rate is ", "'s true rate is ", " की असली दर है ")}<b className="mono" style={{ color: "var(--grn-d)" }}>{inr(data.machines[0].rate || 0)}/hr</b>{tx(" - every quote uses it automatically.", " - every quote uses it automatically.", " - हर कोटेशन में अपने आप लगती है।")}</span>
         </div>
       )}
     </div></div>
@@ -3125,6 +3143,7 @@ function MachineFloor({ data, setData, ping, onBack, goSetup }) {
   const [now, setNow] = useState(Date.now());
   const [formOpen, setFormOpen] = useState(false);
   const [f, setF] = useState({ part: "", customer: "", cycleMin: "", qty: "", manualMin: "", units: [] });
+  const [xfer, setXfer] = useState(null); /* { jobId, uid, targets: [] } */
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(t); }, []);
 
   const units = machineUnits(data);
@@ -3132,7 +3151,7 @@ function MachineFloor({ data, setData, ping, onBack, goSetup }) {
   const active = jobs.filter((j) => !j.done);
   const doneJobs = jobs.filter((j) => j.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0)).slice(0, 5);
   const busy = {};
-  active.forEach((j) => (j.units || []).forEach((u) => { if (!busy[u]) busy[u] = j; }));
+  active.forEach((j) => jobAlloc(j).forEach((a) => { if (!a.stopped && !busy[a.uid]) busy[a.uid] = j; }));
 
   const qty = Math.floor(+f.qty || 0);
   const askManual = qty > 0 && qty < MANUAL_ASK_MAX;
@@ -3143,23 +3162,54 @@ function MachineFloor({ data, setData, ping, onBack, goSetup }) {
 
   const toggleUnit = (u) => setF((x) => ({ ...x, units: x.units.includes(u) ? x.units.filter((y) => y !== u) : [...x.units, u] }));
   const startJob = () => {
-    if (!f.part.trim()) return ping("Part ka naam likho");
-    if (!(+f.cycleMin > 0)) return ping("Cycle time (min/piece) chahiye");
-    if (!(qty > 0)) return ping("Quantity likho");
-    if (!f.units.length) return ping("Kam se kam ek machine chuno");
-    const job = { id: uid(), part: f.part.trim(), customer: f.customer.trim(), cycleMin: +f.cycleMin, manualMin: askManual ? +f.manualMin || 0 : 0, qty, units: f.units, startedAt: Date.now(), done: false };
+    if (!f.part.trim()) return ping(tx("Write the part name", "Part ka naam likho", "पार्ट का नाम लिखें"));
+    if (!(+f.cycleMin > 0)) return ping(tx("Cycle time (min/piece) is needed", "Cycle time (min/piece) chahiye", "साइकिल टाइम (मिनट/पीस) चाहिए"));
+    if (!(qty > 0)) return ping(tx("Write the quantity", "Quantity likho", "मात्रा लिखें"));
+    if (!f.units.length) return ping(tx("Pick at least one machine", "Kam se kam ek machine chuno", "कम से कम एक मशीन चुनें"));
+    const t0 = Date.now();
+    const sh = jobShares({ qty, units: f.units });
+    const job = { id: uid(), part: f.part.trim(), customer: f.customer.trim(), cycleMin: +f.cycleMin, manualMin: askManual ? +f.manualMin || 0 : 0, qty, units: f.units, startedAt: t0, done: false,
+      alloc: f.units.map((u, i) => ({ uid: u, share: sh[i], startedAt: t0, pausedMin: 0, pausedAt: null, stopped: false })) };
     setData({ ...data, jobs: [job, ...jobs] });
     setF({ part: "", customer: "", cycleMin: "", qty: "", manualMin: "", units: [] });
     setFormOpen(false);
-    ping("Job chalu - " + job.part);
+    ping(tx("Job started - ", "Job chalu - ", "काम चालू - ") + job.part);
   };
-  const markDone = (id) => { setData({ ...data, jobs: jobs.map((j) => j.id === id ? { ...j, done: true, doneAt: Date.now() } : j) }); ping("Job complete!"); };
-  const delJob = (id) => { setData({ ...data, jobs: jobs.filter((j) => j.id !== id) }); ping("Job hataya"); };
+  const markDone = (id) => { setData({ ...data, jobs: jobs.map((j) => j.id === id ? { ...j, done: true, doneAt: Date.now() } : j) }); ping(tx("Job complete!", "Job complete!", "काम पूरा हुआ!")); };
+  const delJob = (id) => { setData({ ...data, jobs: jobs.filter((j) => j.id !== id) }); ping(tx("Job removed", "Job hataya", "काम हटाया")); };
+  /* setJob deep-copies the alloc so mutating inside fn is safe */
+  const setJob = (id, fn) => setData({ ...data, jobs: jobs.map((j) => j.id === id ? fn({ ...j, alloc: jobAlloc(j).map((a) => ({ ...a })) }) : j) });
+  const pauseUnit = (jobId, u) => { setJob(jobId, (j) => ({ ...j, alloc: j.alloc.map((a) => a.uid === u && !a.stopped ? { ...a, pausedAt: Date.now() } : a) })); ping(tx("Paused - the clock is stopped", "Pause ho gaya - time ruk gaya", "रोक दिया - समय रुक गया")); };
+  const resumeUnit = (jobId, u) => { setJob(jobId, (j) => ({ ...j, alloc: j.alloc.map((a) => a.uid === u && a.pausedAt ? { ...a, pausedMin: (a.pausedMin || 0) + (Date.now() - a.pausedAt) / 60000, pausedAt: null } : a) })); ping(tx("Running again", "Wapas chalu", "फिर चालू")); };
+  const transferUnit = (jobId, u, targets) => {
+    if (!targets.length) return;
+    setJob(jobId, (j) => {
+      const t0 = Date.now();
+      const per = (+j.cycleMin || 0) + (+j.manualMin || 0);
+      const denom = per * JOB_BUFFER;
+      const src = j.alloc.find((a) => a.uid === u);
+      if (!src || src.stopped) return j;
+      const donePcs = denom > 0 ? Math.min(src.share, Math.floor(unitElapsedMin(j, src, t0) / denom)) : 0;
+      const rem = Math.max(0, src.share - donePcs);
+      if (!rem) return j;
+      src.share = donePcs; src.stopped = true; src.pausedAt = null;
+      targets.forEach((tu, i) => {
+        const add = Math.floor(rem / targets.length) + (i < rem % targets.length ? 1 : 0);
+        if (!add) return;
+        const ex = j.alloc.find((a) => a.uid === tu && !a.stopped);
+        if (ex) ex.share += add;
+        else j.alloc.push({ uid: tu, share: add, startedAt: t0, pausedMin: 0, pausedAt: null, stopped: false });
+      });
+      return j;
+    });
+    setXfer(null);
+    ping(tx("Remaining work moved", "Baki kaam transfer ho gaya", "बाकी काम भेज दिया"));
+  };
   const startSample = () => {
     const u = units[0]; if (!u) return;
     /* 200 pcs x 4.5 min x 1.08 = ~16.2 hr; started 9.7 hr ago -> ~60% done */
     const job = { id: uid(), part: "Gland Nut - 60mm", customer: "Apex Hydraulics", cycleMin: 4.5, manualMin: 0, qty: 200, units: [u.uid], startedAt: Date.now() - 9.7 * 3600000, done: false, seed: true };
-    setData({ ...data, jobs: [job, ...jobs] }); ping("Sample job chalu - aise dikhta hai");
+    setData({ ...data, jobs: [job, ...jobs] }); ping(tx("Sample job running - this is how it looks", "Sample job chalu - aise dikhta hai", "सैंपल काम चालू - ऐसा दिखता है"));
   };
 
   return (
@@ -3167,48 +3217,48 @@ function MachineFloor({ data, setData, ping, onBack, goSetup }) {
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
         <button className="iconbtn press" onClick={onBack}><I.back /></button>
         <div style={{ flex: 1 }}>
-          <div className="microlbl">SHOP FLOOR</div>
-          <div className="h-disp" style={{ fontSize: 23, fontWeight: 700 }}>Machine floor</div>
+          <div className="microlbl">{tx("SHOP FLOOR", "SHOP FLOOR", "शॉप फ्लोर")}</div>
+          <div className="h-disp" style={{ fontSize: 23, fontWeight: 700 }}>{tx("Machine floor", "Machine floor", "मशीन फ्लोर")}</div>
         </div>
-        {units.length > 0 && <button className="btn btn-sm btn-grn press" onClick={() => setFormOpen(!formOpen)}>{formOpen ? "Close" : "+ Naya job"}</button>}
+        {units.length > 0 && <button className="btn btn-sm btn-grn press" onClick={() => setFormOpen(!formOpen)}>{formOpen ? tx("Close", "Close", "बंद करें") : tx("+ New job", "+ Naya job", "+ नया काम")}</button>}
       </div>
       <div style={{ fontSize: 13.5, color: "var(--dim)", margin: "2px 0 16px" }}>
-        {active.length ? active.length + " job chal rahe - " + Object.keys(busy).length + "/" + units.length + " machines busy" : units.length ? "Sab machines free hain" : "Pehle machines jodo"}
+        {active.length ? active.length + tx(" running - ", " job chal rahe - ", " काम चालू - ") + Object.keys(busy).length + "/" + units.length + tx(" machines busy", " machines busy", " मशीनें व्यस्त") : units.length ? tx("All machines are free", "Sab machines free hain", "सब मशीनें खाली हैं") : tx("Add your machines first", "Pehle machines jodo", "पहले मशीनें जोड़ें")}
       </div>
 
       {!units.length && (
         <div className="card anim-in" style={{ padding: 22, textAlign: "center" }}>
           <div style={{ fontSize: 34, marginBottom: 8 }}>🛠️</div>
-          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Pehle apni machines jodo</div>
-          <div style={{ fontSize: 13.5, color: "var(--dim)", lineHeight: 1.55, marginBottom: 14 }}>Setup me machine add karo - VMC, lathe, press, kitni bhi. Phir yahan live dikhega kaun si machine par kya chal raha hai.</div>
-          <button className="btn btn-grn press" onClick={goSetup}>Setup kholo</button>
+          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{tx("Add your machines first", "Pehle apni machines jodo", "पहले अपनी मशीनें जोड़ें")}</div>
+          <div style={{ fontSize: 13.5, color: "var(--dim)", lineHeight: 1.55, marginBottom: 14 }}>{tx("Add machines in Setup - VMC, lathe, press, as many as you have. Then this page shows live what is running where.", "Setup me machine add karo - VMC, lathe, press, kitni bhi. Phir yahan live dikhega kaun si machine par kya chal raha hai.", "सेटअप में मशीन जोड़ें - VMC, लेथ, प्रेस, जितनी भी हों। फिर यहां लाइव दिखेगा कौन सी मशीन पर क्या चल रहा है।")}</div>
+          <button className="btn btn-grn press" onClick={goSetup}>{tx("Open Setup", "Setup kholo", "सेटअप खोलें")}</button>
         </div>
       )}
 
       {formOpen && (
         <div className="card anim-in" style={{ padding: 16, marginBottom: 14, border: "1.5px solid #CFE9D1" }}>
-          <div className="lbl" style={{ color: "var(--grn-d)", marginBottom: 4 }}>Kya chala rahe ho?</div>
+          <div className="lbl" style={{ color: "var(--grn-d)", marginBottom: 4 }}>{tx("What are you running?", "Kya chala rahe ho?", "क्या चला रहे हैं?")}</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div><label className="lbl" style={{ fontSize: 12.5 }}>Part / item</label><input className="input" placeholder="e.g. Gland Nut" value={f.part} onChange={(e) => setF({ ...f, part: e.target.value })} /></div>
-            <div><label className="lbl" style={{ fontSize: 12.5 }}>Customer</label><input className="input" placeholder="e.g. Apex Hydraulics" value={f.customer} onChange={(e) => setF({ ...f, customer: e.target.value })} /></div>
-            <div><label className="lbl" style={{ fontSize: 12.5 }}>Cycle time (min / pc)</label><input className="input mono" type="number" inputMode="decimal" placeholder="4.5" value={f.cycleMin} onChange={(e) => setF({ ...f, cycleMin: e.target.value })} /></div>
-            <div><label className="lbl" style={{ fontSize: 12.5 }}>Quantity (pcs)</label><input className="input mono" type="number" inputMode="numeric" placeholder="200" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} /></div>
+            <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Part / item", "Part / item", "पार्ट / आइटम")}</label><input className="input" placeholder="e.g. Gland Nut" value={f.part} onChange={(e) => setF({ ...f, part: e.target.value })} /></div>
+            <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Customer", "Customer", "ग्राहक")}</label><input className="input" placeholder="e.g. Apex Hydraulics" value={f.customer} onChange={(e) => setF({ ...f, customer: e.target.value })} /></div>
+            <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Cycle time (min / pc)", "Cycle time (min / pc)", "साइकिल टाइम (मिनट / पीस)")}</label><input className="input mono" type="number" inputMode="decimal" placeholder="4.5" value={f.cycleMin} onChange={(e) => setF({ ...f, cycleMin: e.target.value })} /></div>
+            <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Quantity (pcs)", "Quantity (pcs)", "मात्रा (पीस)")}</label><input className="input mono" type="number" inputMode="numeric" placeholder="200" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} /></div>
           </div>
-          <span className="hint">Ek piece machine par kitne minute chalta hai - wahi cycle time.</span>
+          <span className="hint">{tx("How many minutes one piece runs on the machine - that is the cycle time.", "Ek piece machine par kitne minute chalta hai - wahi cycle time.", "एक पीस मशीन पर कितने मिनट चलता है - वही साइकिल टाइम।")}</span>
           {askManual && (<>
-            <label className="lbl" style={{ marginTop: 10 }}>Manual time (min / pc)</label>
+            <label className="lbl" style={{ marginTop: 10 }}>{tx("Manual time (min / pc)", "Manual time (min / pc)", "हाथ का समय (मिनट / पीस)")}</label>
             <input className="input mono" type="number" inputMode="decimal" placeholder="2" value={f.manualMin} onChange={(e) => setF({ ...f, manualMin: e.target.value })} />
-            <span className="hint">Chhota batch hai - har piece pe haath ka kaam (deburr, checking) bhi time leta hai.</span>
+            <span className="hint">{tx("Small batch - hand work per piece (deburring, checking) takes time too.", "Chhota batch hai - har piece pe haath ka kaam (deburr, checking) bhi time leta hai.", "छोटा बैच है - हर पीस पर हाथ का काम (डीबरिंग, जांच) भी समय लेता है।")}</span>
           </>)}
-          {qty >= MANUAL_ASK_MAX && <span className="hint" style={{ marginTop: 8 }}>Bada batch - manual kaam cycle ke saath-saath chalta hai, alag se nahi ginte.</span>}
+          {qty >= MANUAL_ASK_MAX && <span className="hint" style={{ marginTop: 8 }}>{tx("Big batch - hand work overlaps the machine cycle, so it is not counted separately.", "Bada batch - manual kaam cycle ke saath-saath chalta hai, alag se nahi ginte.", "बड़ा बैच - हाथ का काम साइकिल के साथ-साथ चलता है, अलग से नहीं गिनते।")}</span>}
 
-          <label className="lbl" style={{ marginTop: 12 }}>Kitni machines par chalega? (tap karke chuno)</label>
+          <label className="lbl" style={{ marginTop: 12 }}>{tx("Which machines will run it? (tap to pick)", "Kitni machines par chalega? (tap karke chuno)", "कितनी मशीनों पर चलेगा? (चुनने के लिए दबाएं)")}</label>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {units.map((u) => {
               const taken = !!busy[u.uid];
               return (
                 <button key={u.uid} disabled={taken} className={"fpill press " + (f.units.includes(u.uid) ? "on" : "")} style={taken ? { opacity: 0.45 } : undefined} onClick={() => toggleUnit(u.uid)}>
-                  {u.name}{taken ? " - busy" : ""}
+                  {u.name}{taken ? tx(" - busy", " - busy", " - व्यस्त") : ""}
                 </button>
               );
             })}
@@ -3217,21 +3267,21 @@ function MachineFloor({ data, setData, ping, onBack, goSetup }) {
           {est && (
             <div className="card-tint" style={{ padding: "13px 14px", marginTop: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13.5, fontWeight: 600 }}>
-                <span>{f.units.length} machine{f.units.length > 1 ? "s" : ""} · ~{Math.ceil(qty / f.units.length)} pcs each</span>
+                <span>{f.units.length} machine{f.units.length > 1 ? "s" : ""} · {tx("~" + Math.ceil(qty / f.units.length) + " pcs each", "~" + Math.ceil(qty / f.units.length) + " pcs each", "~" + Math.ceil(qty / f.units.length) + " पीस प्रति मशीन")}</span>
                 <b className="mono" style={{ color: "var(--grn-d)", flexShrink: 0 }}>{fmtDur(est.remainMin)}</b>
               </div>
-              <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 3 }}>Abhi chalu karo to <b>{fmtEta(est.eta)}</b> tak khatam (+8% breakdown buffer ke saath)</div>
+              <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 3 }}>{tx("Start now and it finishes by ", "Abhi chalu karo to ", "अभी चालू करें तो ")}<b>{fmtEta(est.eta)}</b>{tx(" (includes +8% breakdown buffer)", " tak khatam (+8% breakdown buffer ke saath)", " तक खत्म (+8% ब्रेकडाउन बफर सहित)")}</div>
             </div>
           )}
-          <button className="btn btn-grn press" style={{ width: "100%", marginTop: 12 }} onClick={startJob}><I.bolt /> Job chalu karo</button>
+          <button className="btn btn-grn press" style={{ width: "100%", marginTop: 12 }} onClick={startJob}><I.bolt /> {tx("Start job", "Job chalu karo", "काम चालू करें")}</button>
         </div>
       )}
 
       {units.length > 0 && active.length === 0 && !formOpen && (
         <div className="card-tint anim-in" style={{ padding: 18, textAlign: "center", marginBottom: 12 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Koi job nahi chal raha</div>
-          <div style={{ fontSize: 13, color: "var(--dim)", marginBottom: jobs.length ? 0 : 12 }}>"+ Naya job" dabao - part, cycle time, quantity. Bas.</div>
-          {!jobs.length && <button className="btn btn-ghost press" onClick={startSample}>Sample job chala ke dekho</button>}
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{tx("Nothing is running", "Koi job nahi chal raha", "कोई काम नहीं चल रहा")}</div>
+          <div style={{ fontSize: 13, color: "var(--dim)", marginBottom: jobs.length ? 0 : 12 }}>{tx('Tap "+ New job" - part, cycle time, quantity. Done.', '"+ Naya job" dabao - part, cycle time, quantity. Bas.', '"+ नया काम" दबाएं - पार्ट, साइकिल टाइम, मात्रा। बस।')}</div>
+          {!jobs.length && <button className="btn btn-ghost press" onClick={startSample}>{tx("Try a sample job", "Sample job chala ke dekho", "सैंपल काम चला कर देखें")}</button>}
         </div>
       )}
 
@@ -3241,41 +3291,81 @@ function MachineFloor({ data, setData, ping, onBack, goSetup }) {
           <div key={u.uid} className="card anim-in" style={{ padding: "13px 15px", marginBottom: 9, display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ width: 38, height: 38, borderRadius: 11, background: "var(--soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>💤</span>
             <span style={{ flex: 1, fontWeight: 600, fontSize: 15 }}>{u.name}</span>
-            <span className="mono" style={{ fontSize: 10.5, letterSpacing: ".1em", color: "var(--faint)" }}>FREE</span>
+            <span className="mono" style={{ fontSize: 10.5, letterSpacing: ".1em", color: "var(--faint)" }}>{tx("FREE", "FREE", "खाली")}</span>
           </div>
         );
         const st = jobStats(job, now);
-        const ui = Math.max(0, (job.units || []).indexOf(u.uid));
-        const us = st.units[ui] || { pct: 0, pcsDone: 0, share: 0, remainMin: 0 };
-        const ready = us.pct >= 100;
+        const us = st.units.find((x) => x.uid === u.uid) || { pct: 0, pcsDone: 0, share: 0, remainMin: 0, paused: false };
+        const ready = us.pct >= 100 && !us.paused;
         return (
           <div key={u.uid} className="card anim-in" style={{ padding: "14px 15px", marginBottom: 9 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
               <span style={{ fontWeight: 700, fontSize: 15 }}>{u.name}</span>
-              <span className="mono" style={{ fontSize: 12.5, fontWeight: 700, color: ready ? "#1B7A20" : "var(--grn-d)" }}>{Math.floor(us.pct)}%</span>
+              <span className="mono" style={{ fontSize: 12.5, fontWeight: 700, color: us.paused ? "var(--amber)" : ready ? "#1B7A20" : "var(--grn-d)" }}>{us.paused ? tx("PAUSED", "PAUSED", "रुका") + " \u00B7 " : ""}{Math.floor(us.pct)}%</span>
             </div>
             <div style={{ fontSize: 13.5, color: "var(--dim)", margin: "3px 0 9px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {job.part}{job.customer ? " \u00B7 " + job.customer : ""}{(job.units || []).length > 1 ? " \u00B7 " + job.units.length + " machines par batta" : ""}
+              {job.part}{job.customer ? " \u00B7 " + job.customer : ""}{(() => { const n2 = jobAlloc(job).filter((a) => !a.stopped).length; return n2 > 1 ? " \u00B7 " + tx("split on " + n2 + " machines", n2 + " machines par batta", n2 + " मशीनों में बंटा") : ""; })()}
             </div>
             <div style={{ height: 8, borderRadius: 6, background: "var(--line)", overflow: "hidden" }}>
-              <i style={{ display: "block", height: "100%", width: Math.min(100, us.pct) + "%", background: ready ? "#1B7A20" : "linear-gradient(90deg,#3FAE45,#228B22)", borderRadius: 6, transition: "width .6s" }} />
+              <i style={{ display: "block", height: "100%", width: Math.min(100, us.pct) + "%", background: us.paused ? "var(--amber)" : ready ? "#1B7A20" : "linear-gradient(90deg,#3FAE45,#228B22)", borderRadius: 6, transition: "width .6s" }} />
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, gap: 8 }}>
               <span className="mono" style={{ fontSize: 11.5, color: "var(--dim)" }}>~{us.pcsDone}/{us.share} pcs</span>
-              <span className="mono" style={{ fontSize: 11.5, color: ready ? "#1B7A20" : "var(--dim)", fontWeight: ready ? 700 : 400, textAlign: "right" }}>
-                {ready ? "Ho gaya hoga - check karo" : fmtDur(us.remainMin) + " left \u00B7 " + fmtEta(now + us.remainMin * 60000)}
+              <span className="mono" style={{ fontSize: 11.5, color: us.paused ? "var(--amber)" : ready ? "#1B7A20" : "var(--dim)", fontWeight: ready || us.paused ? 700 : 400, textAlign: "right" }}>
+                {us.paused ? fmtDur(us.remainMin) + tx(" of work waiting", " ka kaam ruka hai", " का काम रुका है")
+                  : ready ? tx("Should be done - check", "Ho gaya hoga - check karo", "हो गया होगा - जांच लें")
+                  : fmtDur(us.remainMin) + tx(" left", " left", " बाकी") + " \u00B7 " + fmtEta(now + us.remainMin * 60000)}
               </span>
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              <button className={"btn btn-sm press " + (ready ? "btn-grn" : "btn-soft")} style={{ flex: 1 }} onClick={() => markDone(job.id)}>Mark done</button>
+              <button className={"btn btn-sm press " + (ready ? "btn-grn" : "btn-soft")} style={{ flex: 1 }} onClick={() => markDone(job.id)}>{tx("Mark done", "Mark done", "पूरा हुआ")}</button>
+              {!us.paused && !ready && <button className="btn btn-sm btn-soft press" onClick={() => pauseUnit(job.id, u.uid)}>{tx("Pause", "Pause", "रोकें")}</button>}
+              {us.paused && <button className="btn btn-sm btn-grn press" onClick={() => resumeUnit(job.id, u.uid)}>{tx("Resume", "Resume", "फिर चालू")}</button>}
               <button className="iconbtn press" style={{ width: 36, height: 36 }} onClick={() => delJob(job.id)} aria-label="Delete job"><I.trash /></button>
             </div>
+            {us.paused && (() => {
+              const remPcs = Math.max(0, us.share - us.pcsDone);
+              const open = xfer && xfer.jobId === job.id && xfer.uid === u.uid;
+              const targets = units.filter((t2) => {
+                if (t2.uid === u.uid) return false;
+                const bj = busy[t2.uid];
+                if (bj && bj.id !== job.id) return false; /* running someone else's job */
+                if (bj) { const a2 = st.units.find((x) => x.uid === t2.uid); if (!a2 || a2.stopped || a2.paused) return false; }
+                return true;
+              });
+              if (!remPcs || !targets.length) return null;
+              return (
+                <div style={{ marginTop: 10, borderTop: "1px dashed var(--line2)", paddingTop: 10 }}>
+                  {!open ? (
+                    <button className="btn btn-sm btn-ghost press" style={{ width: "100%" }} onClick={() => setXfer({ jobId: job.id, uid: u.uid, targets: [] })}>
+                      {tx("Move remaining " + remPcs + " pcs to another machine", "Baki " + remPcs + " pcs doosri machine par bhejo", "बाकी " + remPcs + " पीस दूसरी मशीन पर भेजें")}
+                    </button>
+                  ) : (
+                    <>
+                      <div className="lbl" style={{ fontSize: 12.5 }}>{tx("Where should the remaining " + remPcs + " pcs go?", "Baki " + remPcs + " pcs kahan bheje?", "बाकी " + remPcs + " पीस कहां भेजें?")}</div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {targets.map((t2) => (
+                          <button key={t2.uid} className={"fpill press " + (xfer.targets.includes(t2.uid) ? "on" : "")}
+                            onClick={() => setXfer({ ...xfer, targets: xfer.targets.includes(t2.uid) ? xfer.targets.filter((y) => y !== t2.uid) : [...xfer.targets, t2.uid] })}>
+                            {t2.name}{busy[t2.uid] && busy[t2.uid].id === job.id ? tx(" (same job)", " (isi job par)", " (इसी काम पर)") : ""}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                        <button className="btn btn-sm btn-grn press" style={{ flex: 1 }} disabled={!xfer.targets.length} onClick={() => transferUnit(job.id, u.uid, xfer.targets)}>{tx("Transfer", "Transfer karo", "भेज दो")}</button>
+                        <button className="btn btn-sm btn-soft press" onClick={() => setXfer(null)}>{tx("Cancel", "Cancel", "रहने दो")}</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         );
       })}
 
       {doneJobs.length > 0 && (<>
-        <div style={{ margin: "22px 0 8px" }}><span className="eyebrow">Complete hue</span></div>
+        <div style={{ margin: "22px 0 8px" }}><span className="eyebrow">{tx("Completed", "Complete hue", "पूरे हुए")}</span></div>
         {doneJobs.map((j) => (
           <div key={j.id} className="card" style={{ padding: "12px 15px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
             <span style={{ minWidth: 0 }}>
@@ -3287,7 +3377,7 @@ function MachineFloor({ data, setData, ping, onBack, goSetup }) {
         ))}
       </>)}
 
-      {units.length > 0 && <div style={{ marginTop: 14, textAlign: "center" }}><span className="hint" style={{ display: "inline" }}>Har estimate me +8% breakdown / tool-change buffer juda hai.</span></div>}
+      {units.length > 0 && <div style={{ marginTop: 14, textAlign: "center" }}><span className="hint" style={{ display: "inline" }}>{tx("Every estimate includes a +8% breakdown / tool-change buffer.", "Har estimate me +8% breakdown / tool-change buffer juda hai.", "हर अनुमान में +8% ब्रेकडाउन / टूल-चेंज बफर जुड़ा है।")}</span></div>}
     </div></div>
   );
 }
@@ -3321,10 +3411,10 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
     if (catSel && catSel !== "__custom") c = (CAT_SUGGEST[ind.key] || []).find((x) => x.key === catSel);
     else if (catSel === "__custom") {
       const label = catName.trim();
-      if (!label) return ping("Category ka naam likho");
+      if (!label) return ping(tx("Write a category name", "Category ka naam likho", "श्रेणी का नाम लिखें"));
       const key = "c_" + (label.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 18) || uid());
       c = { key, label, emoji: (catEmoji.trim() || "\u{1F4E6}").slice(0, 4) };
-    } else return ping("Pehle list se chuno");
+    } else return ping(tx("Pick from the list first", "Pehle list se chuno", "पहले सूची से चुनें"));
     if (!c || (ind.cats || []).some((x) => x.key === c.key)) return ping("Already added");
     saveMyCats([...myCats, c]);
     setCatSel(""); setCatName(""); setCatEmoji(""); setCatAdd(false);
@@ -3371,7 +3461,7 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
   return (
     <div className="scr"><div className="pagepad">
       <div className="anim-in" style={{ marginBottom: 18 }}>
-        <span className="eyebrow">Your shop</span>
+        <span className="eyebrow">{tx("Your shop", "Your shop", "आपकी दुकान")}</span>
         <div className="h-disp" style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>Setup</div>
       </div>
 
@@ -3406,11 +3496,19 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
         );
       })()}
 
-      <label className="lbl">Shop name</label>
+      <label className="lbl">{tx("Shop name", "Shop name", "दुकान का नाम")}</label>
       <input className="input anim-in st1" value={data.shopName} onChange={(e) => setData({ ...data, shopName: e.target.value })} />
 
+      {/* app language - the Hinglish/Hindi/English switch */}
+      <label className="lbl anim-in st1" style={{ marginTop: 16 }}>{tx("Language", "Language / Bhasha", "भाषा")}</label>
+      <div className="anim-in st1" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {[["en", "English"], ["hi-en", "Hinglish"], ["hi", "हिन्दी"]].map(([k, l]) => (
+          <button key={k} className={"fpill press " + ((s.lang || "hi-en") === k ? "on" : "")} onClick={() => { setS("lang", k); ping(l); }}>{l}</button>
+        ))}
+      </div>
+
       {/* trade focus - tunes labels + examples */}
-      <label className="lbl anim-in st1" style={{ marginTop: 16 }}>Your trade</label>
+      <label className="lbl anim-in st1" style={{ marginTop: 16 }}>{tx("Your trade", "Your trade", "आपका काम")}</label>
       <div className="anim-in st1" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {Object.values(INDUSTRIES).map((it) => (
           <button key={it.key} className={"fpill press " + (ind.key === it.key ? "on" : "")}
@@ -3428,11 +3526,11 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
 
       {/* categories that power the Home tiles + pipeline filter */}
       <div className="anim-in st2" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "24px 0 10px" }}>
-        <span className="eyebrow">Your categories</span>
-        <button className="btn btn-sm btn-soft press" onClick={() => setCatAdd(!catAdd)}>{catAdd ? "Close" : "+ Add category"}</button>
+        <span className="eyebrow">{tx("Your categories", "Your categories", "आपकी श्रेणियां")}</span>
+        <button className="btn btn-sm btn-soft press" onClick={() => setCatAdd(!catAdd)}>{catAdd ? tx("Close", "Close", "बंद करें") : tx("+ Add category", "+ Add category", "+ श्रेणी जोड़ें")}</button>
       </div>
       <div className="card" style={{ padding: "14px 15px" }}>
-        <span className="hint" style={{ margin: "0 0 10px" }}>These power the tiles on your Home screen and the filters in your pipeline. Every quote is sorted into one automatically.</span>
+        <span className="hint" style={{ margin: "0 0 10px" }}>{tx("These power the tiles on your Home screen and the filters in your pipeline. Every quote is sorted into one automatically.", "These power the tiles on your Home screen and the filters in your pipeline. Every quote is sorted into one automatically.", "ये आपकी होम स्क्रीन की टाइलें और पाइपलाइन के फिल्टर चलाती हैं। हर कोटेशन अपने आप एक श्रेणी में जाता है।")}</span>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {(ind.cats || []).map((c) => {
             const mine = myCats.some((x) => x.key === c.key);
@@ -3446,19 +3544,19 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
         </div>
         {catAdd && (
           <div className="anim-in" style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
-            <label className="lbl">Pick a common one</label>
+            <label className="lbl">{tx("Pick a common one", "Pick a common one", "आम में से चुनें")}</label>
             <select className="input" value={catSel} onChange={(e) => setCatSel(e.target.value)}>
-              <option value="">Choose...</option>
+              <option value="">{tx("Choose...", "Choose...", "चुनें...")}</option>
               {catSuggestions.map((x) => (<option key={x.key} value={x.key}>{x.emoji} {x.label}</option>))}
-              <option value="__custom">Apna naam likho (custom)</option>
+              <option value="__custom">{tx("Write your own (custom)", "Apna naam likho (custom)", "अपना नाम लिखें (कस्टम)")}</option>
             </select>
             {catSel === "__custom" && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 76px", gap: 9, marginTop: 9 }}>
-                <div><label className="lbl" style={{ fontSize: 12.5 }}>Category name</label><input className="input" placeholder="e.g. Gears" value={catName} onChange={(e) => setCatName(e.target.value)} /></div>
+                <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Category name", "Category name", "श्रेणी का नाम")}</label><input className="input" placeholder="e.g. Gears" value={catName} onChange={(e) => setCatName(e.target.value)} /></div>
                 <div><label className="lbl" style={{ fontSize: 12.5 }}>Emoji</label><input className="input" placeholder="📦" value={catEmoji} onChange={(e) => setCatEmoji(e.target.value)} style={{ textAlign: "center" }} /></div>
               </div>
             )}
-            <button className="btn btn-grn press" style={{ width: "100%", marginTop: 10 }} onClick={addCat}>Add category</button>
+            <button className="btn btn-grn press" style={{ width: "100%", marginTop: 10 }} onClick={addCat}>{tx("Add category", "Add category", "श्रेणी जोड़ें")}</button>
           </div>
         )}
       </div>
@@ -3466,8 +3564,8 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
       {isMach && (<>
       {/* machines */}
       <div className="anim-in st2" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "24px 0 10px" }}>
-        <span className="eyebrow">Machines</span>
-        <button className="btn btn-sm btn-soft press" onClick={() => setCalcOpen(!calcOpen)}>{calcOpen ? "Close" : "+ Add machine"}</button>
+        <span className="eyebrow">{tx("Machines", "Machines", "मशीनें")}</span>
+        <button className="btn btn-sm btn-soft press" onClick={() => setCalcOpen(!calcOpen)}>{calcOpen ? tx("Close", "Close", "बंद करें") : tx("+ Add machine", "+ Add machine", "+ मशीन जोड़ें")}</button>
       </div>
       {data.machines.map((m) => {
         const n = Math.max(1, Math.floor(m.count || 1));
@@ -3491,12 +3589,12 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
         <div className="card anim-in" style={{ padding: 16, marginTop: 6, border: "1.5px solid #CFE9D1" }}>
           <div className="lbl" style={{ color: "var(--grn-d)", marginBottom: 4 }}>True hourly-rate calculator</div>
           <span className="hint">Fill these once - the app works out what one machine-hour really costs you.</span>
-          <label className="lbl" style={{ marginTop: 8 }}>Pick a common NCR machine</label>
+          <label className="lbl" style={{ marginTop: 8 }}>{tx("Pick a common NCR machine", "Pick a common NCR machine", "आम NCR मशीन चुनें")}</label>
           <select className="input" value="" onChange={(e) => { if (e.target.value) setRc({ ...rc, name: e.target.value }); }}>
-            <option value="">Choose from the list...</option>
+            <option value="">{tx("Choose from the list...", "Choose from the list...", "सूची से चुनें...")}</option>
             {MACHINE_LIB.map((nm) => (<option key={nm} value={nm}>{nm}</option>))}
           </select>
-          <label className="lbl" style={{ marginTop: 10 }}>Machine name</label>
+          <label className="lbl" style={{ marginTop: 10 }}>{tx("Machine name", "Machine name", "मशीन का नाम")}</label>
           <input className="input" placeholder="e.g. VMC 850" value={rc.name} onChange={(e) => setRc({ ...rc, name: e.target.value })} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
             {[["price", "Machine price ₹"], ["life", "Life (years)"], ["hrsDay", "Hours / day"], ["daysMo", "Days / month"], ["kw", "Power (kW)"], ["unit", "₹ / unit"], ["operator", "Operator ₹/mo"], ["maint", "Maintenance ₹/yr"]].map(([k, l]) => (
@@ -3511,10 +3609,10 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
             <span className="mono" style={{ fontSize: 10, letterSpacing: ".16em", color: "rgba(255,255,255,.82)" }}>TRUE RATE</span>
             <span className="mono" style={{ fontSize: 25, fontWeight: 600 }}><CountUp value={rate} />/hr</span>
           </div>
-          <label className="lbl" style={{ marginTop: 12 }}>How many of this machine? (same model)</label>
+          <label className="lbl" style={{ marginTop: 12 }}>{tx("How many of this machine? (same model)", "How many of this machine? (same model)", "यह मशीन कितनी हैं? (एक ही मॉडल)")}</label>
           <input className="input mono" type="number" inputMode="numeric" min="1" value={rc.count} onChange={(e) => setRc({ ...rc, count: Math.max(1, Math.floor(+e.target.value || 1)) })} />
-          <span className="hint">Har machine alag unit banegi (#1, #2...) - Machine floor par sab alag dikhengi.</span>
-          <button className="btn btn-grn press" style={{ width: "100%", marginTop: 12 }} onClick={addMachine}>Save machine</button>
+          <span className="hint">{tx("Each machine becomes its own unit (#1, #2...) - shown separately on the Machine floor.", "Har machine alag unit banegi (#1, #2...) - Machine floor par sab alag dikhengi.", "हर मशीन अलग यूनिट बनेगी (#1, #2...) - मशीन फ्लोर पर सब अलग दिखेंगी।")}</span>
+          <button className="btn btn-grn press" style={{ width: "100%", marginTop: 12 }} onClick={addMachine}>{tx("Save machine", "Save machine", "मशीन सेव करें")}</button>
         </div>
       )}
 
