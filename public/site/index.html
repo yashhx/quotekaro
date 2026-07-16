@@ -1,1304 +1,553 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TrackRakho — every quote, tracked to the order</title>
-<meta name="description" content="TrackRakho keeps every quotation alive — pending, won, lost, follow-up. WhatsApp enquiries in, Excel in and out, Sales Orders into Tally. Built for traders and job-shops.">
-<meta property="og:title" content="TrackRakho — every quote, tracked to the order">
-<meta property="og:description" content="Quotes go out on WhatsApp, Excel and phone calls — then disappear. TrackRakho keeps each one alive: status, follow-up, order. One glance, on your phone.">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TrackRakho — your whole business, in your pocket</title>
+<meta name="description" content="Quotes, follow-ups, machines, trucks, Tally — one app that shows you everything running in your business, from anywhere. Built for traders, printers, furniture makers and machine shops.">
+<link rel="canonical" href="https://trackrakho.com/site/">
+<meta property="og:title" content="TrackRakho — your whole business, in your pocket">
+<meta property="og:description" content="Jo dikhta hai, wahi sudharta hai. Track every quote, machine and truck — from anywhere.">
 <meta property="og:url" content="https://trackrakho.com/site/">
 <meta property="og:type" content="website">
-<meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#070B08">
-<link rel="canonical" href="https://trackrakho.com/site/">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 3C15.4 3 3 14.2 3 28.4c0 8.1 4.4 15.2 11.5 19.7-.6 3.4-2.2 7.6-5 10.6 5.4-.5 10.4-2.5 13.9-4.7 2.8.6 5.7.9 8.6.9 16.6 0 29-11.3 29-25.5S48.6 3 32 3z' fill='%233FAE45'/%3E%3Cpath d='M20 29.5l8.4 8.5L45 21.5' stroke='%23070B08' stroke-width='6.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#070B08; --bg2:#0A100B; --card:#0E1510; --card2:#131C15;
-  --ink:#ECF3EC; --dim:#A3B5A6; --faint:#7E9182;
-  --grn:#3FAE45; --grn-d:#155E18; --grn-x:#3FAE45; --lum:#7CE383; --lum2:#A8FFB0;
-  --grn-100:rgba(63,174,69,.14);
-  --line:rgba(163,255,178,.09); --line2:rgba(163,255,178,.16);
-  --amber:#E8B04B; --amber-bg:rgba(232,176,75,.12);
-  --red:#E86A5E; --red-bg:rgba(232,106,94,.12);
-  --wa-hdr:#075E54; --wa-bg:#E8E0D4; --wa-out:#DCF8C6; --wa-tick:#4FB6E8;
+  --bg:#070B08; --bg2:#0A100C; --panel:#0C1410; --panel2:#101B14;
+  --line:rgba(124,227,131,.13); --line2:rgba(124,227,131,.24);
+  --grn:#7CE383; --grn-d:#4CBB5B; --ink:#EAF5EC; --dim:#A8C2AF; --faint:#6E8A77;
   --disp:'Space Grotesk',sans-serif; --sans:'Inter',sans-serif; --mono:'IBM Plex Mono',monospace;
-  --sh-s:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.5);
-  --sh-m:0 2px 4px rgba(0,0,0,.4), 0 18px 44px -18px rgba(0,0,0,.6);
-  --sh-l:0 4px 10px rgba(0,0,0,.45), 0 36px 80px -28px rgba(0,0,0,.7);
-  --glow:0 0 44px -6px rgba(63,174,69,.35);
 }
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html{scroll-behavior:smooth;scroll-padding-top:92px}
-body{font-family:var(--sans);color:var(--ink);background:var(--bg);overflow-x:hidden;line-height:1.6;font-size:16px}
-body::before{content:'';position:fixed;inset:0;z-index:1500;pointer-events:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
-  background-size:160px 160px;mix-blend-mode:overlay}
-::selection{background:var(--grn);color:#061108}
-a{color:inherit}
-img{max-width:100%}
-a:focus-visible,button:focus-visible{outline:2.5px solid var(--lum);outline-offset:3px;border-radius:8px}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);overflow-x:hidden;line-height:1.6}
+::selection{background:rgba(124,227,131,.3)}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1140px;margin:0 auto;padding:0 22px}
 .mono{font-family:var(--mono)}
-.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
-.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.22em;font-weight:600;color:var(--lum);text-transform:uppercase;display:inline-flex;align-items:center;gap:10px}
-.eyebrow::before{content:'';width:26px;height:2px;background:var(--grn);display:inline-block}
-h1,h2,h3,h4{font-family:var(--disp);letter-spacing:-.03em;line-height:1.04;color:var(--ink)}
-.grn-t{color:var(--lum)}
-.grad{background:linear-gradient(95deg,#A8FFB0,#3FAE45 60%,#2E9E33);-webkit-background-clip:text;background-clip:text;color:transparent}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.24em;color:var(--grn);text-transform:uppercase}
+h1,h2,h3{font-family:var(--disp);font-weight:700;line-height:1.08}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:14px 26px;border-radius:999px;font-weight:700;font-size:15px;cursor:pointer;border:none;font-family:var(--sans);transition:transform .18s,box-shadow .18s}
+.btn:hover{transform:translateY(-2px)}
+.btn-grn{background:linear-gradient(135deg,#8CF193,#4CBB5B);color:#06230B;box-shadow:0 12px 34px -12px rgba(124,227,131,.55)}
+.btn-ghost{background:rgba(124,227,131,.08);color:var(--grn);border:1px solid var(--line2)}
 
-/* ---------- progress + nav ---------- */
-#prog{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#1F8F26,#7CE383);width:0;z-index:1600;box-shadow:0 0 12px rgba(124,227,131,.55)}
-nav{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:1400;width:min(1120px,calc(100% - 24px));
-  display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px 9px 18px;border-radius:999px;
-  background:rgba(10,16,11,.55);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);
-  border:1px solid rgba(163,255,178,.12);box-shadow:0 1px 0 rgba(163,255,178,.06) inset,0 14px 40px -14px rgba(0,0,0,.6);
-  transition:box-shadow .3s}
-nav.scrolled{box-shadow:0 1px 0 rgba(163,255,178,.08) inset,0 18px 50px -14px rgba(0,0,0,.8),0 0 30px -12px rgba(63,174,69,.35)}
-.logo{display:inline-flex;align-items:center;gap:9px;font-family:var(--disp);font-weight:700;font-size:20px;text-decoration:none;letter-spacing:-.02em;color:var(--ink)}
-.logo svg{flex:0 0 auto}
-.logo .rk{color:var(--lum)}
-.navlinks{display:flex;gap:24px;font-size:14.5px;font-weight:600;color:var(--dim)}
-.navlinks a{text-decoration:none;transition:color .2s}
-.navlinks a:hover{color:var(--lum)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font-weight:600;font-size:16px;padding:15px 27px;border-radius:999px;border:1px solid transparent;cursor:pointer;font-family:var(--sans);text-decoration:none;
-  transform:translate3d(var(--bx,0px),var(--by,0px),0);transition:transform .18s ease,box-shadow .18s ease}
-.btn:active{transform:translate3d(var(--bx,0px),var(--by,0px),0) scale(.965)}
-.btn-grn{background:linear-gradient(135deg,#3CB542,#1F8F26 65%);color:#061108;box-shadow:0 10px 30px -8px rgba(63,174,69,.55),inset 0 1px 0 rgba(255,255,255,.3)}
-.btn-grn:hover{box-shadow:0 16px 40px -8px rgba(63,174,69,.75),inset 0 1px 0 rgba(255,255,255,.3)}
-.btn-ghost{background:rgba(163,255,178,.05);border-color:var(--line2);color:var(--ink);box-shadow:var(--sh-s)}
-.btn-ghost:hover{box-shadow:var(--sh-m);border-color:rgba(163,255,178,.3)}
-.btn-sm{padding:11px 20px;font-size:14px}
-@media(max-width:820px){.navlinks{display:none}}
+/* ---------- header ---------- */
+header{position:fixed;top:0;left:0;right:0;z-index:50;backdrop-filter:blur(14px);background:rgba(7,11,8,.72);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;gap:18px;height:64px}
+.logo{font-family:var(--disp);font-weight:700;font-size:19px;letter-spacing:.02em}
+.logo b{color:var(--grn)}
+.nav .sp{flex:1}
+.nav a.lnk{font-size:14px;color:var(--dim);font-weight:600;padding:8px 10px;border-radius:8px}
+.nav a.lnk:hover{color:var(--ink)}
+.tradedrop{position:relative}
+.tradedrop>button{display:inline-flex;align-items:center;gap:8px;background:rgba(124,227,131,.08);border:1px solid var(--line2);color:var(--grn);padding:9px 16px;border-radius:999px;font-weight:700;font-size:13.5px;cursor:pointer;font-family:var(--sans)}
+.tradedrop>button i{transition:transform .2s;font-style:normal}
+.tradedrop.open>button i{transform:rotate(180deg)}
+.dropmenu{position:absolute;top:calc(100% + 10px);right:0;min-width:250px;background:#0D1710;border:1px solid var(--line2);border-radius:18px;padding:8px;box-shadow:0 30px 60px -20px rgba(0,0,0,.7);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .18s,transform .18s}
+.tradedrop.open .dropmenu{opacity:1;pointer-events:auto;transform:none}
+.dropmenu a{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;font-size:14.5px;font-weight:600;color:var(--ink)}
+.dropmenu a:hover{background:rgba(124,227,131,.09)}
+.dropmenu a span.em{font-size:19px}
+.dropmenu a small{display:block;font-weight:500;color:var(--faint);font-size:11.5px;margin-top:1px}
+.cta-sm{padding:10px 18px;font-size:13.5px}
+@media(max-width:760px){.nav a.lnk{display:none}}
 
 /* ---------- hero ---------- */
-header{position:relative;min-height:100vh;min-height:100svh;display:flex;align-items:center;overflow:hidden;
-  background:radial-gradient(60% 50% at 72% 18%,rgba(63,174,69,.16),transparent 65%),radial-gradient(50% 45% at 12% 80%,rgba(63,174,69,.08),transparent 70%),linear-gradient(180deg,#08100A,#070B08 74%)}
-.h-grid{position:absolute;inset:0;pointer-events:none;opacity:.6;
-  background-image:linear-gradient(rgba(63,174,69,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(63,174,69,.07) 1px,transparent 1px);
-  background-size:56px 56px;mask-image:radial-gradient(72% 62% at 50% 40%,#000 30%,transparent 76%);-webkit-mask-image:radial-gradient(72% 62% at 50% 40%,#000 30%,transparent 76%)}
-.hero-inner{position:relative;z-index:2;display:grid;grid-template-columns:1.02fr .98fr;gap:30px;align-items:center;width:100%;padding-top:104px;padding-bottom:56px}
-.hero-copy h1{font-size:clamp(44px,5.6vw,82px);font-weight:700;margin:22px 0 20px;line-height:1.0}
-.hero-copy .sub{font-size:clamp(16.5px,1.6vw,19px);color:var(--dim);max-width:47ch;line-height:1.7}
-.hero-ctas{display:flex;gap:14px;margin-top:34px;flex-wrap:wrap}
-.hstats{display:flex;gap:34px;margin-top:42px;flex-wrap:wrap}
-.hstats b{font-family:var(--disp);font-size:24px;color:var(--lum);display:block;letter-spacing:-.02em}
-.hstats span{font-size:12.5px;color:var(--faint)}
-.stamp{display:inline-block;font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--lum);border:1.5px solid rgba(124,227,131,.4);border-radius:10px;padding:7px 13px;transform:rotate(-1.6deg);margin-top:26px;background:rgba(63,174,69,.06)}
+.hero{position:relative;padding:150px 0 80px;overflow:hidden}
+.hero-glow{position:absolute;width:900px;height:900px;border-radius:50%;background:radial-gradient(circle,rgba(124,227,131,.14),transparent 62%);top:-320px;left:50%;margin-left:-450px;pointer-events:none}
+.hgrid{display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center}
+@media(max-width:900px){.hgrid{grid-template-columns:1fr}}
+.hero h1{font-size:clamp(40px,6vw,68px);letter-spacing:-.02em}
+.hero h1 .g{color:var(--grn)}
+.hero p.sub{font-size:18px;color:var(--dim);margin:20px 0 0;max-width:520px}
+.hero .hindi{font-family:var(--disp);color:var(--grn);font-size:15px;letter-spacing:.02em;margin-top:14px;opacity:.85}
+.trustline{display:flex;gap:26px;flex-wrap:wrap;margin-top:34px}
+.trustline .t{font-family:var(--mono);font-size:12px;color:var(--faint)}
+.trustline .t b{color:var(--grn);font-size:14px;display:block}
 
-/* hero floating card composition */
-.hstage{position:relative;height:600px;perspective:1300px}
-.hplane{position:absolute;inset:0;transform-style:preserve-3d}
-.hcard{position:absolute;background:rgba(14,21,16,.86);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--line2);border-radius:22px;box-shadow:var(--sh-l),var(--glow);padding:20px 22px;width:290px;will-change:transform;
-  transform:translate3d(calc(var(--mx,0)*var(--pf,0)*1px),calc(var(--my,0)*var(--pf,0)*1px + var(--bob,0px)),var(--z,0px)) rotateX(calc(var(--my,0)*-2deg)) rotateY(calc(var(--mx,0)*2.6deg)) rotate(var(--rot,0deg))}
-.hcard .row1{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.hcard .nm{font-weight:600;font-size:16px;color:var(--ink)}
-.hcard .amt{font-family:var(--mono);font-weight:600;font-size:16px;color:var(--lum)}
-.hcard .row2{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
-.hcard .pt{font-size:13px;color:var(--dim)}
-.pill{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;font-weight:600;padding:4px 11px;border-radius:999px;white-space:nowrap}
-.pill.won{background:var(--grn-100);color:var(--lum)}
-.pill.pend{background:var(--amber-bg);color:var(--amber)}
-.pill.lost{background:var(--red-bg);color:var(--red)}
-.hc1{top:56px;right:26px;--z:60px;--pf:22;--rot:2.2deg;animation:bob 6.4s ease-in-out infinite}
-.hc2{top:216px;left:8px;--z:120px;--pf:34;--rot:-2deg;animation:bob 5.6s ease-in-out .8s infinite}
-.hc3{bottom:112px;right:60px;--z:170px;--pf:46;--rot:1.4deg;width:262px;animation:bob 6s ease-in-out .4s infinite}
-.hc3 .fup{display:flex;align-items:center;gap:11px}
-.hc3 .bell{width:40px;height:40px;border-radius:13px;background:var(--amber-bg);color:var(--amber);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
-.hc3 .ft{font-family:var(--disp);font-weight:700;font-size:17px;color:var(--ink)}
-.hc3 .fs{font-size:12.5px;color:var(--dim)}
-.hc3 .chase{margin-top:13px;display:inline-flex;align-items:center;gap:7px;background:var(--grn-100);border:1px solid rgba(124,227,131,.3);color:var(--lum);font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:999px}
-.hc4{top:8px;left:64px;--z:30px;--pf:14;--rot:-1.4deg;width:auto;padding:12px 16px;display:flex;align-items:center;gap:10px;animation:bob 7s ease-in-out 1.2s infinite}
-.hc4 .wl{font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:#4EC96F;font-weight:600}
-.hc4 .wm2{font-size:12.5px;color:var(--dim);max-width:200px}
-.wadot{width:7px;height:7px;border-radius:50%;background:#25A75B;display:inline-block;flex:0 0 auto;box-shadow:0 0 8px rgba(37,167,91,.9)}
-@keyframes bob{0%,100%{--bob:0px;margin-top:0}50%{margin-top:-12px}}
-.hglow{position:absolute;width:460px;height:460px;left:50%;top:50%;transform:translate(-50%,-46%);border-radius:50%;
-  background:radial-gradient(closest-side,rgba(63,174,69,.24),transparent 72%);pointer-events:none}
-@media(max-width:980px){
-  .hero-inner{grid-template-columns:1fr;text-align:center;padding-top:130px}
-  .hero-copy .sub{margin:0 auto}
-  .hero-ctas,.hstats{justify-content:center}
-  .hstage{height:520px;max-width:520px;margin:6px auto 0;width:100%}
-  .hc1{right:0}.hc2{left:0}.hc3{right:8px;bottom:60px}.hc4{left:10px}
-}
-@media(max-width:560px){
-  .hstage{height:470px}
-  .hcard{width:min(280px,82vw)}
-  .hc1{top:118px;right:-6px}
-  .hc2{top:236px;left:-4px}
-  .hc3{bottom:6px;right:8px}
-  .hc4{top:6px;left:2px}
-}
+/* 3D phone */
+.stage{perspective:1400px;position:relative;height:620px}
+.phone{position:absolute;left:50%;top:50%;width:290px;height:590px;margin:-295px 0 0 -145px;border-radius:42px;background:linear-gradient(160deg,#101B12,#0A120C);border:1px solid var(--line2);box-shadow:0 60px 120px -40px rgba(0,0,0,.85),inset 0 1px 0 rgba(124,227,131,.25);transform-style:preserve-3d;padding:14px;transition:transform .15s ease-out}
+.phone .notch{width:96px;height:22px;border-radius:12px;background:#050805;margin:2px auto 10px}
+.scrn{background:#0B130D;border-radius:28px;height:calc(100% - 40px);padding:16px 13px;overflow:hidden;border:1px solid rgba(124,227,131,.08)}
+.scrn .greet{font-family:var(--disp);font-weight:700;font-size:17px}
+.scrn .greet small{display:block;font-family:var(--mono);font-size:8.5px;letter-spacing:.18em;color:var(--faint);margin-bottom:3px}
+.kgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}
+.kpi{background:rgba(124,227,131,.06);border:1px solid var(--line);border-radius:13px;padding:10px}
+.kpi b{font-family:var(--mono);font-size:15px;color:var(--grn);display:block}
+.kpi span{font-size:8.5px;font-family:var(--mono);letter-spacing:.08em;color:var(--faint)}
+.mrow{display:flex;align-items:center;gap:9px;background:rgba(124,227,131,.05);border:1px solid var(--line);border-radius:13px;padding:10px;margin-top:8px}
+.mrow .ic{width:30px;height:30px;border-radius:9px;background:rgba(124,227,131,.12);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.mrow .tx{flex:1;min-width:0}
+.mrow .tx b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mrow .tx span{font-size:9.5px;color:var(--faint);font-family:var(--mono)}
+.pbar{height:5px;border-radius:4px;background:rgba(124,227,131,.12);margin-top:5px;overflow:hidden}
+.pbar i{display:block;height:100%;width:60%;background:linear-gradient(90deg,#4CBB5B,#7CE383);border-radius:4px}
+.chip3d{position:absolute;background:#0E1911;border:1px solid var(--line2);border-radius:16px;padding:12px 15px;box-shadow:0 24px 50px -18px rgba(0,0,0,.75);font-size:12.5px;font-weight:600;z-index:2}
+.chip3d .mono{display:block;color:var(--grn);font-size:14px;font-weight:600}
+.chip3d small{color:var(--faint);font-weight:500;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em}
+@media(max-width:900px){.stage{height:540px;margin-top:10px}.chip3d{display:none}}
+
+/* ---------- stat band ---------- */
+.band{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(124,227,131,.05),transparent);padding:46px 0}
+.bgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}
+@media(max-width:760px){.bgrid{grid-template-columns:1fr 1fr}}
+.bstat b{font-family:var(--disp);font-size:clamp(30px,4vw,44px);color:var(--grn);display:block}
+.bstat span{font-size:13px;color:var(--dim)}
+.bnote{text-align:center;font-size:11px;color:var(--faint);margin-top:22px;font-family:var(--mono)}
 
 /* ---------- sections ---------- */
-section{position:relative;padding:112px 0}
-.sec-head{max-width:760px;margin-bottom:56px}
-.sec-head h2{font-size:clamp(34px,4.6vw,58px);font-weight:700;margin:18px 0 16px}
-.sec-head p{font-size:17px;color:var(--dim);line-height:1.75}
-.center{text-align:center;margin-left:auto;margin-right:auto}
-.center .eyebrow{justify-content:center}
+section.blk{padding:96px 0;position:relative}
+.sechead{max-width:720px;margin-bottom:44px}
+.sechead h2{font-size:clamp(28px,4vw,44px);margin-top:12px;letter-spacing:-.01em}
+.sechead p{color:var(--dim);font-size:16.5px;margin-top:14px}
+.cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:860px){.cards3{grid-template-columns:1fr}}
+.wcard{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:26px;transition:transform .25s,border-color .25s}
+.wcard:hover{transform:translateY(-5px);border-color:var(--line2)}
+.wcard .em{font-size:28px}
+.wcard h3{font-size:19px;margin:14px 0 8px}
+.wcard p{font-size:14px;color:var(--dim)}
 
-/* ================= STORY (scroll) ================= */
-.k-head{padding:110px 0 0}
-.k-track{position:relative;height:650vh}
-.k-stage{position:sticky;top:0;height:100vh;height:100dvh;overflow:hidden;perspective:1200px;
-  display:flex;align-items:center;justify-content:center;
-  background:radial-gradient(55% 60% at 50% 42%,rgba(63,174,69,.13),transparent 70%),linear-gradient(180deg,#08100A,#0A130B 55%,#070B08)}
-.k-stage::before{content:'';position:absolute;inset:0;pointer-events:none;opacity:.65;
-  background-image:linear-gradient(rgba(63,174,69,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(63,174,69,.06) 1px,transparent 1px);
-  background-size:52px 52px;mask-image:radial-gradient(75% 70% at 50% 45%,#000 25%,transparent 78%);-webkit-mask-image:radial-gradient(75% 70% at 50% 45%,#000 25%,transparent 78%)}
+/* trade sections */
+.trade{scroll-margin-top:90px;border:1px solid var(--line);border-radius:30px;background:linear-gradient(165deg,var(--panel) 0%,var(--bg2) 100%);padding:52px;margin-bottom:34px;display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center;position:relative;overflow:hidden;transition:box-shadow .5s,border-color .5s}
+.trade.rev .mock{order:-1}
+@media(max-width:900px){.trade{grid-template-columns:1fr;padding:30px}.trade.rev .mock{order:0}}
+.trade.lit{border-color:rgba(124,227,131,.55);box-shadow:0 0 0 1px rgba(124,227,131,.35),0 30px 90px -30px rgba(124,227,131,.28)}
+.trade .tbadge{display:inline-flex;align-items:center;gap:8px;background:rgba(124,227,131,.1);border:1px solid var(--line2);color:var(--grn);font-family:var(--mono);font-size:11px;letter-spacing:.18em;padding:7px 14px;border-radius:999px;margin-bottom:18px}
+.trade h3{font-size:clamp(24px,3vw,34px);letter-spacing:-.01em}
+.trade p.lead{color:var(--dim);font-size:15.5px;margin:14px 0 6px}
+.feats{list-style:none;margin-top:18px}
+.feats li{display:flex;gap:12px;padding:9px 0;font-size:14.5px;color:var(--ink)}
+.feats li b{color:var(--grn)}
+.feats li:before{content:"";width:18px;height:18px;flex-shrink:0;margin-top:3px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#9CF7A2,#3F9E4D);box-shadow:0 0 12px rgba(124,227,131,.5)}
+.save{display:flex;gap:12px;margin-top:22px;flex-wrap:wrap}
+.save .s{background:rgba(124,227,131,.07);border:1px solid var(--line);border-radius:14px;padding:10px 16px;font-family:var(--mono);font-size:12px;color:var(--dim)}
+.save .s b{color:var(--grn);display:block;font-size:14px}
 
-/* phone (the WhatsApp interior deliberately stays light and authentic) */
-.k-phdrift{position:relative;transform-style:preserve-3d;will-change:transform;z-index:2}
-.k-phone{position:relative;width:min(340px,88vw);height:min(640px,78dvh);min-height:430px;background:#0E1512;border-radius:40px;
-  box-shadow:0 0 0 3px #35473A,0 0 120px -18px rgba(63,174,69,.4),0 60px 110px -30px rgba(0,0,0,.8);
-  padding:10px;display:flex;flex-direction:column;overflow:hidden}
-.k-screen{flex:1;display:flex;flex-direction:column;border-radius:31px;overflow:hidden;background:var(--wa-bg);position:relative}
-.k-wahdr{background:var(--wa-hdr);color:#fff;padding:12px 14px;display:flex;align-items:center;gap:11px;flex:0 0 auto;z-index:3}
-.k-wahdr .avz{width:36px;height:36px;border-radius:50%;background:#C6DAC6;color:#2E5A3A;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:16px;flex:0 0 auto}
-.k-wahdr .who{line-height:1.25;min-width:0}
-.k-wahdr .who b{font-size:15.5px;font-weight:600;display:block;font-family:var(--sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.k-wahdr .who span{font-size:11.5px;color:#B9DDD2}
-.k-wahdr svg{flex:0 0 auto;opacity:.95}
-.k-chat{flex:1;position:relative;overflow:hidden;
-  background-image:radial-gradient(rgba(120,100,70,.09) 1.2px,transparent 1.2px),radial-gradient(rgba(120,100,70,.06) 1.4px,transparent 1.4px);
-  background-size:26px 26px,42px 42px;background-position:0 0,13px 17px}
-.k-mcol{position:absolute;left:0;right:0;bottom:12px;display:flex;flex-direction:column;gap:8px;padding:0 12px;
-  transition:transform .6s cubic-bezier(.26,.9,.28,1);will-change:transform}
-.k-msg{max-width:82%;border-radius:12px;padding:8px 11px 6px;font-size:14px;line-height:1.45;box-shadow:0 1px 1px rgba(22,32,26,.12);color:#16201A;
-  opacity:0;transform:translateY(22px) scale(.9);transition:transform .5s cubic-bezier(.2,1.1,.3,1),opacity .4s ease}
-.k-msg.show{opacity:1;transform:none}
-.k-msg.in{align-self:flex-start;background:#fff;border-top-left-radius:4px;transform-origin:left bottom}
-.k-msg.out{align-self:flex-end;background:var(--wa-out);border-top-right-radius:4px;transform-origin:right bottom}
-.k-meta{display:flex;justify-content:flex-end;align-items:center;gap:4px;margin-top:2px;font-size:10.5px;color:#7C8A80;font-family:var(--sans)}
-.k-tick{color:var(--wa-tick);letter-spacing:-.28em;font-size:12px;margin-left:1px}
-.k-div{align-self:center;background:#DCE9F1;color:#5A6B77;font-size:10.5px;font-weight:600;letter-spacing:.08em;padding:5px 12px;border-radius:9px;box-shadow:0 1px 1px rgba(22,32,26,.1);
-  opacity:0;transform:translateY(18px);transition:transform .5s ease,opacity .4s ease}
-.k-div.show{opacity:1;transform:none}
-/* handwritten chit photo message */
-.chitwrap{padding:4px 3px 2px}
-.chit{width:206px;height:150px;background:repeating-linear-gradient(#FDFBF3,#FDFBF3 26px,#D9E4EE 27px);border-radius:4px;
-  box-shadow:0 2px 8px rgba(22,32,26,.25);transform:rotate(-2.4deg);padding:12px 12px 8px 26px;position:relative;overflow:hidden}
-.chit::before{content:'';position:absolute;top:0;bottom:0;left:16px;width:1.5px;background:rgba(200,90,80,.5)}
-.chit p{font-family:'Segoe Print','Bradley Hand','Comic Sans MS','Chalkboard SE',cursive;font-size:15px;color:#3A3F63;line-height:27px;white-space:nowrap}
-.chit p.urg{color:#A23B2E;transform:rotate(-1deg)}
-.chit .scrib{position:absolute;right:10px;bottom:8px;opacity:.75}
-.k-cap{font-size:13.5px;margin-top:5px;color:#374840}
-/* pdf chip bubble */
-.pdfchip{display:flex;gap:11px;align-items:center;background:rgba(255,255,255,.55);border-radius:10px;padding:9px 11px;margin-bottom:3px}
-.pdfchip .pdficon{width:38px;height:38px;border-radius:9px;background:#D23B2E;color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:600;flex:0 0 auto}
-.pdfchip .pn{font-size:13px;font-weight:600;line-height:1.3}
-.pdfchip .pm{font-size:11px;color:#5C6B61;font-family:var(--mono)}
-.k-pdim{position:absolute;inset:0;background:#0B141A;opacity:0;pointer-events:none;z-index:4;border-radius:31px}
+/* app mocks inside trade sections */
+.mock{background:#0B130D;border:1px solid var(--line2);border-radius:24px;padding:20px;box-shadow:0 40px 90px -35px rgba(0,0,0,.8)}
+.mock .mh{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.mock .mh b{font-family:var(--disp);font-size:15px}
+.mock .mh span{font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--grn);background:rgba(124,227,131,.1);padding:4px 10px;border-radius:999px;border:1px solid var(--line)}
+.tile2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.tile2 .t{border-radius:15px;padding:13px;border:1px solid var(--line)}
+.tile2 .t.g{background:rgba(124,227,131,.07)}
+.tile2 .t.a{background:rgba(232,193,115,.07);border-color:rgba(232,193,115,.25)}
+.tile2 .t small{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;color:var(--faint);display:block}
+.tile2 .t b{font-family:var(--mono);font-size:17px;color:var(--grn)}
+.tile2 .t.a b{color:#E8C173}
+.rowm{display:flex;align-items:center;gap:10px;background:rgba(124,227,131,.05);border:1px solid var(--line);border-radius:14px;padding:11px;margin-top:9px}
+.rowm .ic{width:34px;height:34px;border-radius:10px;background:rgba(124,227,131,.12);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.rowm .tx{flex:1;min-width:0}
+.rowm .tx b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rowm .tx span{font-size:10px;color:var(--faint);font-family:var(--mono)}
+.rowm .amt{font-family:var(--mono);font-size:12.5px;color:var(--grn);flex-shrink:0}
+.catgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.catgrid .c{background:rgba(124,227,131,.05);border:1px solid var(--line);border-radius:13px;padding:11px 9px;text-align:center;font-size:11px;font-weight:600}
+.catgrid .c i{display:block;font-style:normal;font-size:19px;margin-bottom:4px}
+.catgrid .c small{display:block;color:var(--faint);font-family:var(--mono);font-size:8.5px;margin-top:2px}
+/* photo search mock */
+.upl{border:1.5px dashed var(--line2);border-radius:16px;padding:16px;display:flex;align-items:center;gap:12px;background:rgba(124,227,131,.04)}
+.upl .ph{width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#274a2c,#152b18);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+.upl b{font-size:13px;display:block}
+.upl span{font-size:10.5px;color:var(--faint);font-family:var(--mono)}
+.scanline{height:3px;border-radius:3px;background:linear-gradient(90deg,transparent,#7CE383,transparent);margin:12px 0;animation:scan 2.4s ease-in-out infinite;background-size:200% 100%}
+@keyframes scan{0%{background-position:120% 0}100%{background-position:-120% 0}}
+.match{display:flex;align-items:center;gap:10px;background:rgba(124,227,131,.05);border:1px solid var(--line);border-radius:14px;padding:10px;margin-top:8px}
+.match .thumb{width:40px;height:40px;border-radius:10px;flex-shrink:0;background:linear-gradient(135deg,#2c4630,#18301c);display:flex;align-items:center;justify-content:center;font-size:18px}
+.match .tx{flex:1;min-width:0}
+.match .tx b{font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.match .tx span{font-size:9.5px;color:var(--faint);font-family:var(--mono)}
+.match .pct{font-family:var(--mono);font-size:12.5px;color:var(--grn);font-weight:600;flex-shrink:0}
 
-/* app cards over the phone (dark glass) */
-.k-cards{position:absolute;inset:0;transform-style:preserve-3d;pointer-events:none;z-index:3}
-.k-pos{position:absolute;transform-style:preserve-3d;will-change:transform;
-  transform:translate3d(var(--cx,0px),calc(var(--kd,0px)*var(--pr,0)),var(--z,0px))}
-.k-app{width:min(320px,86vw);background:rgba(14,21,16,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  border:1px solid var(--line2);border-radius:20px;box-shadow:var(--sh-l),var(--glow);padding:18px 20px;color:var(--ink);
-  opacity:0;transform:translateY(52px) scale(.92);transition:transform .8s cubic-bezier(.16,1,.3,1),opacity .5s ease}
-.k-app.on{opacity:1;transform:translateY(0) scale(1)}
-.k-al{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;color:var(--lum);font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:11px}
-.k-al .dot{width:7px;height:7px;border-radius:50%;background:var(--lum);flex:0 0 auto;box-shadow:0 0 8px rgba(124,227,131,.9)}
-.k-al .oc{color:var(--faint);letter-spacing:.1em}
-.k-frow{display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:14px}
-.k-frow:last-of-type{border-bottom:none}
-.k-frow .fk{color:var(--faint);flex:0 0 auto}
-.k-frow .fv{font-weight:600;text-align:right;color:var(--ink)}
-.k-abtn{margin-top:12px;display:inline-flex;align-items:center;gap:7px;background:var(--grn-100);border:1px solid rgba(124,227,131,.3);color:var(--lum);font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:999px}
-.k-note{font-size:12px;color:var(--faint);margin-top:10px;line-height:1.55}
-.k-note b{color:var(--dim)}
-/* AI typing card */
-.k-type{font-family:var(--mono);font-size:13px;color:var(--ink);min-height:20px;padding:2px 0;white-space:nowrap;overflow:hidden}
-.k-type::before{content:'>';color:var(--lum);margin-right:8px}
-/* costing card */
-.k-math{width:min(340px,88vw);background:#0F1D13;color:#D9EBDB;border:1px solid var(--line2);border-radius:20px;box-shadow:var(--sh-l),var(--glow);padding:20px 22px;font-family:var(--mono)}
-.k-math .k-al{color:#7CCB80}
-.k-ml{display:flex;justify-content:space-between;padding:6.5px 0;border-bottom:1px dashed rgba(217,235,219,.16);font-size:12.5px;
-  opacity:0;transform:translateY(10px);transition:transform .5s ease,opacity .4s ease}
-.k-ml .l{color:#9DBCA1}.k-ml .v{color:#fff}
-.k-ml.sum .l,.k-ml.sum .v{color:#CFE9D1;font-weight:600}
-.k-ml.big{border-bottom:none;padding-top:12px;align-items:baseline}
-.k-ml.big .l{color:#7CCB80;font-weight:600}
-.k-ml.big .v{font-size:24px;font-weight:600;color:#7CE383;font-family:var(--disp);letter-spacing:-.01em}
-.k-app.on .k-ml,.on .k-ml{opacity:1;transform:none}
-.k-ml:nth-child(2){transition-delay:.1s}.k-ml:nth-child(3){transition-delay:.25s}.k-ml:nth-child(4){transition-delay:.4s}
-.k-ml:nth-child(5){transition-delay:.6s}.k-ml:nth-child(6){transition-delay:.8s}.k-ml:nth-child(7){transition-delay:1.05s}.k-ml:nth-child(8){transition-delay:1.3s}
-/* pipeline card w/ flip pill + follow-up badge */
-.k-prow{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.k-prow .nm{font-weight:600;font-size:15px;color:var(--ink)}
-.k-prow .amt{font-family:var(--mono);font-weight:600;font-size:15px;color:var(--lum)}
-.k-psub{font-size:12.5px;color:var(--dim);margin-top:3px}
-.flip{perspective:400px;display:inline-block;height:24px}
-.flip .fl3d{display:block;position:relative;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.3,1.3,.4,1);height:24px}
-.flip .fface{display:flex;align-items:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;height:24px}
-.flip .back{position:absolute;inset:0;transform:rotateX(180deg)}
-.winner .fl3d{transform:rotateX(180deg)}
-.k-fbadge{display:inline-flex;align-items:center;gap:7px;margin-top:12px;font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:999px;background:rgba(163,255,178,.05);border:1px solid var(--line);color:var(--dim);transition:background .4s,color .4s,border-color .4s}
-.k-fbadge .b2{display:none}
-.due .k-fbadge{background:var(--amber-bg);border-color:rgba(232,176,75,.35);color:var(--amber)}
-.due .k-fbadge .b1{display:none}.due .k-fbadge .b2{display:inline}
-.k-chasebtn{display:none;margin-top:10px;align-items:center;gap:7px;background:linear-gradient(135deg,#3CB542,#1F8F26);color:#061108;font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:999px;box-shadow:0 8px 18px -8px rgba(63,174,69,.7)}
-.due .k-chasebtn{display:inline-flex;animation:popin .5s cubic-bezier(.2,1.4,.3,1)}
-.k-fbadge .b3{display:none}
-.done .k-fbadge{background:var(--grn-100);border-color:rgba(124,227,131,.35);color:var(--lum)}
-.done .k-fbadge .b1,.done .k-fbadge .b2{display:none}
-.done .k-fbadge .b3{display:inline}
-.done .k-chasebtn{display:none}
-@keyframes popin{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
-/* tally card */
-.k-tally .beta{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;background:rgba(99,140,255,.14);color:#9FB4FF;border:1px solid rgba(159,180,255,.3);padding:3px 8px;border-radius:999px;font-weight:600}
-.k-so{display:flex;gap:11px;align-items:center;background:rgba(163,255,178,.05);border:1px solid var(--line);border-radius:13px;padding:10px 12px;margin-top:6px}
-.k-so .ticon{width:36px;height:36px;border-radius:9px;background:#123C6B;color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:600;flex:0 0 auto}
-.k-so .sn{font-size:13px;font-weight:600;color:var(--ink)}
-.k-so .sm{font-size:11.5px;color:var(--faint);font-family:var(--mono)}
-/* card positions (desktop) */
-.kpA{left:calc(50% - 545px);top:13%;--z:100px;--pr:.5}
-.kpB{left:calc(50% + 215px);top:17%;--z:150px;--pr:.9}
-.kpC{left:calc(50% - 570px);top:42%;--z:130px;--pr:.7}
-.kpD{left:calc(50% + 200px);top:24%;--z:110px;--pr:.6}
-.kpE{left:calc(50% + 230px);top:58%;--z:150px;--pr:.95}
-@media(max-width:1180px){
-  .kpA{left:calc(50% - 480px)}.kpC{left:calc(50% - 505px)}
-  .kpB{left:calc(50% + 180px)}.kpD{left:calc(50% + 172px)}.kpE{left:calc(50% + 190px)}
-}
-@media(max-width:960px){
-  .kpA{left:max(2vw,calc(50% - 420px))}.kpC{left:max(2vw,calc(50% - 440px))}
-  .kpB{left:auto;right:max(2vw,calc(50% - 430px))}.kpD{left:auto;right:max(2vw,calc(50% - 420px))}.kpE{left:auto;right:max(2vw,calc(50% - 440px))}
-}
-@media(max-width:760px){
-  .k-pos{--cx:-50%}
-  .kpA{left:50%;right:auto;top:max(12%,100px);--z:30px}
-  .kpB{left:50%;right:auto;top:auto;bottom:4%;--z:40px}
-  .kpC{left:50%;right:auto;top:auto;bottom:3%;--z:50px}
-  .kpD{left:50%;right:auto;top:max(12%,100px);--z:55px}
-  .kpE{left:50%;right:auto;top:28%;--z:60px}
-  .k-phone{height:min(600px,72dvh)}
-}
-/* intro hint + end caption */
-.k-hint{position:absolute;top:max(84px,9%);left:50%;--cx:-50%;z-index:5;text-align:center;pointer-events:none}
-.k-hint .k-app{width:auto;padding:12px 22px;border-radius:999px;font-size:14px;font-weight:600;color:var(--lum);display:inline-flex;align-items:center;gap:10px}
-.k-hint svg{animation:nudge 1.6s ease-in-out infinite}
-@keyframes nudge{0%,100%{transform:translateY(0)}50%{transform:translateY(5px)}}
-.k-end{position:absolute;bottom:max(20px,4%);left:50%;--cx:-50%;z-index:6}
-.k-end .k-app{width:min(560px,92vw);text-align:center;padding:22px 26px;pointer-events:auto}
-.k-end h3{font-size:clamp(19px,2.6vw,26px);line-height:1.25;margin-bottom:6px}
-.k-end p{font-size:14px;color:var(--dim);margin-bottom:14px}
-/* progress rail */
-.k-rail{position:absolute;right:26px;top:50%;transform:translateY(-50%);z-index:7;display:flex;flex-direction:column;gap:10px}
-.k-rail button{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--lum);background:transparent;cursor:pointer;padding:0;transition:transform .3s,background .3s;opacity:.55}
-.k-rail button.act{background:var(--lum);transform:scale(1.35);opacity:1;box-shadow:0 0 10px rgba(124,227,131,.8)}
-@media(max-width:1000px){.k-rail{display:none}}
+/* pocket section */
+.pocket{background:linear-gradient(180deg,transparent,rgba(124,227,131,.05),transparent);text-align:center}
+.pocket h2{font-size:clamp(30px,4.4vw,50px)}
+.pocket .sub{color:var(--dim);max-width:560px;margin:16px auto 0;font-size:16.5px}
+.anyrow{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin-top:34px}
+.anyrow .a{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:11px 22px;font-size:13.5px;color:var(--dim)}
+.anyrow .a b{color:var(--ink)}
 
-/* ---- static fallback (reduced motion / short viewport) ---- */
-.k-static .k-track{height:auto}
-.k-static .k-stage{position:static;height:auto;min-height:0;overflow:visible;perspective:none;display:block;padding:50px 16px 70px}
-.k-static .k-phdrift{transform:none!important;margin:0 auto;width:min(340px,92vw)}
-.k-static .k-phone{height:auto;min-height:0}
-.k-static .k-chat{overflow:visible}
-.k-static .k-mcol{position:static;transform:none!important;padding:14px 12px}
-.k-static .k-msg,.k-static .k-div{opacity:1;transform:none}
-.k-static .k-cards{position:static;transform-style:flat}
-.k-static .k-pos{position:static;transform:none!important;margin:20px auto;width:min(340px,92vw)}
-.k-static .k-app,.k-static .k-math{opacity:1;transform:none;width:100%}
-.k-static .k-ml{opacity:1;transform:none}
-.k-static .k-hint{display:none}
-.k-static .k-end{position:static;margin:26px auto 0;display:block}
-.k-static .k-end .k-app{margin:0 auto}
-.k-static .k-rail{display:none}
-.k-static .due-static .k-fbadge .b1{display:none}
-.k-static .k-pdim{display:none}
+/* pricing */
+.price{max-width:520px;margin:0 auto;background:linear-gradient(165deg,#101B12,#0A130C);border:1px solid var(--line2);border-radius:30px;padding:44px;text-align:center;box-shadow:0 40px 100px -40px rgba(124,227,131,.25)}
+.price .amt{font-family:var(--disp);font-size:64px;font-weight:700;color:var(--grn)}
+.price .amt small{font-size:18px;color:var(--dim);font-weight:500}
+.price ul{list-style:none;margin:24px 0 30px;text-align:left}
+.price li{padding:8px 0;font-size:14.5px;color:var(--dim);display:flex;gap:10px}
+.price li:before{content:"✓";color:var(--grn);font-weight:700}
+.pnote{font-size:12px;color:var(--faint);margin-top:16px}
 
-/* ================= TOOLS ================= */
-#tools{background:linear-gradient(180deg,#070B08,#0A100B 12%,#070B08 90%)}
-.tool{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,5vw,72px);align-items:center;padding:54px 0;border-top:1px dashed var(--line)}
-.tool:first-of-type{border-top:none}
-.tool .t-num{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--lum);font-weight:600}
-.tool h3{font-size:clamp(24px,2.9vw,36px);margin:12px 0 14px;line-height:1.12}
-.tool .t-what{font-size:16px;color:var(--dim);line-height:1.75;max-width:52ch}
-.tool .t-what b{color:var(--ink)}
-.tool .t-eg{margin-top:16px;display:inline-block;background:rgba(63,174,69,.1);border:1px solid rgba(124,227,131,.18);border-radius:13px;padding:11px 15px;font-size:14px;color:#B9E8BC;font-weight:500}
-.tool:nth-of-type(even) .t-copy{order:2}
-.tool:nth-of-type(even) .t-mock{order:1}
-@media(max-width:880px){
-  .tool{grid-template-columns:1fr;gap:26px;padding:44px 0}
-  .tool:nth-of-type(even) .t-copy{order:1}
-  .tool:nth-of-type(even) .t-mock{order:2}
-}
-.mock{background:var(--card);border:1px solid var(--line2);border-radius:22px;box-shadow:var(--sh-m),var(--glow);padding:20px;max-width:460px;margin:0 auto;width:100%}
-.mock .mh{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;color:var(--faint);font-weight:600;margin-bottom:13px;display:flex;align-items:center;gap:8px;justify-content:space-between}
-.qcard{border:1px solid var(--line);border-radius:15px;padding:12px 14px;margin-bottom:9px;background:var(--card2);box-shadow:var(--sh-s)}
-.qcard:last-child{margin-bottom:0}
-.qcard .r1{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.qcard .nm{font-weight:600;font-size:14px;color:var(--ink)}
-.qcard .amt{font-family:var(--mono);font-weight:600;font-size:14px;color:var(--lum)}
-.qcard .r2{display:flex;justify-content:space-between;align-items:center;margin-top:5px;gap:8px}
-.qcard .pt{font-size:12px;color:var(--dim)}
-.badge-od{font-family:var(--mono);font-size:9px;letter-spacing:.1em;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--red-bg);color:var(--red)}
-.badge-td{font-family:var(--mono);font-size:9px;letter-spacing:.1em;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--amber-bg);color:var(--amber)}
-.wa-msg{background:rgba(63,174,69,.09);border:1px solid rgba(124,227,131,.2);border-radius:14px 14px 14px 4px;padding:12px 14px;font-size:13px;line-height:1.6;color:#CFEFD2;margin-top:11px}
-.wa-msg b{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:#7CE383;margin-bottom:4px}
-.gbtn{display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#3CB542,#1F8F26);color:#061108;font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:999px;box-shadow:0 8px 18px -8px rgba(63,174,69,.7)}
-.gbtn.lite{background:var(--grn-100);color:var(--lum);border:1px solid rgba(124,227,131,.3);box-shadow:none}
-/* quick log form mock */
-.fld{margin-bottom:9px}
-.fld label{font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--faint);font-weight:600;display:block;margin-bottom:4px}
-.fld .inp{border:1px solid var(--line);border-radius:11px;padding:9px 12px;font-size:13.5px;background:rgba(163,255,178,.04);font-weight:500;color:var(--dim)}
-.fld .inp.fill{background:var(--grn-100);border-color:rgba(124,227,131,.3);color:var(--lum)}
-.pastebox{border:1.5px dashed var(--line2);border-radius:13px;padding:11px 13px;font-size:12.5px;color:var(--dim);background:rgba(163,255,178,.03);line-height:1.55;margin-bottom:13px}
-.pastebox b{color:var(--ink)}
-.frm2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-/* math card (tool f) */
-.math-card{background:#0F1D13;color:#D9EBDB;border:1px solid var(--line2);border-radius:22px;padding:26px 26px;font-family:var(--mono);position:relative;overflow:hidden;box-shadow:var(--sh-l),var(--glow);max-width:460px;margin:0 auto}
-.math-card::after{content:'';position:absolute;inset:0;background:radial-gradient(60% 50% at 90% 0%,rgba(63,174,69,.2),transparent 60%);pointer-events:none}
-.math-line{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px dashed rgba(217,235,219,.18);font-size:13px;gap:12px}
-.math-line .ml{color:#9DBCA1}
-.math-line .mv{color:#fff;white-space:nowrap}
-.math-line.sum .ml,.math-line.sum .mv{color:#CFE9D1;font-weight:600}
-.math-line.total{border-bottom:none;padding-top:14px}
-.math-line.total .ml{color:#7CCB80;font-weight:600}
-.math-line.total .mv{font-size:21px;font-weight:600;color:#7CE383}
-/* rate calc mock */
-.rate-final{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;padding-top:12px;border-top:2px solid var(--line2)}
-.rate-final .rl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--faint);font-weight:600}
-.rate-final .rv{font-family:var(--disp);font-weight:700;font-size:30px;color:var(--lum)}
-.rrow{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
-.rrow .rk{color:var(--dim)}
-.rrow .rm{font-family:var(--mono);font-weight:600;color:var(--ink)}
-/* analytics mock */
-.kpis{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:13px}
-.kpi{background:rgba(163,255,178,.05);border:1px solid var(--line);border-radius:13px;padding:11px 13px}
-.kpi b{font-family:var(--disp);font-size:19px;color:var(--lum);display:block}
-.kpi span{font-family:var(--mono);font-size:8.5px;letter-spacing:.12em;color:var(--faint);font-weight:600}
-.bars{display:flex;align-items:flex-end;gap:7px;height:90px}
-.bars .b{flex:1;background:linear-gradient(180deg,#7CE383,#1F8F26);border-radius:6px 6px 3px 3px;min-height:5px;transform:scaleY(0);transform-origin:bottom;transition:transform .8s cubic-bezier(.2,.7,.3,1);box-shadow:0 0 18px -4px rgba(124,227,131,.5)}
-.in .bars .b,.inview .bars .b{transform:scaleY(1)}
-.donut-wrap{display:flex;align-items:center;gap:18px;margin-top:4px}
-.donut{transform:rotate(-90deg)}
-.donut .track{stroke:rgba(163,255,178,.12)}
-.donut .fill{stroke:url(#dgrad);stroke-dasharray:0 999;transition:stroke-dasharray 1.1s cubic-bezier(.2,.7,.3,1)}
-/* excel mock */
-.xl-card{border:1px solid var(--line2);border-radius:18px;overflow:hidden;box-shadow:var(--sh-s)}
-.xl-head{background:#1D6F42;color:#fff;padding:11px 15px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;display:flex;align-items:center;gap:9px}
-.xl-grid{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;color:var(--dim)}
-.xl-grid th{background:rgba(163,255,178,.06);color:var(--faint);font-weight:500;padding:7px 9px;border:1px solid var(--line);text-align:left;font-size:9.5px;letter-spacing:.05em}
-.xl-grid td{padding:8px 9px;border:1px solid var(--line)}
-.xl-grid td.g{color:var(--lum);font-weight:600}
-.xl-grid td.a{color:var(--amber);font-weight:600}
-.xl-grid td.r{color:var(--red);font-weight:600}
-.xlscroll{overflow-x:auto}
-/* tally mock */
-.tchip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.06em;background:var(--amber-bg);color:var(--amber);border:1px solid rgba(232,176,75,.3);padding:4px 10px;border-radius:999px}
-.tarrow{display:flex;justify-content:center;padding:7px 0;color:var(--lum)}
-/* pdf mock (deliberately stays white - it is a paper document) */
-.pdfdoc{background:#fff;border:1px solid #E1EAE2;border-radius:14px;box-shadow:var(--sh-m);padding:20px 22px;position:relative;overflow:hidden;color:#16201A}
-.pdfdoc::before{content:'';position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#155E18,#3FAE45)}
-.pdfdoc .dh{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0 12px;border-bottom:2px solid #16201A}
-.pdfdoc .dh b{font-family:var(--disp);font-size:16px;color:#16201A}
-.pdfdoc .dh span{font-family:var(--mono);font-size:9.5px;color:#6E7E74}
-.pdfdoc table{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:10px}
-.pdfdoc td,.pdfdoc th{padding:6px 4px;text-align:left;border-bottom:1px solid #E1EAE2;color:#16201A}
-.pdfdoc th{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:#6E7E74}
-.pdfdoc .tr td{font-weight:700;border-bottom:none;font-family:var(--mono)}
+/* faq + footer */
+.faq{max-width:760px;margin:0 auto}
+.faq details{border:1px solid var(--line);border-radius:16px;padding:18px 22px;margin-bottom:12px;background:var(--panel)}
+.faq summary{cursor:pointer;font-weight:700;font-size:15px;font-family:var(--disp)}
+.faq details p{color:var(--dim);font-size:14px;margin-top:10px}
+footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:var(--faint);font-size:13px}
+footer .logo{font-size:17px;margin-bottom:10px}
 
-/* ================= trust ================= */
-.trust{background:linear-gradient(135deg,#0D1F0C,#123013 60%,#164A19);color:#EAF5EA;border-radius:34px;padding:52px 44px;position:relative;overflow:hidden;box-shadow:var(--sh-l),var(--glow);border:1px solid var(--line2)}
-.trust::after{content:'';position:absolute;inset:0;background:radial-gradient(70% 60% at 85% -10%,rgba(163,255,178,.12),transparent 60%);pointer-events:none}
-.trust h2{font-size:clamp(26px,3.4vw,40px);margin-bottom:8px}
-.trust .tsub{color:#B9D8BA;font-size:15.5px;margin-bottom:34px}
-.ttiles{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
-.ttile{background:rgba(163,255,178,.05);border:1px solid rgba(163,255,178,.14);border-radius:18px;padding:18px 16px}
-.ttile .ti{width:38px;height:38px;border-radius:12px;background:rgba(63,174,69,.25);color:#9FE0A2;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
-.ttile b{font-family:var(--disp);font-size:15.5px;display:block;margin-bottom:5px;color:#EAF5EA}
-.ttile span{font-size:12.5px;color:#B9D8BA;line-height:1.55;display:block}
-@media(max-width:980px){.ttiles{grid-template-columns:repeat(2,1fr)}.ttiles .ttile:last-child{grid-column:1/-1}}
-@media(max-width:520px){.trust{padding:38px 24px}}
-
-/* ================= pricing ================= */
-.price-card{max-width:540px;margin:0 auto;border-radius:30px;padding:48px 42px;position:relative;text-align:center;
-  border:1.5px solid transparent;background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(140deg,#7CE383,#3FAE45 55%,#155E18) border-box;
-  box-shadow:var(--sh-l),var(--glow)}
-.price-card .badge{position:absolute;top:-15px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#3CB542,#1F8F26);color:#061108;font-family:var(--mono);font-size:10px;letter-spacing:.16em;font-weight:600;padding:8px 18px;border-radius:999px;box-shadow:0 8px 20px -6px rgba(63,174,69,.6);white-space:nowrap}
-.price-card .prow{display:flex;align-items:baseline;justify-content:center;gap:6px;margin:18px 0 4px}
-.price-card .pamt{font-family:var(--disp);font-size:78px;font-weight:700;color:var(--lum);line-height:1;letter-spacing:-.03em;text-shadow:0 0 40px rgba(124,227,131,.35)}
-.price-card .pcur{font-family:var(--disp);font-size:30px;font-weight:700;color:var(--lum)}
-.price-card .pper{font-size:15px;color:var(--faint)}
-.price-card ul{list-style:none;margin:28px 0 30px;display:flex;flex-direction:column;gap:13px;text-align:left}
-.price-card li{display:flex;gap:12px;align-items:flex-start;font-size:15px;color:#C6D6C8;line-height:1.55}
-.ck{width:22px;height:22px;border-radius:50%;background:var(--grn-100);color:var(--lum);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;font-size:11px;font-weight:700}
-.price-note{text-align:center;font-size:13.5px;color:var(--faint);margin-top:20px;max-width:60ch;margin-left:auto;margin-right:auto;line-height:1.7}
-.price-note b{color:var(--dim)}
-@media(max-width:520px){.price-card{padding:44px 26px}}
-
-/* ================= faq ================= */
-.faq{max-width:780px;margin:0 auto}
-.qa{border:1px solid var(--line2);border-radius:18px;background:var(--card);margin-bottom:12px;overflow:hidden;box-shadow:var(--sh-s)}
-.qa .qbtn{width:100%;background:none;border:none;cursor:pointer;padding:19px 22px;font-family:var(--disp);font-weight:600;font-size:16.5px;color:var(--ink);text-align:left;display:flex;justify-content:space-between;align-items:center;gap:14px;letter-spacing:-.01em}
-.qa .qbtn .pm{font-family:var(--mono);color:var(--lum);font-size:22px;line-height:1;transition:transform .3s;flex:0 0 auto}
-.qa .qbtn[aria-expanded="true"] .pm{transform:rotate(45deg)}
-.qa .abox{display:grid;grid-template-rows:0fr;transition:grid-template-rows .45s cubic-bezier(.25,.9,.3,1)}
-.qa .abox.open{grid-template-rows:1fr}
-.qa .ainner{overflow:hidden}
-.qa .ans{padding:0 22px 20px;font-size:15px;color:var(--dim);line-height:1.75}
-
-/* ================= footer ================= */
-footer{margin-top:60px;background:linear-gradient(135deg,#155E18 0%,#228B22 55%,#2E9E33 100%);color:#fff;border-radius:34px 34px 0 0;padding:70px 0 42px;position:relative;overflow:hidden}
-footer::after{content:'';position:absolute;inset:0;background:radial-gradient(70% 70% at 50% -20%,rgba(255,255,255,.22),transparent 60%);pointer-events:none}
-.f-cta{text-align:center;margin-bottom:52px;position:relative;z-index:1}
-.f-cta h2{font-size:clamp(32px,4.6vw,56px);margin-bottom:14px;color:#fff}
-.f-cta p{font-size:16.5px;color:rgba(255,255,255,.88);max-width:46ch;margin:0 auto 30px}
-.btn-white{background:#fff;color:#155E18;box-shadow:0 14px 34px -10px rgba(0,0,0,.35)}
-.btn-oline{border:1.5px solid rgba(255,255,255,.55);color:#fff}
-.f-bar{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.22);padding-top:28px;position:relative;z-index:1}
-.f-bar .logo{color:#fff}
-.f-bar .logo .rk{color:#B7EBB9}
-.f-note{font-size:13.5px;color:rgba(255,255,255,.85)}
-.f-tiny{font-size:12px;color:rgba(255,255,255,.65)}
-.f-wa{color:#fff;font-weight:600;font-size:14px;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.4)}
-
-/* ---------- reveal ---------- */
-.rev{opacity:0;transform:translateY(34px);transition:opacity .7s cubic-bezier(.2,.7,.3,1),transform .7s cubic-bezier(.2,.7,.3,1)}
-.rev.in{opacity:1;transform:none}
-.rev.d1{transition-delay:.08s}.rev.d2{transition-delay:.16s}.rev.d3{transition-delay:.24s}
-
-@media(prefers-reduced-motion:reduce){
-  *,*::before,*::after{animation-duration:.001s!important;animation-iteration-count:1!important;transition-duration:.001s!important}
-  .rev{opacity:1;transform:none}
+/* reveals + parallax */
+.rv{opacity:0;transform:translateY(34px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)}
+.rv.in{opacity:1;transform:none}
+[data-plx]{will-change:transform;transform:translateY(var(--plxY,0))}
+@media (prefers-reduced-motion:reduce){
+  .rv{opacity:1;transform:none;transition:none}
+  [data-plx]{transform:none}
+  .phone{transform:none!important}
+  .scanline{animation:none}
   html{scroll-behavior:auto}
-  .bars .b{transform:scaleY(1)}
 }
 </style>
 </head>
 <body>
 
-<div id="prog"></div>
-
-<nav id="nav" aria-label="Main">
-  <a class="logo" href="#top" aria-label="TrackRakho home">
-    <svg width="27" height="27" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 3C15.4 3 3 14.2 3 28.4c0 8.1 4.4 15.2 11.5 19.7-.6 3.4-2.2 7.6-5 10.6 5.4-.5 10.4-2.5 13.9-4.7 2.8.6 5.7.9 8.6.9 16.6 0 29-11.3 29-25.5S48.6 3 32 3z" fill="#3FAE45"/><path d="M20 29.5l8.4 8.5L45 21.5" stroke="#070B08" stroke-width="6.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <span>Track<span class="rk">Rakho</span></span>
-  </a>
-  <div class="navlinks">
-    <a href="#kahani">Story</a>
-    <a href="#tools">Tools</a>
-    <a href="#pricing">Pricing</a>
-    <a href="#faq">FAQ</a>
-  </div>
-  <a class="btn btn-grn btn-sm mag" href="/">Open the app</a>
-</nav>
-
-<!-- ================= HERO ================= -->
-<header id="top">
-  <div class="h-grid" aria-hidden="true"></div>
-  <div class="wrap hero-inner">
-    <div class="hero-copy">
-      <span class="eyebrow">For traders &amp; job-shops</span>
-      <h1>Every quote,<br><span class="grad">tracked to the order.</span></h1>
-      <p class="sub">Quotes go out on WhatsApp, in Excel, over phone calls &mdash; and then they vanish. TrackRakho keeps each one alive: <b style="color:var(--ink)">status, follow-up, order</b>. One glance, on your phone.</p>
-      <div class="hero-ctas">
-        <a class="btn btn-grn mag" href="/">Start free</a>
-        <a class="btn btn-ghost mag" href="https://wa.me/919910605207?text=Hi%2C%20I%20want%20to%20know%20more%20about%20TrackRakho" target="_blank" rel="noreferrer">Chat on WhatsApp</a>
-      </div>
-      <div class="hstats">
-        <div><b>&#8377;0</b><span>to start today</span></div>
-        <div><b><span data-count="30">30</span> sec</b><span>to log a quote</span></div>
-        <div><b><span data-count="100">100</span>%</b><span>your data, in India</span></div>
-      </div>
-      <div class="stamp">"Quote diya? Track rakho."</div>
-    </div>
-
-    <div class="hstage" id="hstage" aria-hidden="true">
-      <div class="hglow"></div>
-      <div class="hplane">
-        <div class="hcard hc4">
-          <span class="wadot"></span>
-          <div><div class="wl">WHATSAPP ENQUIRY</div><div class="wm2"><b>Rajesh:</b> Gland Nut 60mm ka rate chahiye...</div></div>
-        </div>
-        <div class="hcard hc1">
-          <div class="row1"><span class="nm">Apex Hydraulics</span><span class="amt">&#8377;34,878</span></div>
-          <div class="row2"><span class="pt">Gland Nut - 60mm &middot; 200 pcs</span><span class="pill won">WON</span></div>
-        </div>
-        <div class="hcard hc2">
-          <div class="row1"><span class="nm">Krishna Pumps</span><span class="amt">&#8377;30,600</span></div>
-          <div class="row2"><span class="pt">Bush 42mm &middot; 500 pcs</span><span class="pill pend">PENDING</span></div>
-        </div>
-        <div class="hcard hc3">
-          <div class="fup">
-            <span class="bell"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
-            <div><div class="ft">Follow-up due today</div><div class="fs">Krishna Pumps &middot; &#8377;30,600</div></div>
-          </div>
-          <span class="chase">Nudge on WhatsApp</span>
-        </div>
+<header>
+  <div class="wrap nav">
+    <a class="logo" href="#top">Track<b>Rakho</b></a>
+    <span class="sp"></span>
+    <a class="lnk" href="#why">Why track?</a>
+    <a class="lnk" href="#pricing">Pricing</a>
+    <div class="tradedrop" id="tradedrop">
+      <button type="button" id="tradebtn">Aapka dhandha? <i>▾</i></button>
+      <div class="dropmenu">
+        <a href="#trader" data-trade="trader"><span class="em">♻️</span><span>Trader / Scrap<small>Trucks, Tally, tonnage</small></span></a>
+        <a href="#printing" data-trade="printing"><span class="em">🖨️</span><span>Printing / Press<small>Rush jobs, repeat orders</small></span></a>
+        <a href="#furniture" data-trade="furniture"><span class="em">🛋️</span><span>Furniture / Interiors<small>Photos, AI search</small></span></a>
+        <a href="#cnc" data-trade="cnc"><span class="em">⚙️</span><span>CNC / Machine shop<small>Costing, machine floor</small></span></a>
       </div>
     </div>
+    <a class="btn btn-grn cta-sm" href="https://trackrakho.com">Open the app</a>
   </div>
 </header>
 
-<!-- ================= STORY ================= -->
-<section class="k-head" id="kahani" style="padding-bottom:0">
-  <div class="wrap">
-    <div class="sec-head rev">
-      <span class="eyebrow">The story &middot; ek quote ki kahani</span>
-      <h2>One quote. Start to finish.</h2>
-      <p>Scroll through a single morning &mdash; and watch TrackRakho handle everything between <i>"rate chahiye"</i> and the order.</p>
+<main id="top">
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <div class="hero-glow" data-plx data-speed="-0.08"></div>
+  <div class="wrap hgrid">
+    <div>
+      <div class="eyebrow rv">Quotes · Follow-ups · Machines · Trucks · Tally</div>
+      <h1 class="rv">Your whole business.<br><span class="g">In your pocket.</span></h1>
+      <p class="sub rv">Every quote you sent, every payment stuck, every machine running, every truck on the road — one glance, one app, from anywhere. Because what you can see, you can fix.</p>
+      <div class="hindi rv">"Jo dikhta hai, wahi sudharta hai."</div>
+      <div class="rv" style="margin-top:30px;display:flex;gap:12px;flex-wrap:wrap">
+        <a class="btn btn-grn" href="https://trackrakho.com">Start free</a>
+        <a class="btn btn-ghost" href="https://wa.me/919910605207?text=TrackRakho%20demo%20chahiye">Demo on WhatsApp</a>
+      </div>
+      <div class="trustline rv">
+        <div class="t"><b>4 trades</b>one app, tuned to each</div>
+        <div class="t"><b>30 sec</b>to log a quote</div>
+        <div class="t"><b>₹999/mo</b>everything included</div>
+      </div>
+    </div>
+    <div class="stage" id="stage">
+      <div class="phone" id="phone">
+        <div class="notch"></div>
+        <div class="scrn">
+          <div class="greet"><small>FRIDAY, 17 JUL</small>Good morning</div>
+          <div class="kgrid">
+            <div class="kpi"><b>₹2,93,100</b><span>PENDING VALUE</span></div>
+            <div class="kpi"><b>₹99,378</b><span>WON THIS MONTH</span></div>
+            <div class="kpi"><b>₹4,88,778</b><span>QUOTED</span></div>
+            <div class="kpi"><b>📊</b><span>ANALYTICS</span></div>
+          </div>
+          <div class="mrow"><div class="ic">🛠️</div><div class="tx"><b>VMC 850 #1 · Gland Nut</b><span>60% · 6 hr left · aaj 4:30 pm</span><div class="pbar"><i></i></div></div></div>
+          <div class="mrow"><div class="ic">🚚</div><div class="tx"><b>HR 38 AB 1234 · Apex Alloys</b><span>12.5 MT · out 3 hr</span></div></div>
+          <div class="mrow"><div class="ic">🔔</div><div class="tx"><b>2 follow-ups due</b><span>Bharat Traders, Om Metals</span></div></div>
+        </div>
+      </div>
+      <div class="chip3d" style="top:30px;left:-30px" data-plx data-speed="0.06"><small>WHATSAPP ENQUIRY</small><span class="mono">"500 pcs bush chahiye"</span></div>
+      <div class="chip3d" style="top:150px;right:-44px" data-plx data-speed="-0.05"><small>TALLY · AANE WALE</small><span class="mono">₹7,08,700</span></div>
+      <div class="chip3d" style="bottom:120px;left:-52px" data-plx data-speed="-0.09"><small>MAAL GAYA · JULY</small><span class="mono">55.6 MT</span></div>
+      <div class="chip3d" style="bottom:26px;right:-20px" data-plx data-speed="0.07"><small>FOLLOW-UP WON</small><span class="mono">+ ₹34,878</span></div>
     </div>
   </div>
 </section>
-<div class="k-track" id="ktrack">
-  <div class="k-stage" id="kstage" data-beat="0">
 
-    <div class="k-pos k-hint" data-b="0" data-boff="1">
-      <div class="k-app on" style="opacity:1;transform:none">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v14m0 0 6-6m-6 6-6-6" stroke="#7CE383" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Keep scrolling &mdash; the story plays out
-      </div>
-    </div>
-
-    <div class="k-phdrift" id="kph">
-      <div class="k-phone">
-        <div class="k-screen">
-          <div class="k-wahdr">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span class="avz">R</span>
-            <div class="who"><b>Rajesh - Apex Hydraulics</b><span>online</span></div>
-            <div style="margin-left:auto;display:flex;gap:16px">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 3v-9l-4 3Z"/></svg>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.6.1.3 0 .7-.2 1l-2.3 2.2Z"/></svg>
-            </div>
-          </div>
-          <div class="k-chat">
-            <div class="k-mcol" id="kmcol">
-              <div class="k-msg in">Sharma ji, Gland Nut 60mm ka rate chahiye - 200 pcs<div class="k-meta">9:14 AM</div></div>
-              <div class="k-msg in"><div class="chitwrap"><div class="chit">
-                  <p>Gland Nut - 60mm</p>
-                  <p>200 pcs</p>
-                  <p class="urg">URGENT - Friday tak!!</p>
-                  <svg class="scrib" width="54" height="14" viewBox="0 0 54 14" aria-hidden="true"><path d="M2 9c7-6 9 4 16-2s9 4 16-2 9 4 18-3" stroke="#A23B2E" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
-                </div></div>
-                <div class="k-cap">ye list bhi dekh lena</div><div class="k-meta">9:14 AM</div></div>
-              <div class="k-msg out">Bhej raha hoon, 10 minute do<div class="k-meta">9:16 AM <span class="k-tick">&#10003;&#10003;</span></div></div>
-              <div class="k-msg out"><div class="pdfchip"><span class="pdficon">PDF</span><div><div class="pn">Quotation_GlandNut.pdf</div><div class="pm">&#8377;174.39/pc &middot; total &#8377;34,878</div></div></div><div class="k-meta">9:38 AM <span class="k-tick">&#10003;&#10003;</span></div></div>
-              <div class="k-msg in">theek hai, soch ke batata hoon<div class="k-meta">9:51 AM</div></div>
-              <div class="k-div">3 DAYS LATER</div>
-              <div class="k-msg out">Rajesh ji, Gland Nut wala quotation dekha? Aaj confirm ho toh Friday delivery pakki.<div class="k-meta">10:02 AM <span class="k-tick">&#10003;&#10003;</span></div></div>
-              <div class="k-msg in">haan bhai kar do order &#128077;<div class="k-meta">10:05 AM</div></div>
-            </div>
-          </div>
-          <div class="k-pdim" id="kdim"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="k-cards" aria-hidden="false">
-      <div class="k-pos kpA" data-b="4" data-boff="7">
-        <div class="k-app">
-          <div class="k-al"><span class="dot"></span>ENQUIRY CAPTURED <span class="oc">&middot; ONCE CONNECTED</span></div>
-          <div class="k-frow"><span class="fk">Customer</span><span class="fv">Apex Hydraulics</span></div>
-          <div class="k-frow"><span class="fk">Part</span><span class="fv">Gland Nut - 60mm</span></div>
-          <div class="k-frow"><span class="fk">Qty</span><span class="fv">200 pcs</span></div>
-          <span class="k-abtn">One tap to pipeline</span>
-        </div>
-      </div>
-
-      <div class="k-pos kpB" data-b="5" data-boff="7">
-        <div class="k-app">
-          <div class="k-al"><span class="dot"></span>AI READ THE PHOTO <span class="oc">&middot; OPT-IN</span></div>
-          <div class="k-type" data-full="Gland Nut - 60mm">Gland Nut - 60mm</div>
-          <div class="k-type" data-full="200 pcs">200 pcs</div>
-          <div class="k-type" data-full="urgent - Friday tak">urgent - Friday tak</div>
-          <div class="k-frow" style="margin-top:8px"><span class="fk">Rate</span><span class="fv" style="color:var(--faint)">&mdash; (wasn't sure)</span></div>
-          <p class="k-note">A wrong rate is worse than a blank field &mdash; when the AI isn't sure, it leaves the field <b>empty</b>. And phone numbers are stripped out <b>before</b> the AI ever sees a message.</p>
-        </div>
-      </div>
-
-      <div class="k-pos kpC" data-b="6" data-boff="7">
-        <div class="k-math k-app">
-          <div class="k-al"><span class="dot"></span>REAL COSTING, NOT GUESSWORK</div>
-          <div class="k-ml"><span class="l">Material</span><span class="v">&#8377;51.00</span></div>
-          <div class="k-ml"><span class="l">Machine</span><span class="v">&#8377;54.90</span></div>
-          <div class="k-ml"><span class="l">Labour + tooling</span><span class="v">&#8377;12.33</span></div>
-          <div class="k-ml sum"><span class="l">= Cost</span><span class="v">&#8377;118.23</span></div>
-          <div class="k-ml"><span class="l">+ 18% overhead</span><span class="v">&#8377;139.51</span></div>
-          <div class="k-ml big"><span class="l">+ 25% margin</span><span class="v">&#8377;174.39<span style="font-size:12px;font-family:var(--mono)">/pc</span></span></div>
-          <div class="k-ml sum"><span class="l">&times; 200 pcs</span><span class="v">&#8377;34,878</span></div>
-        </div>
-      </div>
-
-      <div class="k-pos kpD" data-b="8" id="kcardD">
-        <div class="k-app">
-          <div class="k-al"><span class="dot"></span>PIPELINE</div>
-          <div class="k-prow">
-            <div><div class="nm">Apex Hydraulics</div><div class="k-psub">Gland Nut - 60mm &middot; 200 pcs</div></div>
-            <div style="text-align:right"><div class="amt">&#8377;34,878</div>
-              <span class="flip" id="kflip"><span class="fl3d">
-                <span class="fface"><span class="pill pend">PENDING</span></span>
-                <span class="fface back"><span class="pill won">WON</span></span>
-              </span></span>
-            </div>
-          </div>
-          <span class="k-fbadge">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            <span class="b1">Follow-up: in 3 days&hellip;</span><span class="b2">Follow-up DUE TODAY</span><span class="b3">Order confirmed &mdash; Friday delivery</span>
-          </span><br>
-          <span class="k-chasebtn">Nudge on WhatsApp</span>
-        </div>
-      </div>
-
-      <div class="k-pos kpE" data-b="10">
-        <div class="k-app k-tally">
-          <div class="k-al"><span class="dot"></span>TALLY CONNECTOR <span class="beta">BETA</span></div>
-          <div class="k-so"><span class="ticon">SO</span><div><div class="sn">Sales Order created</div><div class="sm">Apex Hydraulics &middot; &#8377;34,878</div></div></div>
-          <p class="k-note">The moment you mark it won &mdash; in TallyPrime, on your own PC. Automatically.</p>
-        </div>
-      </div>
-
-      <div class="k-pos k-end" data-b="10">
-        <div class="k-app">
-          <h3>One quote's whole journey.<br>On your phone, <span class="grn-t">automatically.</span></h3>
-          <p>Enquiry to follow-up. Follow-up to order. Order to Tally.</p>
-          <a class="btn btn-grn mag" href="/">Start free</a>
-        </div>
-      </div>
-    </div>
-
-    <div class="k-rail" id="krail" aria-label="Story progress"></div>
-  </div>
-</div>
-
-<!-- ================= TOOLS ================= -->
-<section id="tools">
+<!-- ================= STAT BAND ================= -->
+<section class="band">
   <div class="wrap">
-    <div class="sec-head rev">
-      <span class="eyebrow">Tools</span>
-      <h2>Eleven tools. Zero filler.</h2>
-      <p>From pipeline to PDF &mdash; everything you use daily, nothing you don't.</p>
+    <div class="bgrid">
+      <div class="bstat rv"><b>30 sec</b><span>to log any quote</span></div>
+      <div class="bstat rv"><b>0</b><span>follow-ups forgotten</span></div>
+      <div class="bstat rv"><b>+27%</b><span>more pending quotes closed with on-time follow-ups*</span></div>
+      <div class="bstat rv"><b>24×7</b><span>your business, from anywhere</span></div>
     </div>
-
-    <!-- (a) pipeline -->
-    <div class="tool rev">
-      <div class="t-copy">
-        <div class="t-num">TOOL 01 &middot; PIPELINE</div>
-        <h3>Where did that quote go?</h3>
-        <p class="t-what">Every quote becomes a card &mdash; pending, won or lost. Your whole business on one screen: how much money is waiting on a decision, what you've already won, and where it slipped away.</p>
-        <span class="t-eg">One glance: 3 pending &mdash; &#8377;2,08,100 still on the table.</span>
-      </div>
-      <div class="t-mock">
-        <div class="mock">
-          <div class="mh">PIPELINE &middot; ALL QUOTES</div>
-          <div class="qcard"><div class="r1"><span class="nm">Apex Hydraulics</span><span class="amt">&#8377;34,878</span></div><div class="r2"><span class="pt">Gland Nut - 60mm &middot; 200 pcs</span><span class="pill won">WON</span></div></div>
-          <div class="qcard"><div class="r1"><span class="nm">Krishna Pumps</span><span class="amt">&#8377;30,600</span></div><div class="r2"><span class="pt">Bush 42mm &middot; 500 pcs</span><span class="pill pend">PENDING</span></div></div>
-          <div class="qcard"><div class="r1"><span class="nm">Bharat Traders</span><span class="amt">&#8377;1,28,000</span></div><div class="r2"><span class="pt">MS Hex Bar lot</span><span class="pill pend">PENDING</span></div></div>
-          <div class="qcard"><div class="r1"><span class="nm">Om Forgings</span><span class="amt">&#8377;49,500</span></div><div class="r2"><span class="pt">Flange 6 inch &middot; 120 pcs</span><span class="pill lost">LOST</span></div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- (b) follow-ups -->
-    <div class="tool rev">
-      <div class="t-copy">
-        <div class="t-num">TOOL 02 &middot; FOLLOW-UPS</div>
-        <h3>The silence after you hit send.</h3>
-        <p class="t-what">Put a follow-up date on every pending quote. Overdue ones glow, today's are waiting on the home screen. One tap opens WhatsApp with the reminder <b>already written</b> &mdash; you just press send.</p>
-        <span class="t-eg">Bharat Traders, &#8377;1,28,000 &mdash; 5 days overdue. One tap, nudged.</span>
-      </div>
-      <div class="t-mock">
-        <div class="mock">
-          <div class="mh">TODAY'S FOLLOW-UPS</div>
-          <div class="qcard"><div class="r1"><span class="nm">Bharat Traders</span><span class="amt">&#8377;1,28,000</span></div><div class="r2"><span class="pt">MS Hex Bar lot</span><span class="badge-od">5 DAYS OVERDUE</span></div></div>
-          <div class="qcard"><div class="r1"><span class="nm">Krishna Pumps</span><span class="amt">&#8377;30,600</span></div><div class="r2"><span class="pt">Bush 42mm</span><span class="badge-td">TODAY</span></div></div>
-          <div class="wa-msg"><b>PRE-WRITTEN MESSAGE</b>Namaste, Bharat Traders. Sharing a gentle reminder on the MS Hex Bar quotation (&#8377;1,28,000) &mdash; shall we take it forward? Dhanyavaad.</div>
-          <div style="margin-top:12px"><span class="gbtn">Nudge on WhatsApp</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- (c) quick log -->
-    <div class="tool rev">
-      <div class="t-copy">
-        <div class="t-num">TOOL 03 &middot; 30-SECOND LOG</div>
-        <h3>Made the quote in Excel? On a call? Fine.</h3>
-        <p class="t-what">Quotes are born everywhere &mdash; just log them here: customer, part, amount, status. Thirty seconds, done. Or paste the WhatsApp message into the paste box and watch the fields <b>fill themselves</b>.</p>
-        <span class="t-eg">Pasted one message &rarr; customer, qty and rate extracted automatically.</span>
-      </div>
-      <div class="t-mock">
-        <div class="mock">
-          <div class="mh">+ LOG A QUOTE</div>
-          <div class="pastebox">&ldquo;Krishna Pumps se Suresh &mdash; Bush 42mm, <b>500 pcs</b>, rate <b>61.20/pc</b> quote kiya, 15 tak batayenge&rdquo; <span style="color:var(--lum);font-weight:700">&larr; paste</span></div>
-          <div class="frm2">
-            <div class="fld"><label>CUSTOMER</label><div class="inp fill">Krishna Pumps</div></div>
-            <div class="fld"><label>PART</label><div class="inp fill">Bush 42mm</div></div>
-            <div class="fld"><label>QTY</label><div class="inp fill">500</div></div>
-            <div class="fld"><label>TOTAL</label><div class="inp fill">&#8377;30,600</div></div>
-          </div>
-          <div class="fld"><label>FOLLOW-UP</label><div class="inp fill">15th</div></div>
-          <div style="margin-top:6px"><span class="gbtn">Save &mdash; done</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- (d) AI reading -->
-    <div class="tool rev">
-      <div class="t-copy">
-        <div class="t-num">TOOL 04 &middot; SMART READING (AI) &middot; OPT-IN</div>
-        <h3>Handwritten chits. Messy Hinglish. It reads them.</h3>
-        <p class="t-what">Turn the AI on if you want it &mdash; it ships <b>off by default</b>. It then pulls customer, part, quantity, rate and dates out of messy messages and photos of handwriting.</p>
-        <p class="t-what" style="margin-top:10px">Privacy first: phone numbers are stripped <b>before</b> the AI sees anything. Honesty first: a wrong rate is worse than a blank field, so unsure fields stay <b>empty</b>.</p>
-        <span class="t-eg">A handwritten chit &rarr; part, qty, urgency &mdash; straight into the form.</span>
-      </div>
-      <div class="t-mock">
-        <div class="mock">
-          <div class="mh">AI READ THIS <span class="tchip" style="background:var(--grn-100);color:var(--lum);border-color:rgba(124,227,131,.3)">OPT-IN</span></div>
-          <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:center">
-            <div class="chit" style="width:170px;height:124px;padding:8px 8px 6px 22px">
-              <p style="font-size:13px;line-height:26px">Gland Nut - 60mm</p>
-              <p style="font-size:13px;line-height:26px">200 pcs</p>
-              <p class="urg" style="font-size:13px;line-height:26px">URGENT!!</p>
-            </div>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h14m0 0-5-5m5 5-5 5" stroke="#7CE383" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <div style="flex:1;min-width:170px">
-              <div class="k-frow"><span class="fk">Part</span><span class="fv">Gland Nut - 60mm</span></div>
-              <div class="k-frow"><span class="fk">Qty</span><span class="fv">200 pcs</span></div>
-              <div class="k-frow"><span class="fk">Rate</span><span class="fv" style="color:var(--faint)">&mdash; blank</span></div>
-            </div>
-          </div>
-          <p class="k-note" style="margin-top:12px">No rate on the chit &mdash; so the AI didn't guess. It left it blank.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- (e) whatsapp inbox -->
-    <div class="tool rev">
-      <div class="t-copy">
-        <div class="t-num">TOOL 05 &middot; WHATSAPP INBOX &middot; ONCE CONNECTED</div>
-        <h3>Enquiries arrive on WhatsApp. They also get lost there.</h3>
-        <p class="t-what">Once connected (the TrackRakho team does the setup with you), your customers' texts, photos and PDF enquiries land straight in the app. One tap turns an enquiry into a pending quote &mdash; nothing drowns in the chat scroll again.</p>
-        <span class="t-eg">Six morning enquiries &mdash; not one lost in the scroll.</span>
-      </div>
-      <div class="t-mock">
-        <div class="mock">
-          <div class="mh"><span><span class="wadot"></span>&nbsp;INCOMING ON WHATSAPP</span><span style="color:#4EC96F">connected</span></div>
-          <div class="qcard"><div class="r1"><span class="nm">Rajesh &middot; Apex Hydraulics</span><span class="pt">9:14</span></div><div class="pt" style="margin-top:4px">Gland Nut 60mm ka rate chahiye - 200 pcs</div><div style="margin-top:9px"><span class="gbtn lite">&#9889; Log as quote</span></div></div>
-          <div class="qcard"><div class="r1"><span class="nm">Suresh &middot; Krishna Pumps</span><span class="pt">9:40</span></div><div class="pt" style="margin-top:4px">&#128247; photo &middot; drawing_bush42.jpg &mdash; &ldquo;iska bhi bata dena&rdquo;</div><div style="margin-top:9px"><span class="gbtn lite">&#9889; Log as quote</span></div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- (f) quote maker -->
-    <div class="tool rev">
-      <div class="t-copy">
-        <div class="t-num">TOOL 06 &middot; QUOTE MAKER</div>
-        <h3>Pricing on gut feel, or on arithmetic?</h3>
-        <p class="t-what">For shops that still work out rates on a calculator late at night &mdash; a full costing wizard: material by weight, machine time at your true hourly rate, labour, setup spread across the quantity, overhead, margin. <b>You enter the times, it does the money</b> &mdash; the app never guesses your machining time. That judgement stays yours.</p>
-        <span class="t-eg">Gland Nut - 60mm for Apex Hydraulics &mdash; costed line by line, PDF attached.</span>
-      </div>
-      <div class="t-mock">
-        <div class="math-card">
-          <div style="font-size:9.5px;letter-spacing:.18em;color:#7CCB80;margin-bottom:12px">GLAND NUT - 60MM &times; 200 &middot; APEX HYDRAULICS</div>
-          <div class="math-line"><span class="ml">Material</span><span class="mv">&#8377;51.00</span></div>
-          <div class="math-line"><span class="ml">Machine time (yours)</span><span class="mv">&#8377;54.90</span></div>
-          <div class="math-line"><span class="ml">Labour + tooling</span><span class="mv">&#8377;12.33</span></div>
-          <div class="math-line sum"><span class="ml">Cost</span><span class="mv">&#8377;118.23</span></div>
-          <div class="math-line"><span class="ml">+ 18% overhead</span><span class="mv">&#8377;139.51</span></div>
-          <div class="math-line total"><span class="ml">+ 25% margin &rarr; per piece</span><span class="mv">&#8377;174.39</span></div>
-          <div style="font-size:11px;color:#9DBCA1;margin-top:12px">&times; 200 pcs = <b style="color:#CFE9D1">&#8377;34,878</b> + GST &middot; PDF &amp; WhatsApp ready</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- (g) hourly rate -->
-    <div class="tool rev">
-      <div class="t-copy">
-        <div class="t-num">TOOL 07 &middot; TRUE HOURLY RATE</div>
-        <h3>What does your machine really cost per hour?</h3>
-        <p class="t-what">Depreciation, power, operator, maintenance &mdash; added up and divided by your real monthly working hours. The number usually surprises people. Then the underquoting stops.</p>
-        <span class="t-eg">VMC 850, honestly: &#8377;366/hr &mdash; well above the usual guess.</span>
-      </div>
-      <div class="t-mock">
-        <div class="mock">
-          <div class="mh">RATE CALCULATOR &middot; VMC 850</div>
-          <div class="rrow"><span class="rk">Depreciation / hr</span><span class="rm">&#8377;156</span></div>
-          <div class="rrow"><span class="rk">Power (kW &times; unit rate)</span><span class="rm">&#8377;66</span></div>
-          <div class="rrow"><span class="rk">Operator share</span><span class="rm">&#8377;104</span></div>
-          <div class="rrow"><span class="rk">Maintenance</span><span class="rm">&#8377;40</span></div>
-          <div class="rate-final"><span class="rl">TRUE RATE</span><span class="rv">&#8377;366<span style="font-size:15px;font-family:var(--mono);color:var(--faint)">/hr</span></span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- (h) analytics -->
-    <div class="tool rev">
-      <div class="t-copy">
-        <div class="t-num">TOOL 08 &middot; ANALYTICS</div>
-        <h3>Month-end clarity, in five seconds.</h3>
-        <p class="t-what">Win rate, the money funnel, top customers &mdash; big honest graphs, not accountant tables. Seven days, thirty days or all time, one toggle.</p>
-        <span class="t-eg">Quoted, won, stuck &mdash; see it before the chai gets cold.</span>
-      </div>
-      <div class="t-mock">
-        <div class="mock" id="anamock">
-          <div class="mh">ANALYTICS <span class="mono" style="font-size:9px;color:var(--lum)">7D &middot; <b>30D</b> &middot; ALL</span></div>
-          <div class="kpis">
-            <div class="kpi"><b>&#8377;2,42,978</b><span>QUOTED</span></div>
-            <div class="kpi"><b>&#8377;65,478</b><span>WON VALUE</span></div>
-          </div>
-          <div class="donut-wrap">
-            <svg class="donut" width="110" height="110" viewBox="0 0 110 110" role="img" aria-label="Win rate donut chart">
-              <defs><linearGradient id="dgrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7CE383"/><stop offset="1" stop-color="#1F8F26"/></linearGradient></defs>
-              <circle class="track" cx="55" cy="55" r="43" fill="none" stroke-width="13"/>
-              <circle class="fill" id="donutFill" cx="55" cy="55" r="43" fill="none" stroke-width="13" stroke-linecap="round"/>
-            </svg>
-            <div style="flex:1">
-              <div style="font-family:var(--disp);font-weight:700;font-size:30px;color:var(--lum)">Win rate</div>
-              <div class="bars" style="height:56px;margin-top:8px" aria-hidden="true">
-                <div class="b" style="height:40%"></div><div class="b" style="height:64%"></div><div class="b" style="height:28%"></div><div class="b" style="height:78%"></div><div class="b" style="height:52%"></div><div class="b" style="height:100%"></div><div class="b" style="height:66%"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- (i) excel -->
-    <div class="tool rev">
-      <div class="t-copy">
-        <div class="t-num">TOOL 09 &middot; EXCEL</div>
-        <h3>Your client wants Excel? Give them Excel.</h3>
-        <p class="t-what">Import your old sheet &mdash; odd column names, 12/07 dates, comma amounts, all understood. And export the whole pipeline back to .xlsx or CSV whenever you like. Your data is <b>never locked in</b>.</p>
-        <span class="t-eg">Take your data out any time, in any format. It's yours.</span>
-      </div>
-      <div class="t-mock">
-        <div class="mock" style="padding:14px">
-          <div class="xl-card">
-            <div class="xl-head"><span style="width:19px;height:19px;border-radius:5px;background:#fff;color:#1D6F42;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px">X</span> pipeline.xlsx &middot; import / export</div>
-            <div class="xlscroll"><table class="xl-grid">
-              <tr><th>Date</th><th>Party</th><th>Item</th><th>Amount</th><th>Status</th></tr>
-              <tr><td>02/07/2026</td><td>Apex Hydraulics</td><td>Gland Nut - 60mm</td><td>34,878</td><td class="g">won</td></tr>
-              <tr><td>04/07/2026</td><td>Krishna Pumps</td><td>Bush 42mm</td><td>30,600</td><td class="a">pending</td></tr>
-              <tr><td>30/06/2026</td><td>Bharat Traders</td><td>MS Hex Bar lot</td><td>1,28,000</td><td class="a">pending</td></tr>
-              <tr><td>28/06/2026</td><td>Om Forgings</td><td>Flange 6"</td><td>49,500</td><td class="r">lost</td></tr>
-            </table></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- (j) tally -->
-    <div class="tool rev">
-      <div class="t-copy">
-        <div class="t-num">TOOL 10 &middot; TALLY CONNECTOR &middot; BETA</div>
-        <h3>Win the quote. It's already in Tally.</h3>
-        <p class="t-what">Connects to TallyPrime on your own PC. Mark a quote <b>won</b> and a Sales Order appears in Tally by itself &mdash; no retyping for the accountant. And before you quote someone again, the card quietly warns you what they still owe.</p>
-        <span class="t-eg">&ldquo;Owes &#8377;80,000 in Tally&rdquo; &mdash; visible before you quote a defaulter.</span>
-      </div>
-      <div class="t-mock">
-        <div class="mock">
-          <div class="mh">TALLY CONNECTOR <span class="tchip" style="background:rgba(99,140,255,.14);color:#9FB4FF;border-color:rgba(159,180,255,.3)">BETA</span></div>
-          <div class="qcard"><div class="r1"><span class="nm">Om Forgings</span><span class="amt">&#8377;62,000</span></div><div class="r2"><span class="pt">Flange 6 inch &middot; new quote</span><span class="tchip">OWES &#8377;80,000 IN TALLY</span></div></div>
-          <div class="tarrow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v14m0 0 5-5m-5 5-5-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <div class="k-so"><span class="ticon">SO</span><div><div class="sn">Sales Order &mdash; automatic</div><div class="sm">the moment it's WON &middot; TallyPrime, your PC</div></div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- (k) pdf -->
-    <div class="tool rev">
-      <div class="t-copy">
-        <div class="t-num">TOOL 11 &middot; PDF QUOTATIONS</div>
-        <h3>Quotations that make the firm look bigger.</h3>
-        <p class="t-what">A clean, branded PDF with your shop's name and GST display, ready to send on WhatsApp. The client holds professional paper; you hold the order.</p>
-        <span class="t-eg">Build, send, done &mdash; one tap.</span>
-      </div>
-      <div class="t-mock">
-        <div class="mock" style="padding:16px">
-          <div class="pdfdoc">
-            <div class="dh"><div><b>QUOTATION</b><div style="font-size:11px;color:#54635A">Sharma Precision Works</div></div><span>QT-2026-041<br>Valid 7 days</span></div>
-            <table>
-              <tr><th>ITEM</th><th>QTY</th><th>RATE</th><th>AMOUNT</th></tr>
-              <tr><td>Gland Nut - 60mm</td><td>200</td><td>174.39</td><td>34,878.00</td></tr>
-              <tr class="tr"><td colspan="3">TOTAL (+ GST)</td><td>&#8377;34,878</td></tr>
-            </table>
-          </div>
-          <div style="margin-top:13px;text-align:center"><span class="gbtn">Send on WhatsApp</span></div>
-        </div>
-      </div>
-    </div>
-
+    <div class="bnote rv">*Illustrative — what disciplined follow-up typically does to a pending pipeline. Your numbers will be your own.</div>
   </div>
 </section>
 
-<!-- ================= TRUST ================= -->
-<section style="padding-top:40px">
+<!-- ================= WHY TRACK ================= -->
+<section class="blk" id="why">
   <div class="wrap">
-    <div class="trust rev">
-      <h2>Your data. Your rules.</h2>
-      <p class="tsub">Rates and customer lists are the business &mdash; so they're protected from day one.</p>
-      <div class="ttiles">
-        <div class="ttile"><span class="ti"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="1.8"/><path d="M4.8 19.4c1.6-3 4.2-4.6 7.2-4.6s5.6 1.6 7.2 4.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span><b>Google sign-in</b><span>No new passwords. In with the account you already have.</span></div>
-        <div class="ttile"><span class="ti"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.8"/></svg></span><b>Isolated accounts</b><span>Separation enforced by the database itself &mdash; no one else can see your data.</span></div>
-        <div class="ttile"><span class="ti"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 12h17M12 3.5c2.6 2.3 4 5.2 4 8.5s-1.4 6.2-4 8.5c-2.6-2.3-4-5.2-4-8.5s1.4-6.2 4-8.5Z" stroke="currentColor" stroke-width="1.5"/></svg></span><b>Stored in India</b><span>Your data lives on Mumbai servers. It doesn't leave the country.</span></div>
-        <div class="ttile"><span class="ti"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17l9-10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>Works offline</b><span>No signal inside the factory? Keep working &mdash; it syncs when you're back.</span></div>
-        <div class="ttile"><span class="ti"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="8" width="17" height="8" rx="4" stroke="currentColor" stroke-width="1.8"/><circle cx="8" cy="12" r="2.2" fill="currentColor"/></svg></span><b>AI only if you say so</b><span>Smart reading ships OFF. Phone numbers are stripped before the AI sees a word.</span></div>
+    <div class="sechead rv">
+      <div class="eyebrow">Why tracking wins</div>
+      <h2>Business doesn't die from big mistakes.<br>It leaks from small, invisible ones.</h2>
+      <p>A quote nobody chased. A machine idle since morning. A dealer whose payment quietly crossed 60 days. None of these announce themselves — you only catch them when you track them. Owners who measure, improve. It really is that simple.</p>
+    </div>
+    <div class="cards3">
+      <div class="wcard rv"><div class="em">📋</div><h3>Every quote, remembered</h3><p>Pending, won, lost — your whole pipeline with a status on every rupee. Nothing lives only in your head or dies in Excel.</p></div>
+      <div class="wcard rv"><div class="em">🔔</div><h3>Every follow-up, on time</h3><p>The app remembers who to chase and when — one tap opens WhatsApp with the message ready. Money stops slipping away silently.</p></div>
+      <div class="wcard rv"><div class="em">📈</div><h3>Every trend, visible</h3><p>Win rate, pending value, top customers, month by month. Decisions from numbers, not from memory and mood.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TRADES ================= -->
+<section class="blk" id="trades" style="padding-top:30px">
+  <div class="wrap">
+    <div class="sechead rv">
+      <div class="eyebrow">Built for your trade</div>
+      <h2>Not a generic tool.<br>Four apps in one — pick yours.</h2>
+      <p>The same discipline — tracking — wears different clothes in every business. TrackRakho reshapes itself for each: your words, your categories, your daily headaches.</p>
+    </div>
+
+    <!-- TRADER / SCRAP -->
+    <div class="trade rv" id="trader">
+      <div>
+        <span class="tbadge">♻️ TRADER / SCRAP</span>
+        <h3>Trucks on the road, money in the market — all on one screen.</h3>
+        <p class="lead">Crore-scale material moves on trust and memory. TrackRakho gives it eyes.</p>
+        <ul class="feats">
+          <li><span><b>Truck board</b> — which truck is out, carrying how much (weighbridge MT), for which dealer, since when. Delivered? One tap frees it.</span></li>
+          <li><span><b>Tally — seedha hisaab</b> — who owes you, whom you owe, and "maal gaya is mahine" in tonnes. Tap any number for the dealer-wise story with dates and bill references.</span></li>
+          <li><span><b>AI dispatch planner</b> — weighs deadlines, waiting days and payments, then suggests who the next truck should go to. Every reason shown openly.</span></li>
+        </ul>
+        <div class="save">
+          <div class="s"><b>No more evening calls</b>"gaadi kahan hai?" — dekho, mat pucho</div>
+          <div class="s"><b>Credit under control</b>baki payment always in sight</div>
+        </div>
       </div>
+      <div class="mock" data-tilt>
+        <div class="mh"><b>Tally · seedha hisaab</b><span>LIVE</span></div>
+        <div class="tile2">
+          <div class="t g"><small>AANE WALE</small><b>₹7,08,700</b></div>
+          <div class="t a"><small>DENE WALE</small><b>₹2,78,500</b></div>
+        </div>
+        <div class="rowm"><div class="ic">📦</div><div class="tx"><b>Maal gaya is mahine</b><span>6 dispatches · ₹21,96,500</span></div><div class="amt">55.6 MT</div></div>
+        <div class="rowm"><div class="ic">🚚</div><div class="tx"><b>HR 38 AB 1234 → Apex Alloys</b><span>12.5 MT · MS Scrap · #SL/142</span></div><div class="amt">OUT</div></div>
+        <div class="rowm"><div class="ic">🎯</div><div class="tx"><b>Next dispatch: Om Metals</b><span>deadline nikal gayi · 26.6 MT baki</span></div></div>
+      </div>
+    </div>
+
+    <!-- PRINTING -->
+    <div class="trade rev rv" id="printing">
+      <div>
+        <span class="tbadge">🖨️ PRINTING / PRESS</span>
+        <h3>Twenty jobs a day, half of them "urgent". Keep every one visible.</h3>
+        <p class="lead">Same-day banners, wedding cards, repeat bill books — the counter never stops. Neither should your memory.</p>
+        <ul class="feats">
+          <li><span><b>30-second job log</b> — customer, job, size, amount, done. Even a WhatsApp message pastes straight into the form.</span></li>
+          <li><span><b>Job-type tiles</b> — flex, cards, boxes, LED boards... one glance shows where today's money is coming from.</span></li>
+          <li><span><b>"Same as last time"</b> — every old job with its spec and rate, one search away. Repeat orders priced in seconds.</span></li>
+        </ul>
+        <div class="save">
+          <div class="s"><b>Rush jobs don't slip</b>urgent by evening? It's on the board</div>
+          <div class="s"><b>Advance-baki tracked</b>kitna aaya, kitna baki - saaf</div>
+        </div>
+      </div>
+      <div class="mock" data-tilt>
+        <div class="mh"><b>Browse by job type</b><span>TODAY</span></div>
+        <div class="catgrid">
+          <div class="c"><i>🎏</i>Flex banners<small>2 ongoing</small></div>
+          <div class="c"><i>🪪</i>Visiting cards<small>1 ongoing</small></div>
+          <div class="c"><i>🧾</i>Bill books<small>3 done</small></div>
+          <div class="c"><i>💌</i>Wedding cards<small>1 ongoing</small></div>
+          <div class="c"><i>📦</i>Boxes<small>2 ongoing</small></div>
+          <div class="c"><i>🪧</i>Signage<small>1 done</small></div>
+        </div>
+        <div class="rowm"><div class="ic">⚡</div><div class="tx"><b>Sharma Caterers · muhurat banner</b><span>6x3 ft · star flex · aaj shaam tak!</span></div><div class="amt">₹540</div></div>
+        <div class="rowm"><div class="ic">🔁</div><div class="tx"><b>Gupta & Sons · bill books x10</b><span>"same as last time" · NCR 1+2</span></div><div class="amt">₹2,500</div></div>
+      </div>
+    </div>
+
+    <!-- FURNITURE -->
+    <div class="trade rv" id="furniture">
+      <div>
+        <span class="tbadge">🛋️ FURNITURE / INTERIORS</span>
+        <h3>A customer shows you a photo. Your answer is already in your pocket.</h3>
+        <p class="lead">Furniture is a visual business — photos are its language. TrackRakho speaks it.</p>
+        <ul class="feats">
+          <li><span><b>AI photo search</b> — customer shows a sofa photo? Click, upload, and AI digs through your own delivered orders and pieces: "have I made this before, at what price?" Best matches in seconds. <span class="mono" style="font-size:10px;color:var(--grn)">EARLY ACCESS</span></span></li>
+          <li><span><b>Photo on every quote</b> — each enquiry carries its picture. Your pipeline becomes a catalogue you scroll, not a list you read.</span></li>
+          <li><span><b>Every design remembered</b> — the wardrobe from last Diwali, that dining set from March — with customer, price and date attached.</span></li>
+        </ul>
+        <div class="save">
+          <div class="s"><b>No more scrolling WhatsApp</b>months of groups, searched in seconds</div>
+          <div class="s"><b>Price with confidence</b>last time it was ₹42,000 - it's right there</div>
+        </div>
+      </div>
+      <div class="mock" data-tilt>
+        <div class="mh"><b>AI photo search</b><span>EARLY ACCESS</span></div>
+        <div class="upl"><div class="ph">🛋️</div><div><b>sofa-photo.jpg uploaded</b><span>searching your delivered orders...</span></div></div>
+        <div class="scanline"></div>
+        <div class="match"><div class="thumb">🛋️</div><div class="tx"><b>3-seater, grey fabric · Mehra Villa</b><span>delivered 12 Mar · ₹42,000</span></div><div class="pct">94%</div></div>
+        <div class="match"><div class="thumb">🛋️</div><div class="tx"><b>L-shape, linen · Fab Interiors</b><span>delivered 28 Jan · ₹68,500</span></div><div class="pct">87%</div></div>
+        <div class="match"><div class="thumb">🪑</div><div class="tx"><b>Lounge set · in inventory</b><span>2 pcs ready · godown</span></div><div class="pct">81%</div></div>
+      </div>
+    </div>
+
+    <!-- CNC -->
+    <div class="trade rev rv" id="cnc">
+      <div>
+        <span class="tbadge">⚙️ CNC / MACHINE SHOP</span>
+        <h3>Quote with real costs. Then watch every machine earn.</h3>
+        <p class="lead">Gut-feel rates lose money quietly. Idle machines lose it loudly. Both end here.</p>
+        <ul class="feats">
+          <li><span><b>True costing</b> — material + machine time + labour + overheads + margin. You give the cycle time, it does the money math: ₹51.00 + ₹54.90 + ₹12.33, +18% overhead, +25% margin = <b>₹174.39/pc</b>. Every paisa accounted.</span></li>
+          <li><span><b>Machine floor</b> — every machine's job, % done, time left, finish time — with a +8% breakdown buffer. Breakdown? Pause, move the remaining pieces to a free machine, and the math redoes itself.</span></li>
+          <li><span><b>True hourly rate</b> — depreciation, power, operator, maintenance: know what one machine-hour really costs (a VMC 850 ≈ ₹366/hr) before you quote it.</span></li>
+        </ul>
+        <div class="save">
+          <div class="s"><b>No more loss-quotes</b>small batches priced right</div>
+          <div class="s"><b>Floor visible from anywhere</b>ETA on every part, live</div>
+        </div>
+      </div>
+      <div class="mock" data-tilt>
+        <div class="mh"><b>Machine floor</b><span>3/5 BUSY</span></div>
+        <div class="rowm"><div class="ic">🛠️</div><div class="tx"><b>VMC 850 #1 · Gland Nut - 60mm</b><span>~119/200 pcs · 6 hr 30 min left · aaj 4:30 pm</span><div class="pbar"><i style="width:60%"></i></div></div><div class="amt">60%</div></div>
+        <div class="rowm"><div class="ic">🛠️</div><div class="tx"><b>Traub #1 · Bush Ø42 · Krishna Pumps</b><span>~4/30 pcs · 2 hr 17 min left</span><div class="pbar"><i style="width:15%"></i></div></div><div class="amt">15%</div></div>
+        <div class="rowm"><div class="ic">💤</div><div class="tx"><b>VMC 850 #3</b><span>free - agla job yahan chalao</span></div></div>
+        <div class="rowm"><div class="ic">🧮</div><div class="tx"><b>Gland Nut quote</b><span>material + machine + labour, +18%, +25%</span></div><div class="amt">₹174.39/pc</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= POCKET ================= -->
+<section class="blk pocket">
+  <div class="wrap">
+    <div class="eyebrow rv">Anywhere. Any time.</div>
+    <h2 class="rv">At the yard. At a wedding.<br>In the bank queue. You'll know.</h2>
+    <p class="sub rv">No laptop, no server room, no accountant on speed dial. It installs on your phone like any app and keeps working when the network flickers. Checking your business becomes as easy as checking WhatsApp.</p>
+    <div class="anyrow rv">
+      <div class="a">📱 <b>Installs from the browser</b> — no app store needed</div>
+      <div class="a">🌐 <b>Works offline</b> — syncs when you're back</div>
+      <div class="a">🗣️ <b>English · Hinglish · हिन्दी</b> — your language</div>
     </div>
   </div>
 </section>
 
 <!-- ================= PRICING ================= -->
-<section id="pricing">
+<section class="blk" id="pricing">
   <div class="wrap">
-    <div class="sec-head rev center">
-      <span class="eyebrow">Pricing</span>
-      <h2>One forgotten follow-up costs more than a year of TrackRakho.</h2>
+    <div class="sechead rv" style="text-align:center;margin-left:auto;margin-right:auto">
+      <div class="eyebrow">Pricing</div>
+      <h2>One plan. Everything. ₹999.</h2>
     </div>
-    <div class="price-card rev">
-      <div class="badge">FOUNDING MEMBER &middot; LOCKED FOR LIFE</div>
-      <div style="font-family:var(--disp);font-weight:700;font-size:21px">Everything. One price.</div>
-      <div class="prow"><span class="pcur">&#8377;</span><span class="pamt" data-count="1000">1,000</span><span class="pper">/ month</span></div>
-      <div class="mono" style="font-size:12.5px;color:var(--faint)">less than one chai per day</div>
+    <div class="price rv">
+      <div class="amt">₹999<small>/month</small></div>
       <ul>
-        <li><span class="ck">&#10003;</span>The full pipeline &mdash; unlimited quotes, logged or fully costed</li>
-        <li><span class="ck">&#10003;</span>Follow-up reminders + pre-written WhatsApp nudges</li>
-        <li><span class="ck">&#10003;</span>WhatsApp enquiry inbox, once connected &mdash; we set it up with you</li>
-        <li><span class="ck">&#10003;</span>Excel import-export, professional PDF quotations, GST display</li>
-        <li><span class="ck">&#10003;</span>Analytics, true hourly-rate calculator, smart reading AI (opt-in)</li>
-        <li><span class="ck">&#10003;</span>Tally connector (BETA) &mdash; won quotes become Sales Orders automatically</li>
-        <li><span class="ck">&#10003;</span>Support directly on WhatsApp, in Hindi or English</li>
+        <li>Unlimited quotes, pipeline & follow-ups</li>
+        <li>WhatsApp + Gmail enquiries in one inbox (once connected)</li>
+        <li>Machine floor & Truck board — live</li>
+        <li>Tally connector — seedha hisaab</li>
+        <li>Excel import / export & PDF quotations</li>
+        <li>Analytics — win rate, trends, top customers</li>
       </ul>
-      <a class="btn btn-grn mag" style="width:100%" href="https://wa.me/919910605207?text=Hi%2C%20I%20want%20to%20lock%20the%20TrackRakho%20founding%20price" target="_blank" rel="noreferrer">Lock the founding price</a>
+      <a class="btn btn-grn" href="https://wa.me/919910605207?text=TrackRakho%20chahiye" style="width:100%;justify-content:center">Talk to us on WhatsApp</a>
+      <div class="pnote">Early access — payment is arranged personally on WhatsApp. No card, no auto-debit. GST extra.</div>
     </div>
-    <p class="price-note rev">Try the whole app <b>free</b> first &mdash; pay only when it's earning its keep. Payments are arranged over a WhatsApp conversation; there's no automated checkout. The founding price stays locked for life.</p>
   </div>
 </section>
 
 <!-- ================= FAQ ================= -->
-<section id="faq">
-  <div class="wrap">
-    <div class="sec-head rev center">
-      <span class="eyebrow">FAQ</span>
-      <h2>Straight questions, straight answers.</h2>
-    </div>
-    <div class="faq rev">
-      <div class="qa">
-        <h3 style="margin:0"><button class="qbtn" aria-expanded="false">What if there's no internet?<span class="pm" aria-hidden="true">+</span></button></h3>
-        <div class="abox"><div class="ainner"><div class="ans">It keeps working. The app is offline-first &mdash; quotes save on your phone and sync to the cloud when the network returns. A weak signal inside the factory never stops work.</div></div></div>
-      </div>
-      <div class="qa">
-        <h3 style="margin:0"><button class="qbtn" aria-expanded="false">Who can see my data?<span class="pm" aria-hidden="true">+</span></button></h3>
-        <div class="abox"><div class="ainner"><div class="ans">Only you. Sign-in is through Google, and every account is isolated at the database level &mdash; another user cannot reach your rates or customers. Data is stored in India (Mumbai), and Excel/CSV export means your data can always leave with you.</div></div></div>
-      </div>
-      <div class="qa">
-        <h3 style="margin:0"><button class="qbtn" aria-expanded="false">How does WhatsApp connect?<span class="pm" aria-hidden="true">+</span></button></h3>
-        <div class="abox"><div class="ainner"><div class="ans">Two ways. With zero setup: every follow-up opens in your own WhatsApp with the message pre-written &mdash; you just hit send. And once connected (the TrackRakho team does the setup with you), customer texts, photos and PDF enquiries land straight in the app and become quotes in one tap.</div></div></div>
-      </div>
-      <div class="qa">
-        <h3 style="margin:0"><button class="qbtn" aria-expanded="false">What does the Tally connector need?<span class="pm" aria-hidden="true">+</span></button></h3>
-        <div class="abox"><div class="ainner"><div class="ans">A 10-minute setup on the PC that runs TallyPrime &mdash; that's it. Won quotes then appear in Tally as Sales Orders automatically, and each customer's Tally outstanding shows right on their pipeline card. This one's in BETA.</div></div></div>
-      </div>
-      <div class="qa">
-        <h3 style="margin:0"><button class="qbtn" aria-expanded="false">How does it run on my phone?<span class="pm" aria-hidden="true">+</span></button></h3>
-        <div class="abox"><div class="ainner"><div class="ans">Straight from the browser &mdash; tap Add to Home Screen and it installs like an app: its own icon, full screen. No app store needed. Android or iPhone, with big text and big buttons.</div></div></div>
-      </div>
-      <div class="qa">
-        <h3 style="margin:0"><button class="qbtn" aria-expanded="false">How do I pay?<span class="pm" aria-hidden="true">+</span></button></h3>
-        <div class="abox"><div class="ainner"><div class="ans">Try everything free first. When it feels worth it, message us on WhatsApp &mdash; payment is arranged person to person. No automated checkout, no auto-debit. The founding price of &#8377;1,000/month locks for life.</div></div></div>
-      </div>
-    </div>
+<section class="blk" style="padding-top:20px">
+  <div class="wrap faq">
+    <div class="sechead rv"><div class="eyebrow">Questions</div><h2>Seedhi baat</h2></div>
+    <details class="rv"><summary>Mere clients Excel format mangte hain. Phir?</summary><p>Perfect — keep making quotes wherever you like. TrackRakho takes 30 seconds to log each one, and imports/exports Excel files directly. It's the tracker on top of your existing habit, not a replacement for it.</p></details>
+    <details class="rv"><summary>Does the app calculate my machining time?</summary><p>No — you know your machines better than any software. You give the cycle time; the app does the money math and the tracking, honestly and instantly.</p></details>
+    <details class="rv"><summary>Staff ko sikhana padega?</summary><p>If they can use WhatsApp, they can use this. Big text, plain language, three languages — designed for the shop floor, not for a software office.</p></details>
+    <details class="rv"><summary>Is my data safe?</summary><p>Your data belongs to you. It lives on your phone and in your own cloud account, and you can export everything to Excel any time. No lock-in.</p></details>
   </div>
 </section>
 
-<!-- ================= FOOTER ================= -->
+</main>
+
 <footer>
-  <div class="wrap">
-    <div class="f-cta">
-      <h2>The next quote you send<br>doesn't have to vanish.</h2>
-      <p>Open the app, look around the sample shop, log your first quote in 30 seconds. Free.</p>
-      <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
-        <a class="btn btn-white mag" href="/">Open the app</a>
-        <a class="btn btn-oline mag" href="https://wa.me/919910605207?text=Hi%2C%20I%27d%20like%20a%20TrackRakho%20demo" target="_blank" rel="noreferrer">Get a demo on WhatsApp</a>
-      </div>
-    </div>
-    <div class="f-bar">
-      <a class="logo" href="#top" aria-label="TrackRakho home">
-        <svg width="25" height="25" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 3C15.4 3 3 14.2 3 28.4c0 8.1 4.4 15.2 11.5 19.7-.6 3.4-2.2 7.6-5 10.6 5.4-.5 10.4-2.5 13.9-4.7 2.8.6 5.7.9 8.6.9 16.6 0 29-11.3 29-25.5S48.6 3 32 3z" fill="#fff"/><path d="M20 29.5l8.4 8.5L45 21.5" stroke="#228B22" stroke-width="6.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>Track<span class="rk">Rakho</span></span>
-      </a>
-      <div class="f-note">Built in Faridabad, India.</div>
-      <a class="f-wa" href="https://wa.me/919910605207" target="_blank" rel="noreferrer">Support: on WhatsApp</a>
-      <div class="f-tiny">Runs in any phone browser &mdash; install optional.</div>
-    </div>
-  </div>
+  <div class="logo">Track<b>Rakho</b></div>
+  <div>Made in Faridabad, for the shops that build everything. · <a href="https://wa.me/919910605207" style="color:var(--grn)">WhatsApp us</a></div>
+  <div class="mono" style="margin-top:10px;font-size:11px">TRACKRAKHO · EARLY ACCESS</div>
 </footer>
 
 <script>
 (function(){
-  'use strict';
-  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var staticStory = reduce || window.innerHeight < 560;
+  var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  var docEl = document.documentElement;
-  var prog = document.getElementById('prog'), nav = document.getElementById('nav');
+  /* trade dropdown: open/close + jump-and-glow */
+  var drop = document.getElementById('tradedrop'), btn = document.getElementById('tradebtn');
+  btn.addEventListener('click', function(e){ e.stopPropagation(); drop.classList.toggle('open'); });
+  document.addEventListener('click', function(){ drop.classList.remove('open'); });
+  document.querySelectorAll('.dropmenu a').forEach(function(a){
+    a.addEventListener('click', function(e){
+      e.preventDefault();
+      drop.classList.remove('open');
+      var id = a.getAttribute('data-trade');
+      var el = document.getElementById(id);
+      if(!el) return;
+      history.replaceState(null, '', '#' + id);
+      el.scrollIntoView({behavior: 'smooth', block: 'start'});
+      document.querySelectorAll('.trade.lit').forEach(function(t){ t.classList.remove('lit'); });
+      setTimeout(function(){ el.classList.add('lit'); }, 350);
+      setTimeout(function(){ el.classList.remove('lit'); }, 3800);
+    });
+  });
 
-  /* ---------- reveals ---------- */
+  /* reveals */
   var io = new IntersectionObserver(function(es){
     es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
-  }, {threshold:[0,.14], rootMargin:'0px 0px -8% 0px'});
-  document.querySelectorAll('.rev').forEach(function(el){ io.observe(el); });
+  }, {threshold: 0.12});
+  document.querySelectorAll('.rv').forEach(function(el){ io.observe(el); });
 
-  /* ---------- count-ups ---------- */
-  function fmt(n){ return Number(n).toLocaleString('en-IN'); }
-  var cio = new IntersectionObserver(function(es){
-    es.forEach(function(e){
-      if(!e.isIntersecting) return; cio.unobserve(e.target);
-      var el = e.target, to = +el.getAttribute('data-count');
-      if(reduce){ el.textContent = fmt(to); return; }
-      var t0 = performance.now(), dur = 1100;
-      (function step(t){
-        var k = Math.min(1,(t - t0)/dur), ease = 1 - Math.pow(1 - k, 3);
-        el.textContent = fmt(Math.round(to * ease));
-        if(k < 1) requestAnimationFrame(step);
-      })(t0);
-    });
-  }, {threshold:.6});
-  document.querySelectorAll('[data-count]').forEach(function(el){ cio.observe(el); });
+  if(reduced) return; /* everything below is motion */
 
-  /* ---------- analytics mock donut ---------- */
-  var anamock = document.getElementById('anamock');
-  if(anamock){
-    var aio = new IntersectionObserver(function(es){
-      es.forEach(function(e){
-        if(!e.isIntersecting) return; aio.unobserve(e.target);
-        e.target.classList.add('inview');
-        var f = document.getElementById('donutFill');
-        if(f){ var C = 2 * Math.PI * 43; f.style.strokeDasharray = (C * .62) + ' ' + C; }
+  /* scroll parallax: sets --plxY, composes with each element's own transform */
+  var plx = [].slice.call(document.querySelectorAll('[data-plx]'));
+  var ticking = false;
+  function onScroll(){
+    if(ticking) return; ticking = true;
+    requestAnimationFrame(function(){
+      var y = window.scrollY;
+      plx.forEach(function(el){
+        var sp = parseFloat(el.getAttribute('data-speed') || '0.05');
+        el.style.setProperty('--plxY', (y * sp).toFixed(1) + 'px');
       });
-    }, {threshold:.4});
-    aio.observe(anamock);
+      ticking = false;
+    });
+  }
+  addEventListener('scroll', onScroll, {passive:true}); onScroll();
+
+  /* 3D phone: mouse tilt on the hero stage */
+  var stage = document.getElementById('stage'), phone = document.getElementById('phone');
+  if(stage && phone){
+    phone.style.transform = 'rotateY(14deg) rotateX(-8deg)';
+    stage.addEventListener('mousemove', function(e){
+      var r = stage.getBoundingClientRect();
+      var ry = ((e.clientX - r.left) / r.width - 0.5) * 26 + 8;
+      var rx = -((e.clientY - r.top) / r.height - 0.5) * 18 - 4;
+      phone.style.transform = 'rotateY(' + ry + 'deg) rotateX(' + rx + 'deg)';
+    });
+    stage.addEventListener('mouseleave', function(){
+      phone.style.transform = 'rotateY(14deg) rotateX(-8deg)';
+    });
   }
 
-  /* ---------- FAQ accordion ---------- */
-  document.querySelectorAll('.qa .qbtn').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      var open = btn.getAttribute('aria-expanded') === 'true';
-      btn.setAttribute('aria-expanded', open ? 'false' : 'true');
-      var box = btn.parentElement.nextElementSibling;
-      if(box) box.classList.toggle('open', !open);
+  /* subtle tilt on trade mocks */
+  document.querySelectorAll('[data-tilt]').forEach(function(m){
+    m.addEventListener('mousemove', function(e){
+      var r = m.getBoundingClientRect();
+      var ry2 = ((e.clientX - r.left) / r.width - 0.5) * 10;
+      var rx2 = -((e.clientY - r.top) / r.height - 0.5) * 8;
+      m.style.transform = 'perspective(900px) rotateY(' + ry2 + 'deg) rotateX(' + rx2 + 'deg)';
     });
+    m.addEventListener('mouseleave', function(){ m.style.transform = 'none'; });
   });
-
-  /* ---------- magnetic buttons (pointer:fine) ---------- */
-  if(!reduce && matchMedia('(pointer:fine)').matches){
-    document.querySelectorAll('.mag').forEach(function(b){
-      b.addEventListener('mousemove', function(e){
-        var r = b.getBoundingClientRect();
-        var x = (e.clientX - r.left)/r.width - .5, y = (e.clientY - r.top)/r.height - .5;
-        b.style.setProperty('--bx', (x * 7).toFixed(1) + 'px');
-        b.style.setProperty('--by', (y * 5).toFixed(1) + 'px');
-      });
-      b.addEventListener('mouseleave', function(){
-        b.style.setProperty('--bx', '0px'); b.style.setProperty('--by', '0px');
-      });
-    });
-  }
-
-  /* ---------- hero mouse-tilt (CSS vars only; never overwrite transforms) ---------- */
-  var hstage = document.getElementById('hstage');
-  if(hstage && !reduce && matchMedia('(pointer:fine)').matches){
-    var hero = document.getElementById('top');
-    hero.addEventListener('mousemove', function(e){
-      var r = hero.getBoundingClientRect();
-      var mx = ((e.clientX - r.left)/r.width - .5) * 2;
-      var my = ((e.clientY - r.top)/r.height - .5) * 2;
-      hstage.style.setProperty('--mx', mx.toFixed(3));
-      hstage.style.setProperty('--my', my.toFixed(3));
-    });
-    hero.addEventListener('mouseleave', function(){
-      hstage.style.setProperty('--mx', '0'); hstage.style.setProperty('--my', '0');
-    });
-  }
-
-  /* ================= STORY ENGINE ================= */
-  var track = document.getElementById('ktrack');
-  var stage = document.getElementById('kstage');
-  var phdrift = document.getElementById('kph');
-  var dim = document.getElementById('kdim');
-  var mcol = document.getElementById('kmcol');
-  var cardD = document.getElementById('kcardD');
-  var flip = document.getElementById('kflip');
-  var beatEls = [].slice.call(stage.querySelectorAll('[data-b]'));
-  var msgs = [].slice.call(mcol.children);
-  var GAP = 8;
-
-  /* beat thresholds across p in [0,1] */
-  var TH = [0.055, 0.135, 0.215, 0.30, 0.395, 0.49, 0.60, 0.70, 0.805, 0.90];
-  var SHOWN = [0,1,2,3,3,3,3,5,5,8,8]; /* messages visible per beat */
-
-  var trackTop = 0, scrollable = 1, msgH = [], railBtns = [];
-
-  function clamp(v,a,b){ return v < a ? a : (v > b ? b : v); }
-  function sstep(p,a,b){ var t = clamp((p - a)/(b - a), 0, 1); return t*t*(3 - 2*t); }
-
-  function measure(){
-    var r = track.getBoundingClientRect();
-    trackTop = r.top + (window.pageYOffset || docEl.scrollTop);
-    scrollable = Math.max(1, track.offsetHeight - window.innerHeight);
-    msgH = msgs.map(function(m){ return m.offsetHeight; });
-  }
-
-  /* typing effect for AI card */
-  var typeEls = [].slice.call(stage.querySelectorAll('.k-type'));
-  var typeTimer = null, typed = false;
-  function clearTyping(){
-    if(typeTimer){ clearInterval(typeTimer); typeTimer = null; }
-    typeEls.forEach(function(el){
-      var full = el.getAttribute('data-full');
-      el.childNodes[0] && (el.childNodes[0].nodeValue = '');
-      void full;
-    });
-    typed = false;
-  }
-  function startTyping(){
-    if(typed) return; typed = true;
-    var li = 0, ci = 0;
-    typeEls.forEach(function(el){ if(el.childNodes[0]) el.childNodes[0].nodeValue = ''; });
-    typeTimer = setInterval(function(){
-      if(li >= typeEls.length){ clearInterval(typeTimer); typeTimer = null; return; }
-      var el = typeEls[li], full = el.getAttribute('data-full');
-      ci++;
-      if(el.childNodes[0]) el.childNodes[0].nodeValue = full.slice(0, ci);
-      if(ci >= full.length){ li++; ci = 0; }
-    }, 34);
-  }
-
-  /* prepare typing nodes: ensure a text node exists */
-  typeEls.forEach(function(el){
-    var full = el.textContent;
-    el.setAttribute('data-full', full);
-    el.textContent = '';
-    if(!el.childNodes.length) el.appendChild(document.createTextNode(''));
-  });
-
-  /* rail */
-  var rail = document.getElementById('krail');
-  if(rail){
-    for(var i = 0; i < 10; i++){
-      (function(idx){
-        var b = document.createElement('button');
-        b.type = 'button';
-        b.setAttribute('aria-label', 'Story beat ' + (idx + 1));
-        b.addEventListener('click', function(){
-          var target = trackTop + (TH[idx] + 0.012) * scrollable;
-          window.scrollTo({top: target, behavior: reduce ? 'auto' : 'smooth'});
-        });
-        rail.appendChild(b); railBtns.push(b);
-      })(i);
-    }
-  }
-
-  var lastBeat = -1, lastShown = -1;
-  function updateStory(y){
-    var p = clamp((y - trackTop) / scrollable, 0, 1);
-    var beat = 0;
-    for(var i = 0; i < TH.length; i++){ if(p >= TH[i]) beat = i + 1; }
-
-    if(beat !== lastBeat){
-      lastBeat = beat;
-      stage.setAttribute('data-beat', String(beat));
-      beatEls.forEach(function(el){
-        var b = +el.getAttribute('data-b');
-        var boffAttr = el.getAttribute('data-boff');
-        var on = beat >= b && (boffAttr === null || beat < +boffAttr);
-        var inner = el.classList.contains('k-hint') ? el.firstElementChild : el.querySelector('.k-app');
-        if(el.classList.contains('k-hint')){ el.style.opacity = on ? '1' : '0'; el.style.transition = 'opacity .5s'; }
-        else if(inner) inner.classList.toggle('on', on);
-      });
-      railBtns.forEach(function(b, idx){ b.classList.toggle('act', beat === idx + 1); });
-      /* typing card lifecycle */
-      var typingOn = beat >= 5 && beat < 7;
-      if(typingOn) startTyping(); else clearTyping();
-      /* pill flip finale */
-      if(flip) flip.classList.toggle('winner', beat >= 10);
-      if(cardD) cardD.classList.toggle('done', beat >= 10);
-    }
-
-    /* chat column: hide future messages below the fold */
-    var shown = SHOWN[beat];
-    if(shown !== lastShown){
-      lastShown = shown;
-      var off = 0;
-      for(var m = shown; m < msgs.length; m++){ off += (msgH[m] || 0) + GAP; }
-      mcol.style.transform = 'translateY(' + off + 'px)';
-      msgs.forEach(function(el, idx){ el.classList.toggle('show', idx < shown); });
-    }
-
-    /* continuous multi-plane parallax */
-    var up = sstep(p, TH[2] + (TH[3]-TH[2]) * .45, TH[3] + .01);
-    var down = sstep(p, TH[6] - .035, TH[6] + .015);
-    var phase = Math.max(0, up - down);
-    phdrift.style.transform = 'rotateX(' + (phase * 10).toFixed(2) + 'deg) translateZ(' + (phase * -150).toFixed(1) + 'px) translateY(' + (phase * 14).toFixed(1) + 'px)';
-    dim.style.opacity = (phase * .42).toFixed(3);
-    stage.style.setProperty('--kd', ((p - .5) * -56).toFixed(1) + 'px');
-
-    /* follow-up badge flip mid beat-8 */
-    if(cardD) cardD.classList.toggle('due', p >= TH[7] + (TH[8]-TH[7]) * .5);
-  }
-
-  /* ---------- single rAF-throttled scroll pipeline ---------- */
-  var ticking = false, visible = !document.hidden;
-  function onFrame(){
-    ticking = false;
-    if(!visible) return;
-    var y = window.pageYOffset || docEl.scrollTop;
-    var maxs = docEl.scrollHeight - docEl.clientHeight;
-    prog.style.width = (maxs > 0 ? (y / maxs) * 100 : 0) + '%';
-    nav.classList.toggle('scrolled', y > 30);
-    if(!staticStory) updateStory(y);
-  }
-  function requestFrame(){ if(!ticking){ ticking = true; requestAnimationFrame(onFrame); } }
-  window.addEventListener('scroll', requestFrame, {passive:true});
-  document.addEventListener('visibilitychange', function(){
-    visible = !document.hidden;
-    if(visible) requestFrame();
-  });
-  /* ---------- story mode: sticky-3D vs static fallback ---------- */
-  function applyMode(wantStatic){
-    staticStory = wantStatic;
-    document.body.classList.toggle('k-static', wantStatic);
-    if(wantStatic){
-      clearTyping();
-      typeEls.forEach(function(el){ if(el.childNodes[0]) el.childNodes[0].nodeValue = el.getAttribute('data-full'); });
-      msgs.forEach(function(el){ el.classList.add('show'); });
-      beatEls.forEach(function(el){
-        var inner = el.querySelector('.k-app');
-        if(inner) inner.classList.add('on');
-      });
-      mcol.style.transform = '';
-      phdrift.style.transform = '';
-      dim.style.opacity = '0';
-      if(cardD) cardD.classList.add('due','due-static','done');
-      if(flip) flip.classList.add('winner');
-    } else {
-      if(cardD) cardD.classList.remove('due','due-static','done');
-      if(flip) flip.classList.remove('winner');
-      clearTyping();
-      lastBeat = -1; lastShown = -1;
-    }
-    measure(); lastShown = -1; lastBeat = -1; requestFrame();
-  }
-  window.addEventListener('resize', function(){
-    var want = reduce || window.innerHeight < 560;
-    if(want !== staticStory){ applyMode(want); return; }
-    measure(); lastShown = -1; lastBeat = -1; requestFrame();
-  }, {passive:true});
-
-  applyMode(staticStory);
-  window.addEventListener('load', function(){ measure(); lastShown = -1; lastBeat = -1; requestFrame(); });
-  if(document.fonts && document.fonts.ready){
-    document.fonts.ready.then(function(){ measure(); lastShown = -1; lastBeat = -1; requestFrame(); });
-  }
 })();
 </script>
 </body>
