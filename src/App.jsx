@@ -651,6 +651,8 @@ const seedData = () => {
     settings: { overheadPct: 18, marginPct: 25, labourRate: 80, validityDays: 7, gstPct: 18, lang: "hi-en" },
     machines: [{ id: "m1", name: "VMC 850", rate: 366, count: 1 }],
     jobs: [],
+    trucks: [],
+    trips: [],
     materials: [
       { id: "a", name: "MS (EN8)", rate: 85 }, { id: "b", name: "SS 304", rate: 250 },
       { id: "c", name: "Alu 6061", rate: 300 }, { id: "d", name: "Brass", rate: 560 },
@@ -1663,7 +1665,7 @@ export default function App() {
       <div className="app">
         {toast && <div className="toast">{toast}</div>}
 
-        {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} openTally={() => setTab("tally")} openFloor={() => setTab("floor")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} />}
+        {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} openTally={() => setTab("tally")} openFloor={() => setTab("floor")} openTrucks={() => setTab("trucks")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} />}
         {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} cat={quotesCat} setCat={setQuotesCat} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} tallyBal={tallyBal} />}
         {tab === "log" && <QuickLog data={data} onSave={saveLogged} onExit={() => setTab("home")} ping={ping} />}
         {tab === "setup" && <Setup data={data} setData={setData} ping={ping} account={accountView} sync={sync} goSubscribe={() => setTab("subscribe")} onLogout={logout} />}
@@ -1671,6 +1673,7 @@ export default function App() {
         {tab === "analytics" && <Analytics data={data} onBack={() => setTab("home")} goQuotes={goQuotes} />}
         {tab === "tally" && <TallyInsights data={data} updateQuote={updateQuote} ping={ping} onBack={() => setTab("home")} />}
         {tab === "floor" && <MachineFloor data={data} setData={setData} ping={ping} onBack={() => setTab("home")} goSetup={() => setTab("setup")} />}
+        {tab === "trucks" && <TruckBoard data={data} setData={setData} ping={ping} onBack={() => setTab("home")} goSetup={() => setTab("setup")} />}
         {tab === "subscribe" && <Subscribe account={accountView} onSubscribe={(id) => { subscribe(id); ping("You're on the " + PLANS.find(p => p.id === id).name + " plan"); setTab("home"); }} onBack={() => setTab("home")} />}
         {tab === "new" && (<Wizard data={data} draft={draft} setDraft={setDraft} step={step} setStep={setStep}
           onExit={() => setTab("home")} onSave={saveQuote} doneQuote={doneQuote} ping={ping}
@@ -1697,7 +1700,7 @@ export default function App() {
           </div>
         )}
 
-        {tab !== "new" && tab !== "analytics" && tab !== "subscribe" && tab !== "log" && tab !== "tally" && tab !== "floor" && (
+        {tab !== "new" && tab !== "analytics" && tab !== "subscribe" && tab !== "log" && tab !== "tally" && tab !== "floor" && tab !== "trucks" && (
           <nav className="navbar" ref={navRef}>
             <div className="nav-pill" style={pillStyle} />
             <button ref={setNavRef("home")} className={"nav-it " + (tab === "home" ? "on" : "")} onClick={() => setTab("home")}><I.home /><span>{tx("Home", "Home", "होम")}</span></button>
@@ -1713,7 +1716,7 @@ export default function App() {
 }
 
 /* ================= HOME ================= */
-function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally, openFloor, goSetup, goSubscribe }) {
+function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally, openFloor, openTrucks, goSetup, goSubscribe }) {
   const ind = industryOf(data);
   const isMach = ind.key === "machining";
   const h = new Date().getHours();
@@ -1725,8 +1728,6 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
   const monthQuoted = month.reduce((s, q) => s + q.total, 0);
   const monthWon = month.filter((q) => q.status === "won");
   const monthWonVal = monthWon.reduce((s, q) => s + q.total, 0);
-  const monthLost = month.filter((q) => q.status === "lost").length;
-  const winRate = monthWon.length + monthLost ? Math.round((monthWon.length / (monthWon.length + monthLost)) * 100) : null;
   const pendingQs = data.quotes.filter((q) => q.status === "pending");
   const pendingValue = pendingQs.reduce((s, q) => s + q.total, 0);
   const wonQs = data.quotes.filter((q) => q.status === "won");
@@ -1740,6 +1741,12 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
   const dueList = data.quotes.filter((q) => { const st = followState(q); return st === "overdue" || st === "today"; })
     .sort((a, b) => a.followUp - b.followUp);
   const recent = data.quotes.slice(0, 3);
+
+  /* truck board at a glance (scrap only) */
+  const tbTrucks = data.trucks || [];
+  const tbOut = {};
+  (data.trips || []).forEach((t) => { if (!t.delivered && !tbOut[t.truckId]) tbOut[t.truckId] = t; });
+  const tbOutMT = Object.values(tbOut).reduce((s2, t) => s2 + (Number(t.qty) || 0), 0);
 
   /* machine floor at a glance (machining only) */
   const flUnits = machineUnits(data);
@@ -1759,7 +1766,7 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
     [inr(pendingValue), tx("PENDING VALUE", "PENDING VALUE", "पेंडिंग रकम"), "var(--amber)", () => goQuotes("pending")],
     [inr(monthWonVal), tx("WON THIS MONTH", "WON THIS MONTH", "इस महीने जीते"), "#1B7A20", () => goQuotes("won")],
     [inr(monthQuoted), tx("QUOTED THIS MONTH", "QUOTED THIS MONTH", "इस महीने के कोटेशन"), "var(--grn-d)", () => goQuotes("all")],
-    [winRate == null ? "—" : winRate + "%", tx("WIN RATE", "WIN RATE", "जीत दर"), "var(--ink)", openAnalytics],
+    ["📊", tx("ANALYTICS", "ANALYTICS", "एनालिटिक्स"), "var(--grn-d)", openAnalytics],
   ];
 
   return (
@@ -1840,6 +1847,19 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
             <span style={{ display: "block", fontSize: 12.5, color: "var(--dim)" }}>{flUnits.length ? flBusy.size + "/" + flUnits.length + tx(" machines running work", " machines par kaam chal raha", " मशीनों पर काम चल रहा") : tx("Which machine is running what - live", "Kaun si machine par kya chal raha hai - live", "कौन सी मशीन पर क्या चल रहा है - लाइव")}</span>
           </span>
           {flActive.length > 0 && <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: "var(--grn-d)", background: "var(--grn-100)", padding: "4px 9px", borderRadius: 999, flexShrink: 0 }}>{flActive.length} ON</span>}
+          <I.chev style={{ color: "var(--faint)" }} />
+        </button>
+      )}
+
+      {/* scrap: live truck board */}
+      {ind.key === "scrap" && (
+        <button onClick={openTrucks} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "#fff", border: "1px solid var(--line)", boxShadow: "var(--sh-s)" }}>
+          <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>🚚</span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", fontWeight: 700, fontSize: 15 }}>{tx("Truck board", "Truck board", "ट्रक बोर्ड")}</span>
+            <span style={{ display: "block", fontSize: 12.5, color: "var(--dim)" }}>{tbTrucks.length ? Object.keys(tbOut).length + "/" + tbTrucks.length + tx(" trucks out", " gaadiyan bahar", " गाड़ियां बाहर") + (tbOutMT > 0 ? " · " + fmtQty(tbOutMT) + tx(" MT on the road", " MT ja raha", " MT जा रहा") : "") : tx("Which truck went where - live", "Kaun si gaadi kahan gayi - live", "कौन सी गाड़ी कहां गई - लाइव")}</span>
+          </span>
+          {Object.keys(tbOut).length > 0 && <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: "var(--grn-d)", background: "var(--grn-100)", padding: "4px 9px", borderRadius: 999, flexShrink: 0 }}>{Object.keys(tbOut).length} {tx("OUT", "OUT", "बाहर")}</span>}
           <I.chev style={{ color: "var(--faint)" }} />
         </button>
       )}
@@ -2736,14 +2756,14 @@ const TALLY_SAMPLE = {
     { name: "Highway Transport Co", balance: 38500, grp: "creditor" },
   ],
   vouchers: [
-    { d: 0.4, vtype: "Sales", party: "Apex Alloys", amount: 412500, item: "MS Scrap", qty: 12.5, unit: "MT" },
-    { d: 1.2, vtype: "Sales", party: "Bharat Steels", amount: 278800, item: "CI Scrap", qty: 8.2, unit: "MT" },
-    { d: 2.1, vtype: "Purchase", party: "Yard Suppliers Co", amount: 560000, item: "Mixed Scrap", qty: 20, unit: "MT" },
-    { d: 3.5, vtype: "Sales", party: "Om Metals", amount: 455600, item: "Aluminium Scrap", qty: 3.4, unit: "MT" },
-    { d: 5.0, vtype: "Sales", party: "Apex Alloys", amount: 660000, item: "MS Scrap", qty: 20, unit: "MT" },
-    { d: 6.3, vtype: "Sales", party: "Shakti Traders", amount: 49600, item: "MS Scrap", qty: 1.5, unit: "MT" },
+    { d: 0.4, vtype: "Sales", party: "Apex Alloys", amount: 412500, item: "MS Scrap", qty: 12.5, unit: "MT", vno: "148", ref: "APX/PO-118" },
+    { d: 1.2, vtype: "Sales", party: "Bharat Steels", amount: 278800, item: "CI Scrap", qty: 8.2, unit: "MT", vno: "147", ref: "" },
+    { d: 2.1, vtype: "Purchase", party: "Yard Suppliers Co", amount: 560000, item: "Mixed Scrap", qty: 20, unit: "MT", vno: "P-88", ref: "" },
+    { d: 3.5, vtype: "Sales", party: "Om Metals", amount: 455600, item: "Aluminium Scrap", qty: 3.4, unit: "MT", vno: "146", ref: "OM/2287" },
+    { d: 5.0, vtype: "Sales", party: "Apex Alloys", amount: 660000, item: "MS Scrap", qty: 20, unit: "MT", vno: "145", ref: "APX/PO-112" },
+    { d: 6.3, vtype: "Sales", party: "Shakti Traders", amount: 49600, item: "MS Scrap", qty: 1.5, unit: "MT", vno: "144", ref: "" },
     { d: 8.1, vtype: "Purchase", party: "Yard Suppliers Co", amount: 392000, item: "Mixed Scrap", qty: 14, unit: "MT" },
-    { d: 9.4, vtype: "Sales", party: "Bharat Steels", amount: 340000, item: "CI Scrap", qty: 10, unit: "MT" },
+    { d: 9.4, vtype: "Sales", party: "Bharat Steels", amount: 340000, item: "CI Scrap", qty: 10, unit: "MT", vno: "143", ref: "BS/PO-1104" },
   ],
   progress: [
     { customer: "Apex Alloys", item: "MS Scrap", ordered: 50, unit: "MT", shipped: 32.5, atDays: 20, deadlineDays: 4, lastDays: 0.4, balance: 412000 },
@@ -2767,10 +2787,11 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
     (async () => {
       if (!sb) { setDemo(true); return; }
       try {
-        const [l, v] = await Promise.all([
-          sb.from("tally_ledgers").select("name,balance,grp,as_of"),
-          sb.from("tally_vouchers").select("vdate,vtype,party,amount,item,qty,unit").order("vdate", { ascending: false }).limit(400),
-        ]);
+        const l = await sb.from("tally_ledgers").select("name,balance,grp,as_of");
+        /* vno/ref columns arrive with supabase/tally.sql 2026-07-17 - fall back
+           cleanly for tenants who have not run the migration yet */
+        let v = await sb.from("tally_vouchers").select("vdate,vtype,party,amount,item,qty,unit,vno,ref").order("vdate", { ascending: false }).limit(400);
+        if (v.error) v = await sb.from("tally_vouchers").select("vdate,vtype,party,amount,item,qty,unit").order("vdate", { ascending: false }).limit(400);
         if (!alive) return;
         const lr = (!l.error && l.data) || [], vr = (!v.error && v.data) || [];
         if (!lr.length && !vr.length) { setDemo(true); return; }
@@ -2801,7 +2822,6 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
   const mainUnit = Object.keys(unitTotals).sort((a, b) => unitTotals[b] - unitTotals[a])[0] || "";
   const monthQty = mainUnit ? unitTotals[mainUnit] : 0;
   const monthValue = monthSales.reduce((s, x) => s + Number(x.amount), 0);
-  const dispatches = V.filter((x) => isSale(x.vtype)).slice(0, 8);
   const balanceOf = (name) => {
     const hit = receivable.find((x) => String(x.name).trim().toLowerCase() === String(name).trim().toLowerCase());
     return hit ? Number(hit.balance) : 0;
@@ -2865,6 +2885,56 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
     background: c === "red" ? "var(--red-bg)" : c === "amber" ? "var(--amber-bg)" : "var(--grn-100)",
     color: c === "red" ? "var(--red)" : c === "amber" ? "var(--amber)" : "var(--grn-d)",
   });
+
+  /* ---------- drill-down: maal gaya - dealer-wise dispatches ---------- */
+  if (view === "sent") {
+    const byParty = {};
+    monthSales.forEach((x) => { const k = String(x.party || "?").trim() || "?"; (byParty[k] = byParty[k] || []).push(x); });
+    const groups = Object.keys(byParty).map((name) => ({
+      name, rows: byParty[name],
+      qty: byParty[name].reduce((s2, x) => s2 + (Number(x.qty) || 0), 0),
+      amt: byParty[name].reduce((s2, x) => s2 + (Number(x.amount) || 0), 0),
+    })).sort((a, b) => b.amt - a.amt);
+    return (
+      <div className="scr"><div className="pagepad">
+        <div className="anim-in" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+          <button className="iconbtn press" onClick={() => setView(null)}><I.back /></button>
+          <div style={{ flex: 1 }}>
+            <div className="microlbl">{tx("SENT THIS MONTH", "MAAL GAYA IS MAHINE", "इस महीने गया माल")}</div>
+            <div className="h-disp" style={{ fontSize: 24, fontWeight: 700 }}>{tx("Where it went", "Kahan kitna gaya", "कहां कितना गया")}</div>
+          </div>
+          {demo && <span className="demo-ribbon">SAMPLE</span>}
+        </div>
+        <div className="card anim-in st1" style={{ padding: "16px 16px", margin: "12px 0 16px", background: "#F3FBF4", borderColor: "#CFE9D1", display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--dim)" }}>{monthSales.length} dispatch{monthSales.length === 1 ? "" : "es"} · {inr(monthValue)}</span>
+          <b className="h-disp mono" style={{ fontSize: 24, color: "var(--grn-d)" }}>{monthQty > 0 ? fmtQty(monthQty) + " " + mainUnit : "-"}</b>
+        </div>
+        {groups.length === 0 && <div className="card-tint" style={{ padding: 24, textAlign: "center", color: "var(--dim)", fontSize: 14 }}>{tx("Nothing sent yet this month.", "Is mahine abhi kuch nahi gaya.", "इस महीने अभी कुछ नहीं गया।")}</div>}
+        {groups.map((g, gi) => (
+          <div key={g.name} className={"card anim-in st" + Math.min(6, gi + 1)} style={{ padding: "14px 15px", marginBottom: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{g.name}</div>
+              <b className="mono" style={{ flexShrink: 0, fontSize: 14.5, color: "var(--grn-d)" }}>{g.qty > 0 ? fmtQty(g.qty) + " " + (g.rows[0].unit || "") + " · " : ""}{inr(g.amt)}</b>
+            </div>
+            <div style={{ borderTop: "1px solid var(--line)", marginTop: 9, paddingTop: 3 }}>
+              {g.rows.map((x, ri) => (
+                <div key={ri} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: ri < g.rows.length - 1 ? "1px dashed var(--line)" : "none" }}>
+                  <span style={{ minWidth: 0 }}>
+                    <span className="mono" style={{ display: "block", fontSize: 12.5, fontWeight: 600 }}>{fdateShort(x.vdate)}{x.qty > 0 ? " · " + fmtQty(x.qty) + " " + (x.unit || "") : ""}</span>
+                    <span style={{ display: "block", fontSize: 11.5, color: "var(--faint)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{x.item || tx("sale", "sale", "बिक्री")}{(x.vno || x.ref) ? " · #" + (x.ref || x.vno) : ""}</span>
+                  </span>
+                  <b className="mono" style={{ flexShrink: 0, fontSize: 13 }}>{inr(x.amount)}</b>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+        <div className="card-tint anim-in" style={{ padding: "13px 15px", fontSize: 12.5, color: "var(--dim)", lineHeight: 1.6, marginTop: 6 }}>
+          {tx("These are this month's Sales vouchers from Tally - each with its voucher/reference number.", "Ye is mahine ke Tally Sales vouchers hain - har entry ke number/reference ke saath.", "ये इस महीने के Tally सेल्स वाउचर हैं - हर एंट्री का नंबर/रेफरेंस साथ में।")}
+        </div>
+      </div></div>
+    );
+  }
 
   /* ---------- drill-down: where the money is ---------- */
   if (view) {
@@ -2951,22 +3021,23 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
         </button>
       </div>
 
-      {/* shipped this month */}
-      <div className="hero-card anim-in st2" style={{ padding: "20px 20px", marginTop: 12 }}>
-        <div className="mono" style={{ fontSize: 10, letterSpacing: ".16em", color: "rgba(255,255,255,.82)", position: "relative", zIndex: 1 }}>MAAL GAYA IS MAHINE (sales)</div>
+      {/* shipped this month - tap for the dealer-wise story */}
+      <div className="hero-card anim-in st2 press" onClick={() => setView("sent")} style={{ padding: "20px 20px", marginTop: 12, cursor: "pointer" }} role="button" tabIndex={0}>
+        <div className="mono" style={{ fontSize: 10, letterSpacing: ".16em", color: "rgba(255,255,255,.82)", position: "relative", zIndex: 1 }}>{tx("SENT THIS MONTH (sales)", "MAAL GAYA IS MAHINE (sales)", "इस महीने गया माल (सेल्स)")}</div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, position: "relative", zIndex: 1 }}>
           <span className="h-disp mono" style={{ fontSize: 40, fontWeight: 700 }}>{monthQty > 0 ? fmtQty(monthQty) : monthSales.length}</span>
           <span className="h-disp" style={{ fontSize: 19, fontWeight: 700, color: "rgba(255,255,255,.9)" }}>{monthQty > 0 ? mainUnit : "dispatches"}</span>
         </div>
-        <div style={{ fontSize: 13, color: "rgba(255,255,255,.88)", marginTop: 4, position: "relative", zIndex: 1 }}>
-          {monthSales.length} dispatch{monthSales.length === 1 ? "" : "es"} · {inr(monthValue)} ka maal
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 13, color: "rgba(255,255,255,.88)", marginTop: 4, position: "relative", zIndex: 1 }}>
+          <span>{monthSales.length} dispatch{monthSales.length === 1 ? "" : "es"} · {inr(monthValue)}{tx("", " ka maal", " का माल")}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 700, background: "rgba(255,255,255,.16)", border: "1px solid rgba(255,255,255,.28)", padding: "4px 11px", borderRadius: 999, fontSize: 12, flexShrink: 0 }}>{tx("Who got what", "Kahan gaya", "कहां गया")} <I.chev style={{ width: 13 }} /></span>
         </div>
       </div>
 
       {/* dispatch planner - kise pehle bhejein */}
       {planned.length > 0 && (<>
         <div className="anim-in st3" style={{ margin: "22px 0 4px" }}><span className="eyebrow">Agla dispatch kise bhejein?</span></div>
-        <div style={{ fontSize: 12.5, color: "var(--faint)", marginBottom: 10 }}>Deadline, kitne din se intezaar, aur kitna baki hai - sab jod kar order suggest hota hai.</div>
+        <div style={{ fontSize: 12.5, color: "var(--faint)", marginBottom: 10 }}>{tx("Our AI calculator weighs deadlines, waiting days, remaining maal and payments - and works out the optimum delivery order. Every reason is shown openly.", "Hamara AI calculator deadline, intezaar, bacha maal aur payment - sab jod kar optimum delivery order nikalta hai. Har wajah saaf dikhti hai.", "हमारा AI कैलकुलेटर डेडलाइन, इंतज़ार, बचा माल और पेमेंट जोड़कर सही डिलीवरी क्रम निकालता है। हर वजह साफ दिखती है।")}</div>
         {planned.slice(0, 4).map((o, i) => {
           const pct = Math.min(100, Math.round((o.shipped / o.ordered) * 100));
           return (
@@ -2999,36 +3070,6 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
             </div>
           );
         })}
-      </>)}
-
-      {/* top dues */}
-      {receivable.length > 0 && (<>
-        <div className="anim-in st3" style={{ margin: "22px 0 10px" }}><span className="eyebrow">Sabse zyada baki</span></div>
-        <div className="card anim-in" style={{ padding: "4px 16px" }}>
-          {receivable.slice().sort((a, b) => b.balance - a.balance).slice(0, 5).map((x, i) => (
-            <div key={i} className="rowline" style={{ alignItems: "center" }}>
-              <span className="rl" style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ink)" }}>{x.name}</span>
-              <b className="mono" style={{ color: "var(--red)", fontSize: 15 }}>{inr(x.balance)}</b>
-            </div>
-          ))}
-        </div>
-      </>)}
-
-      {/* recent dispatches */}
-      {dispatches.length > 0 && (<>
-        <div className="anim-in st4" style={{ margin: "22px 0 10px" }}><span className="eyebrow">Recent dispatches</span></div>
-        {dispatches.map((x, i) => (
-          <div key={i} className="card anim-in" style={{ padding: "13px 15px", marginBottom: 9, display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ width: 42, height: 42, borderRadius: 12, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🚚</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{x.party || "(no party)"}</div>
-              <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {x.qty > 0 ? fmtQty(x.qty) + " " + (x.unit || "") + (x.item ? " · " + x.item : "") : (x.item || "sale")} · {fdateShort(x.vdate)}
-              </div>
-            </div>
-            <b className="mono" style={{ flexShrink: 0, fontSize: 14.5, color: "var(--grn-d)" }}>{inr(x.amount)}</b>
-          </div>
-        ))}
       </>)}
 
       <div className="card-tint anim-in st5" style={{ padding: "14px 16px", display: "flex", gap: 10, alignItems: "flex-start", marginTop: 14, marginBottom: 8 }}>
@@ -3382,6 +3423,146 @@ function MachineFloor({ data, setData, ping, onBack, goSetup }) {
   );
 }
 
+/* ================= TRUCK BOARD (scrap only) =================
+   Which truck is out, carrying how much (weighbridge MT), for which dealer.
+   The yard's live view - deliberately separate from Tally Insights, which
+   stays a pure Tally import. Trips live in data.trips (additive, v5). */
+function TruckBoard({ data, setData, ping, onBack, goSetup }) {
+  const [now, setNow] = useState(Date.now());
+  const [formOpen, setFormOpen] = useState(false);
+  const [f, setF] = useState({ truckId: "", dealer: "", material: "", qty: "", ref: "" });
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 60000); return () => clearInterval(t); }, []);
+
+  const trucks = data.trucks || [];
+  const trips = data.trips || [];
+  const out = {};
+  trips.forEach((t) => { if (!t.delivered && !out[t.truckId]) out[t.truckId] = t; });
+  const outMT = Object.values(out).reduce((s2, t) => s2 + (Number(t.qty) || 0), 0);
+  const freeTrucks = trucks.filter((t) => !out[t.id]);
+  const history = trips.filter((t) => t.delivered).sort((a, b) => (b.deliveredAt || 0) - (a.deliveredAt || 0)).slice(0, 6);
+  const dealers = [...new Set([...(data.quotes || []).map((q) => q.customer), ...trips.map((t) => t.dealer)].filter(Boolean))].slice(0, 25);
+
+  const send = () => {
+    if (!f.truckId) return ping(tx("Pick a truck", "Gaadi chuno", "गाड़ी चुनें"));
+    if (!f.dealer.trim()) return ping(tx("Write the dealer name", "Kiske paas ja raha hai? Dealer likho", "डीलर का नाम लिखें"));
+    if (!(+f.qty > 0)) return ping(tx("Write the weighbridge weight (MT)", "Kante ka weight (MT) likho", "कांटे का वज़न (MT) लिखें"));
+    const trip = { id: uid(), truckId: f.truckId, dealer: f.dealer.trim(), material: f.material.trim(), qty: +f.qty, ref: f.ref.trim(), startedAt: Date.now(), delivered: false };
+    setData({ ...data, trips: [trip, ...trips] });
+    setF({ truckId: "", dealer: "", material: "", qty: "", ref: "" }); setFormOpen(false);
+    ping(tx("Truck is out - ", "Gaadi nikal gayi - ", "गाड़ी निकल गई - ") + trip.dealer);
+  };
+  const deliver = (id) => { setData({ ...data, trips: trips.map((t) => t.id === id ? { ...t, delivered: true, deliveredAt: Date.now() } : t) }); ping(tx("Delivered!", "Deliver ho gaya!", "डिलीवर हो गया!")); };
+  const delTrip = (id) => { setData({ ...data, trips: trips.filter((t) => t.id !== id) }); ping(tx("Trip removed", "Trip hataya", "ट्रिप हटाया")); };
+  const sampleFleet = () => {
+    const t1 = { id: uid(), number: "HR 38 AB 1234", capMT: 18 }, t2 = { id: uid(), number: "HR 55 C 7788", capMT: 12 };
+    const trip = { id: uid(), truckId: t1.id, dealer: "Apex Alloys", material: "MS Scrap", qty: 12.5, ref: "SL/142", startedAt: Date.now() - 3 * 3600000, delivered: false, seed: true };
+    setData({ ...data, trucks: [...trucks, t1, t2], trips: [trip, ...trips] });
+    ping(tx("Sample fleet loaded - this is how it looks", "Sample gaadiyan aa gayin - aise dikhta hai", "सैंपल गाड़ियां आ गईं - ऐसा दिखता है"));
+  };
+
+  return (
+    <div className="scr"><div className="pagepad" style={{ paddingBottom: 40 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+        <button className="iconbtn press" onClick={onBack}><I.back /></button>
+        <div style={{ flex: 1 }}>
+          <div className="microlbl">{tx("YARD", "YARD", "यार्ड")}</div>
+          <div className="h-disp" style={{ fontSize: 23, fontWeight: 700 }}>{tx("Truck board", "Truck board", "ट्रक बोर्ड")}</div>
+        </div>
+        {trucks.length > 0 && <button className="btn btn-sm btn-grn press" onClick={() => setFormOpen(!formOpen)}>{formOpen ? tx("Close", "Close", "बंद करें") : tx("+ Truck bhejo", "+ Truck bhejo", "+ ट्रक भेजें")}</button>}
+      </div>
+      <div style={{ fontSize: 13.5, color: "var(--dim)", margin: "2px 0 16px" }}>
+        {Object.keys(out).length ? Object.keys(out).length + "/" + trucks.length + tx(" trucks out - ", " trucks bahar - ", " ट्रक बाहर - ") + fmtQty(outMT) + tx(" MT on the road", " MT ja raha hai", " MT जा रहा है") : trucks.length ? tx("All trucks are in the yard", "Sab gaadiyan yard me hain", "सब गाड़ियां यार्ड में हैं") : tx("Add trucks first", "Pehle gaadiyan jodo", "पहले गाड़ियां जोड़ें")}
+      </div>
+
+      {!trucks.length && (
+        <div className="card anim-in" style={{ padding: 22, textAlign: "center" }}>
+          <div style={{ fontSize: 34, marginBottom: 8 }}>🚚</div>
+          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{tx("Add your trucks first", "Pehle apni gaadiyan jodo", "पहले अपनी गाड़ियां जोड़ें")}</div>
+          <div style={{ fontSize: 13.5, color: "var(--dim)", lineHeight: 1.55, marginBottom: 14 }}>{tx("Add truck numbers in Setup. Then log every loading here - who it went to, how much maal, which truck.", "Setup me truck number jodo. Phir har loading yahan likho - kiske paas gayi, kitna maal, kaun si gaadi.", "सेटअप में ट्रक नंबर जोड़ें। फिर हर लोडिंग यहां लिखें - किसके पास गई, कितना माल, कौन सी गाड़ी।")}</div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+            <button className="btn btn-grn press" onClick={goSetup}>{tx("Open Setup", "Setup kholo", "सेटअप खोलें")}</button>
+            <button className="btn btn-ghost press" onClick={sampleFleet}>{tx("Try a sample", "Sample dekho", "सैंपल देखें")}</button>
+          </div>
+        </div>
+      )}
+
+      {formOpen && (
+        <div className="card anim-in" style={{ padding: 16, marginBottom: 14, border: "1.5px solid #CFE9D1" }}>
+          <div className="lbl" style={{ color: "var(--grn-d)", marginBottom: 4 }}>{tx("What is going out?", "Kya bhej rahe ho?", "क्या भेज रहे हैं?")}</div>
+          <label className="lbl" style={{ fontSize: 12.5 }}>{tx("Which truck? (free ones)", "Kaun si gaadi? (jo khaali hai)", "कौन सी गाड़ी? (जो खाली है)")}</label>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {trucks.map((t) => {
+              const busy2 = !!out[t.id];
+              return <button key={t.id} disabled={busy2} className={"fpill press " + (f.truckId === t.id ? "on" : "")} style={busy2 ? { opacity: 0.45 } : undefined} onClick={() => setF({ ...f, truckId: t.id })}>{t.number}{busy2 ? tx(" - out", " - bahar", " - बाहर") : ""}</button>;
+            })}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+            <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Dealer / party", "Dealer / party", "डीलर / पार्टी")}</label><input className="input" list="qk-dealers" placeholder="Apex Alloys" value={f.dealer} onChange={(e) => setF({ ...f, dealer: e.target.value })} /></div>
+            <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Material", "Maal", "माल")}</label><input className="input" placeholder="MS Scrap" value={f.material} onChange={(e) => setF({ ...f, material: e.target.value })} /></div>
+            <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Weighbridge weight (MT)", "Kanta weight (MT)", "कांटा वज़न (MT)")}</label><input className="input mono" type="number" inputMode="decimal" placeholder="12.5" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} /></div>
+            <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Bill / ref no (optional)", "Bill / ref no (optional)", "बिल / रेफ नंबर (वैकल्पिक)")}</label><input className="input mono" placeholder="SL/142" value={f.ref} onChange={(e) => setF({ ...f, ref: e.target.value })} /></div>
+          </div>
+          <datalist id="qk-dealers">{dealers.map((d2) => <option key={d2} value={d2} />)}</datalist>
+          <button className="btn btn-grn press" style={{ width: "100%", marginTop: 12 }} onClick={send}><I.bolt /> {tx("Truck went out", "Gaadi nikli", "गाड़ी निकली")}</button>
+        </div>
+      )}
+
+      {trucks.map((t) => {
+        const trip = out[t.id];
+        if (!trip) return (
+          <div key={t.id} className="card anim-in" style={{ padding: "13px 15px", marginBottom: 9, display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ width: 38, height: 38, borderRadius: 11, background: "var(--soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>🚚</span>
+            <span className="mono" style={{ flex: 1, fontWeight: 700, fontSize: 14.5, letterSpacing: ".04em" }}>{t.number}</span>
+            <span className="mono" style={{ fontSize: 10.5, letterSpacing: ".1em", color: "var(--faint)" }}>{tx("IN YARD", "YARD ME", "यार्ड में")}</span>
+          </div>
+        );
+        const hrs = (now - trip.startedAt) / 3600000;
+        return (
+          <div key={t.id} className="card anim-in" style={{ padding: "14px 15px", marginBottom: 9, borderColor: "#CFE9D1", background: "#F7FCF8" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+              <span className="mono" style={{ fontWeight: 700, fontSize: 14.5, letterSpacing: ".04em" }}>{t.number}</span>
+              <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: "var(--grn-d)", background: "var(--grn-100)", padding: "3px 9px", borderRadius: 999 }}>{tx("OUT", "BAHAR", "बाहर")} · {hrs < 24 ? Math.round(hrs) + " hr" : Math.round(hrs / 24) + tx(" day", " din", " दिन")}</span>
+            </div>
+            <div style={{ fontSize: 14.5, fontWeight: 600, marginTop: 8 }}>{trip.dealer}</div>
+            <div className="mono" style={{ fontSize: 12.5, color: "var(--grn-d)", marginTop: 2 }}>
+              {fmtQty(trip.qty)} MT{trip.material ? " · " + trip.material : ""}{trip.ref ? " · #" + trip.ref : ""}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <button className="btn btn-sm btn-grn press" style={{ flex: 1 }} onClick={() => deliver(trip.id)}>{tx("Delivered", "Deliver ho gaya", "डिलीवर हो गया")}</button>
+              <button className="iconbtn press" style={{ width: 36, height: 36 }} onClick={() => delTrip(trip.id)} aria-label="Delete trip"><I.trash /></button>
+            </div>
+          </div>
+        );
+      })}
+
+      {trucks.length > 0 && Object.keys(out).length === 0 && !formOpen && (
+        <div className="card-tint anim-in" style={{ padding: 18, textAlign: "center", marginTop: 4 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{tx("All trucks are home", "Sab gaadiyan ghar par", "सब गाड़ियां घर पर")}</div>
+          <div style={{ fontSize: 13, color: "var(--dim)" }}>{tx('Loading a truck? Tap "+ Truck bhejo" - weighbridge weight, dealer, done.', 'Gaadi load ho rahi hai? "+ Truck bhejo" dabao - kanta weight, dealer, bas.', 'गाड़ी लोड हो रही है? "+ ट्रक भेजें" दबाएं - कांटा वज़न, डीलर, बस।')}</div>
+        </div>
+      )}
+
+      {history.length > 0 && (<>
+        <div style={{ margin: "22px 0 8px" }}><span className="eyebrow">{tx("Delivered", "Deliver hue", "डिलीवर हुए")}</span></div>
+        {history.map((t) => {
+          const tr = trucks.find((x) => x.id === t.truckId);
+          return (
+            <div key={t.id} className="card" style={{ padding: "12px 15px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: "block", fontWeight: 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.dealer}</span>
+                <span className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>{fmtQty(t.qty)} MT{t.material ? " · " + t.material : ""}{tr ? " · " + tr.number : ""} · {fdateShort(t.deliveredAt || t.startedAt)}</span>
+              </span>
+              <span className="pill won" style={{ flexShrink: 0 }}><i className="dot" />{tx("DONE", "DONE", "हुआ")}</span>
+            </div>
+          );
+        })}
+      </>)}
+
+      {trucks.length > 0 && <div style={{ marginTop: 14, textAlign: "center" }}><span className="hint" style={{ display: "inline" }}>{tx("This is the yard's live board. Tally Insights stays a pure Tally import.", "Ye yard ka live board hai - Tally wala page sirf Tally ka saaf hisaab rehta hai.", "यह यार्ड का लाइव बोर्ड है - Tally वाला पेज सिर्फ Tally का साफ हिसाब रहता है।")}</span></div>}
+    </div></div>
+  );
+}
+
 function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
   const [calcOpen, setCalcOpen] = useState(false);
   const [matPick, setMatPick] = useState(false);
@@ -3402,6 +3583,18 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
   const [catSel, setCatSel] = useState("");
   const [catName, setCatName] = useState("");
   const [catEmoji, setCatEmoji] = useState("");
+  const isScrap = ind.key === "scrap";
+  const [truckAdd, setTruckAdd] = useState(false);
+  const [truckNo, setTruckNo] = useState("");
+  const [truckCap, setTruckCap] = useState("");
+  const addTruck = () => {
+    const num = truckNo.trim().toUpperCase();
+    if (!num) return ping(tx("Write the truck number", "Truck number likho", "ट्रक नंबर लिखें"));
+    if ((data.trucks || []).some((t) => t.number === num)) return ping(tx("Already added", "Already added", "पहले से जुड़ा है"));
+    setData({ ...data, trucks: [...(data.trucks || []), { id: uid(), number: num, capMT: +truckCap || 0 }] });
+    setTruckNo(""); setTruckCap(""); setTruckAdd(false);
+    ping("🚚 " + num + tx(" added", " added", " जुड़ गया"));
+  };
   const myCats = (data.myCats && data.myCats[ind.key]) || [];
   const catSuggestions = (CAT_SUGGEST[ind.key] || []).filter((x) => !(ind.cats || []).some((c) => c.key === x.key));
   const saveMyCats = (list) => setData({ ...data, myCats: { ...(data.myCats || {}), [ind.key]: list } });
@@ -3560,6 +3753,38 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
           </div>
         )}
       </div>
+
+      {/* scrap: the truck fleet that feeds the Truck board */}
+      {isScrap && (<>
+      <div className="anim-in st2" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "24px 0 10px" }}>
+        <span className="eyebrow">{tx("Trucks", "Trucks (gaadiyan)", "ट्रक (गाड़ियां)")}</span>
+        <button className="btn btn-sm btn-soft press" onClick={() => setTruckAdd(!truckAdd)}>{truckAdd ? tx("Close", "Close", "बंद करें") : tx("+ Add truck", "+ Truck jodo", "+ ट्रक जोड़ें")}</button>
+      </div>
+      {(data.trucks || []).map((t) => (
+        <div key={t.id} className="card" style={{ padding: "13px 15px", marginBottom: 9, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            <span style={{ fontSize: 18 }}>🚚</span>
+            <span style={{ minWidth: 0 }}>
+              <span className="mono" style={{ display: "block", fontWeight: 700, fontSize: 14.5, letterSpacing: ".04em" }}>{t.number}</span>
+              {t.capMT > 0 && <span className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>~{t.capMT} MT</span>}
+            </span>
+          </span>
+          <button className="iconbtn press" style={{ width: 34, height: 34 }} onClick={() => { setData({ ...data, trucks: (data.trucks || []).filter((x) => x.id !== t.id) }); ping(tx("Removed", "Removed", "हटाया")); }}><I.trash /></button>
+        </div>
+      ))}
+      {(data.trucks || []).length === 0 && !truckAdd && (
+        <div className="card-tint" style={{ padding: "13px 15px", fontSize: 13, color: "var(--dim)" }}>{tx("Add your trucks - the Truck board then shows which truck is out with how much maal.", "Apni gaadiyan jodo - Truck board par dikhega kaun si gaadi kitna maal leke bahar hai.", "अपनी गाड़ियां जोड़ें - ट्रक बोर्ड पर दिखेगा कौन सी गाड़ी कितना माल लेकर बाहर है।")}</div>
+      )}
+      {truckAdd && (
+        <div className="card anim-in" style={{ padding: 16, border: "1.5px solid #CFE9D1" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 10 }}>
+            <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Truck number", "Truck number", "ट्रक नंबर")}</label><input className="input mono" placeholder="HR 38 AB 1234" value={truckNo} onChange={(e) => setTruckNo(e.target.value.toUpperCase())} /></div>
+            <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Capacity (MT)", "Capacity (MT)", "क्षमता (MT)")}</label><input className="input mono" type="number" inputMode="decimal" placeholder="18" value={truckCap} onChange={(e) => setTruckCap(e.target.value)} /></div>
+          </div>
+          <button className="btn btn-grn press" style={{ width: "100%", marginTop: 12 }} onClick={addTruck}>{tx("Save truck", "Truck save karo", "ट्रक सेव करें")}</button>
+        </div>
+      )}
+      </>)}
 
       {isMach && (<>
       {/* machines */}
@@ -3788,7 +4013,7 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
         <button className="btn btn-ghost btn-sm press" onClick={() => { const base = seedData(); const sq = buildSampleQuotes(ind.key); setData({ ...base, industry: ind.key, quotes: sq || base.quotes }); ping("Sample data loaded"); }}>Load sample</button>
         <button className="btn btn-ghost btn-sm press" style={{ color: "var(--red)" }} onClick={() => {
           if (!confirmClear) { setConfirmClear(true); setTimeout(() => setConfirmClear(false), 2500); return; }
-          const d = seedData(); d.quotes = []; d.machines = []; d.jobs = []; d.shopName = "My Shop"; setData(d); setConfirmClear(false); ping("Cleared");
+          const d = seedData(); d.quotes = []; d.machines = []; d.jobs = []; d.trucks = []; d.trips = []; d.shopName = "My Shop"; setData(d); setConfirmClear(false); ping("Cleared");
         }}>{confirmClear ? "Tap again to confirm" : "Clear everything"}</button>
       </div>
       <button className="btn btn-ghost btn-sm press" style={{ width: "100%", marginTop: 14, color: "var(--dim)" }} onClick={onLogout}><I.logout /> Log out</button>

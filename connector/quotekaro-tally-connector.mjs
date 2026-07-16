@@ -260,7 +260,7 @@ function voucherExportXml(fromYmd, toYmd) {
     '<COLLECTION NAME="QuoteKaro Vouchers" ISMODIFY="No">' +
     "<TYPE>Voucher</TYPE>" +
     "<FILTERS>QKSalePur</FILTERS>" +
-    "<FETCH>DATE,GUID,VOUCHERNUMBER,VOUCHERTYPENAME,PARTYLEDGERNAME,PARTYNAME,AMOUNT,ALLINVENTORYENTRIES.LIST</FETCH>" +
+    "<FETCH>DATE,GUID,VOUCHERNUMBER,REFERENCE,VOUCHERTYPENAME,PARTYLEDGERNAME,PARTYNAME,AMOUNT,ALLINVENTORYENTRIES.LIST</FETCH>" +
     "</COLLECTION>" +
     '<SYSTEM TYPE="Formulae" NAME="QKSalePur">$$IsSales:$VoucherTypeName OR $$IsPurchase:$VoucherTypeName</SYSTEM>' +
     "</TDLMESSAGE></TDL>" +
@@ -354,6 +354,8 @@ function parseVouchers(rawText) {
     const dm = /^(\d{4})(\d{2})(\d{2})$/.exec(d);
     const vdate = dm ? new Date(+dm[1], +dm[2] - 1, +dm[3]).getTime() : 0;
     const vtype = tag(head, "VOUCHERTYPENAME");
+    const vno = tag(head, "VOUCHERNUMBER").slice(0, 24);
+    const vref = tag(head, "REFERENCE").slice(0, 32);
     const party = tag(head, "PARTYLEDGERNAME") || tag(head, "PARTYNAME");
     const vAmount = money2(tag(head, "AMOUNT"));
     const baseKey = tag(head, "GUID") || (vtype + "-" + tag(head, "VOUCHERNUMBER") + "-" + d);
@@ -375,7 +377,7 @@ function parseVouchers(rawText) {
     items.forEach((it, idx) => {
       out.push({
         vkey: items.length > 1 ? baseKey + "#" + idx : baseKey,
-        vdate, vtype, party,
+        vdate, vtype, vno, ref: vref, party,
         amount: it.amount || (idx === 0 ? vAmount : 0),
         item: it.item, qty: it.qty, unit: it.unit,
       });

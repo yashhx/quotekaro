@@ -91,6 +91,8 @@ create table if not exists public.tally_vouchers (
   vkey    text,                -- stable voucher identity (guid/number+date)
   vdate   bigint,              -- ms epoch
   vtype   text,                -- Sales / Purchase
+  vno     text default '',     -- Tally voucher number (2026-07-17)
+  ref     text default '',     -- party reference / bill no (2026-07-17)
   party   text,
   amount  numeric,
   item    text default '',
@@ -106,3 +108,8 @@ drop policy if exists "own vouchers select" on public.tally_vouchers;
 create policy "own vouchers select" on public.tally_vouchers
   for select using (auth.uid() = user_id);
 -- writes only via the tally-sync function (service role bypasses RLS)
+
+-- 2026-07-17: voucher number + party reference now imported (run once if the
+-- table predates this; harmless to re-run)
+alter table public.tally_vouchers add column if not exists vno text default '';
+alter table public.tally_vouchers add column if not exists ref text default '';

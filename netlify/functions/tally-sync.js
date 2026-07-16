@@ -180,6 +180,8 @@ export default async (req) => {
           user_id: tenant.user_id, vkey,
           vdate: Number(v.vdate) || 0,
           vtype: String(v.vtype || "").slice(0, 30),
+          vno: String(v.vno || "").trim().slice(0, 24),
+          ref: String(v.ref || "").trim().slice(0, 32),
           party: String(v.party || "").trim().slice(0, 80),
           amount: Number(v.amount) || 0,
           item: String(v.item || "").trim().slice(0, 80),
