@@ -542,12 +542,8 @@ const parseEnquiry = (raw) => {
 
 /* Subscription plans - prices are demo; wire real Razorpay/UPI at the marked hook before charging. */
 const PLANS = [
-  { id: "starter", name: "Starter", price: 2500, tagline: "For small shops finding their feet",
-    features: ["Unlimited quotations", "WhatsApp & PDF export", "Customer & quote history", "1 user", "True hourly-rate calculator"], accent: "#3FAE45" },
-  { id: "growth", name: "Growth", price: 6000, tagline: "For working shops quoting every week", popular: true,
-    features: ["Everything in Starter", "Win / loss analytics", "Up to 3 users", "Material library + rate alerts", "Priority WhatsApp support"], accent: "#228B22" },
-  { id: "pro", name: "Pro", price: 12000, tagline: "For multi-machine shops running daily",
-    features: ["Everything in Growth", "Job / production tracking", "Unlimited users", "Multi-machine loaded rates", "Dedicated onboarding & support"], accent: "#155E18" },
+  { id: "full", name: "TrackRakho", price: 999, tagline: "Ek plan - sab kuch included", popular: true,
+    features: ["Unlimited quotes & pipeline", "WhatsApp + Gmail enquiries in one inbox", "Follow-up reminders & analytics", "Excel import / export & PDF quotations", "Machine floor - live job tracking", "Tally connector", "Priority WhatsApp support"], accent: "#228B22" },
 ];
 
 /* NCR material library (editable seed rates - owner corrects to real) */
@@ -570,12 +566,74 @@ const SUPPLIERS = [
   { co: "Sharma Non-Ferrous", area: "Ballabgarh", mat: "Brass / Copper / Gunmetal", rate: 555, unit: "/kg · cash", color: "#3FAE45" },
 ];
 
+/* common machines on NCR shop floors - dropdown seeds for Setup > Add machine.
+   Names only prefill the calculator; the true-rate math stays the owner's. */
+const MACHINE_LIB = [
+  "VMC 850", "VMC 1060", "CNC lathe / turning centre", "Traub (auto lathe)",
+  "Sliding-head CNC", "Manual lathe", "Milling machine", "Surface grinder",
+  "Cylindrical grinder", "Radial drill", "Wire-cut EDM", "Spark EDM",
+  "Laser cutting", "Press brake (bending)", "Power press", "Shearing machine",
+  "Tapping machine", "Hobbing machine", "Bandsaw",
+];
+
+/* every physical machine is its own unit: 3x VMC 850 -> #1 #2 #3 */
+const machineUnits = (data) => ((data && data.machines) || []).flatMap((m) => {
+  const n = Math.max(1, Math.floor(m.count || 1));
+  return Array.from({ length: n }, (_, i) => ({
+    uid: m.id + "#" + (i + 1), machineId: m.id, rate: m.rate,
+    name: m.name + (n > 1 ? " #" + (i + 1) : ""),
+  }));
+});
+
+/* ---- machine-floor job math ----
+   min per pc = cycle + manual (manual asked only for small batches);
+   qty splits across the chosen units; +8% breakdown / tool-change buffer.
+   All progress derives from startedAt - no background process needed. */
+const JOB_BUFFER = 1.08;
+const MANUAL_ASK_MAX = 100;
+const jobShares = (job) => {
+  const n = Math.max(1, (job.units || []).length);
+  const q = Math.max(0, Math.floor(job.qty || 0));
+  return (job.units || []).map((_, i) => Math.floor(q / n) + (i < q % n ? 1 : 0));
+};
+const jobStats = (job, now) => {
+  const per = (+job.cycleMin || 0) + (+job.manualMin || 0);
+  const denom = per * JOB_BUFFER;
+  const shares = jobShares(job);
+  const elapsedMin = Math.max(0, ((now || Date.now()) - job.startedAt) / 60000);
+  const units = (job.units || []).map((u, i) => {
+    const totalMin = shares[i] * denom;
+    const pct = job.done ? 100 : totalMin ? Math.min(100, (elapsedMin / totalMin) * 100) : 0;
+    const pcsDone = job.done ? shares[i] : denom > 0 ? Math.min(shares[i], Math.floor(elapsedMin / denom)) : 0;
+    return { uid: u, share: shares[i], totalMin, pct, pcsDone, remainMin: job.done ? 0 : Math.max(0, totalMin - elapsedMin) };
+  });
+  const totalMin = Math.max(0, ...units.map((x) => x.totalMin));
+  const remainMin = Math.max(0, ...units.map((x) => x.remainMin));
+  const pct = job.done ? 100 : totalMin ? Math.min(100, ((totalMin - remainMin) / totalMin) * 100) : 0;
+  return { units, pct, remainMin, eta: (now || Date.now()) + remainMin * 60000, pcsDone: units.reduce((a, x) => a + x.pcsDone, 0) };
+};
+const fmtDur = (min) => {
+  const m = Math.round(min);
+  if (m < 1) return "khatam";
+  if (m < 60) return m + " min";
+  const h = Math.floor(m / 60), d = Math.floor(h / 24);
+  if (d >= 1) return d + " din " + (h % 24) + " hr";
+  return h + " hr" + (m % 60 ? " " + (m % 60) + " min" : "");
+};
+const fmtEta = (t) => {
+  const d = new Date(t), today = new Date(); today.setHours(0, 0, 0, 0);
+  const dd = Math.floor((t - today.getTime()) / 86400000);
+  const hm = d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+  return dd === 0 ? "aaj " + hm : dd === 1 ? "kal " + hm : d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) + ", " + hm;
+};
+
 const seedData = () => {
   const now = Date.now(), day = 86400000;
   return {
     shopName: "Sharma Precision Works",
     settings: { overheadPct: 18, marginPct: 25, labourRate: 80, validityDays: 7, gstPct: 18 },
-    machines: [{ id: "m1", name: "VMC 850", rate: 366 }],
+    machines: [{ id: "m1", name: "VMC 850", rate: 366, count: 1 }],
+    jobs: [],
     materials: [
       { id: "a", name: "MS (EN8)", rate: 85 }, { id: "b", name: "SS 304", rate: 250 },
       { id: "c", name: "Alu 6061", rate: 300 }, { id: "d", name: "Brass", rate: 560 },
@@ -633,7 +691,38 @@ const INDUSTRIES = {
       { key: "office", label: "Office", emoji: "🖥️" }, { key: "other", label: "Other", emoji: "🔨" },
     ] },
 };
-const industryOf = (data) => INDUSTRIES[data && data.industry] || INDUSTRIES.machining;
+const industryOf = (data) => {
+  const base = INDUSTRIES[data && data.industry] || INDUSTRIES.machining;
+  const mine = (data && data.myCats && data.myCats[base.key]) || [];
+  if (!mine.length) return base;
+  const cats = [...base.cats.filter((c) => c.key !== "other"), ...mine, ...base.cats.filter((c) => c.key === "other")];
+  return { ...base, cats };
+};
+
+/* per-trade suggestions for "add your own category" in Setup */
+const CAT_SUGGEST = {
+  machining: [
+    { key: "dies", label: "Dies & moulds", emoji: "\u{1F9F0}" }, { key: "gears", label: "Gears", emoji: "\u{1F6DE}" },
+    { key: "springs", label: "Springs", emoji: "\u{1F300}" }, { key: "casting", label: "Casting", emoji: "\u{1F3ED}" },
+    { key: "forging", label: "Forging", emoji: "\u{1F528}" }, { key: "coating", label: "Powder coating", emoji: "\u{1F3A8}" },
+    { key: "heattreat", label: "Heat treatment", emoji: "\u{1F525}" },
+  ],
+  printing: [
+    { key: "tshirts", label: "T-shirt printing", emoji: "\u{1F455}" }, { key: "mugs", label: "Mugs & gifts", emoji: "\u2615" },
+    { key: "led", label: "LED boards", emoji: "\u{1F4A1}" }, { key: "menus", label: "Menu cards", emoji: "\u{1F37D}\uFE0F" },
+    { key: "calendars", label: "Calendars", emoji: "\u{1F4C5}" }, { key: "books", label: "Book printing", emoji: "\u{1F4DA}" },
+  ],
+  furniture: [
+    { key: "kitchen", label: "Modular kitchen", emoji: "\u{1F373}" }, { key: "doors", label: "Doors", emoji: "\u{1F6AA}" },
+    { key: "mattress", label: "Mattress", emoji: "\u{1F6CC}" }, { key: "outdoor", label: "Outdoor", emoji: "\u{1F33F}" },
+    { key: "repair", label: "Repair & polish", emoji: "\u{1F527}" }, { key: "curtains", label: "Curtains & blinds", emoji: "\u{1FA9F}" },
+  ],
+  scrap: [
+    { key: "paper", label: "Paper / raddi", emoji: "\u{1F4C4}" }, { key: "glass", label: "Glass", emoji: "\u{1F37E}" },
+    { key: "tyre", label: "Tyre & rubber", emoji: "\u26AB" }, { key: "battery", label: "Batteries", emoji: "\u{1F50B}" },
+    { key: "wood", label: "Wood", emoji: "\u{1FAB5}" },
+  ],
+};
 
 /* keyword -> category, per trade (so old/sample quotes categorize themselves) */
 const CAT_RULES = {
@@ -1140,10 +1229,10 @@ function Subscribe({ account, onSubscribe, onBack }) {
     <div className="scr"><div className="pagepad" style={{ paddingBottom: 40 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
         <button className="iconbtn press" onClick={onBack}><I.back /></button>
-        <div><div className="microlbl">PLANS</div><div className="h-disp" style={{ fontSize: 23, fontWeight: 700 }}>Choose your plan</div></div>
+        <div><div className="microlbl">PRICING</div><div className="h-disp" style={{ fontSize: 23, fontWeight: 700 }}>One plan. Sab kuch.</div></div>
       </div>
       <p style={{ fontSize: 14, color: "var(--dim)", marginBottom: 22, lineHeight: 1.6 }}>
-        One underquoted job can cost more than a year of TrackRakho. Prices per month, billed yearly. GST extra.
+        One missed follow-up costs more than a year of TrackRakho. No tiers, no add-ons - har feature, ek plan. GST extra.
       </p>
 
       {PLANS.map((pl) => (
@@ -1160,7 +1249,7 @@ function Subscribe({ account, onSubscribe, onBack }) {
           </ul>
           <button className={"btn press " + (pl.popular ? "btn-grn" : "btn-ghost")} style={{ width: "100%" }}
             onClick={() => onSubscribe(pl.id)} disabled={current === pl.id}>
-            {current === pl.id ? "Your current plan" : <>Choose {pl.name}</>}
+            {current === pl.id ? "Your current plan" : <>Start - ₹{pl.price.toLocaleString("en-IN")}/month</>}
           </button>
         </div>
       ))}
@@ -1556,13 +1645,14 @@ export default function App() {
       <div className="app">
         {toast && <div className="toast">{toast}</div>}
 
-        {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} openTally={() => setTab("tally")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} />}
+        {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} openTally={() => setTab("tally")} openFloor={() => setTab("floor")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} />}
         {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} cat={quotesCat} setCat={setQuotesCat} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} tallyBal={tallyBal} />}
         {tab === "log" && <QuickLog data={data} onSave={saveLogged} onExit={() => setTab("home")} ping={ping} />}
         {tab === "setup" && <Setup data={data} setData={setData} ping={ping} account={accountView} sync={sync} goSubscribe={() => setTab("subscribe")} onLogout={logout} />}
         {tab === "help" && <Help data={data} ping={ping} />}
         {tab === "analytics" && <Analytics data={data} onBack={() => setTab("home")} goQuotes={goQuotes} />}
         {tab === "tally" && <TallyInsights data={data} updateQuote={updateQuote} ping={ping} onBack={() => setTab("home")} />}
+        {tab === "floor" && <MachineFloor data={data} setData={setData} ping={ping} onBack={() => setTab("home")} goSetup={() => setTab("setup")} />}
         {tab === "subscribe" && <Subscribe account={accountView} onSubscribe={(id) => { subscribe(id); ping("You're on the " + PLANS.find(p => p.id === id).name + " plan"); setTab("home"); }} onBack={() => setTab("home")} />}
         {tab === "new" && (<Wizard data={data} draft={draft} setDraft={setDraft} step={step} setStep={setStep}
           onExit={() => setTab("home")} onSave={saveQuote} doneQuote={doneQuote} ping={ping}
@@ -1589,7 +1679,7 @@ export default function App() {
           </div>
         )}
 
-        {tab !== "new" && tab !== "analytics" && tab !== "subscribe" && tab !== "log" && tab !== "tally" && (
+        {tab !== "new" && tab !== "analytics" && tab !== "subscribe" && tab !== "log" && tab !== "tally" && tab !== "floor" && (
           <nav className="navbar" ref={navRef}>
             <div className="nav-pill" style={pillStyle} />
             <button ref={setNavRef("home")} className={"nav-it " + (tab === "home" ? "on" : "")} onClick={() => setTab("home")}><I.home /><span>Home</span></button>
@@ -1605,7 +1695,7 @@ export default function App() {
 }
 
 /* ================= HOME ================= */
-function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally, goSetup, goSubscribe }) {
+function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally, openFloor, goSetup, goSubscribe }) {
   const ind = industryOf(data);
   const isMach = ind.key === "machining";
   const h = new Date().getHours();
@@ -1632,6 +1722,11 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
   const dueList = data.quotes.filter((q) => { const st = followState(q); return st === "overdue" || st === "today"; })
     .sort((a, b) => a.followUp - b.followUp);
   const recent = data.quotes.slice(0, 3);
+
+  /* machine floor at a glance (machining only) */
+  const flUnits = machineUnits(data);
+  const flActive = (data.jobs || []).filter((j) => !j.done);
+  const flBusy = new Set(flActive.flatMap((j) => j.units || []));
 
   /* category tiles: printing shows active ones, furniture shows the full range */
   const showCats = ind.key === "printing" || ind.key === "furniture";
@@ -1718,6 +1813,19 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
         </div>
       )}
 
+      {/* machining: live shop floor */}
+      {isMach && (
+        <button onClick={openFloor} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "#fff", border: "1px solid var(--line)", boxShadow: "var(--sh-s)" }}>
+          <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>🛠️</span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", fontWeight: 700, fontSize: 15 }}>Machine floor</span>
+            <span style={{ display: "block", fontSize: 12.5, color: "var(--dim)" }}>{flUnits.length ? flBusy.size + "/" + flUnits.length + " machines par kaam chal raha" : "Kaun si machine par kya chal raha hai - live"}</span>
+          </span>
+          {flActive.length > 0 && <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: "var(--grn-d)", background: "var(--grn-100)", padding: "4px 9px", borderRadius: 999, flexShrink: 0 }}>{flActive.length} ON</span>}
+          <I.chev style={{ color: "var(--faint)" }} />
+        </button>
+      )}
+
       {dueList.length > 0 && (
         <button onClick={() => goQuotes("due")} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "var(--amber-bg)", border: "1px solid #F0DCB8" }}>
           <span style={{ width: 40, height: 40, borderRadius: 12, background: "#fff", color: "var(--amber)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><I.bell /></span>
@@ -1785,8 +1893,8 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
       {!account?.plan && (
         <button onClick={goSubscribe} className="press anim-in st6" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 6, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "linear-gradient(135deg,#1B7A20,#2E9E33)", color: "#fff", boxShadow: "var(--sh-m)" }}>
           <span style={{ flexShrink: 0 }}><I.crown /></span>
-          <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>Unlock unlimited quotes & analytics</span>
-          <span style={{ fontFamily: "var(--mono)", fontSize: 12, background: "rgba(255,255,255,.2)", padding: "5px 10px", borderRadius: 999 }}>From ₹2,500 ›</span>
+          <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600 }}>Sab kuch unlock karo - ek hi plan</span>
+          <span style={{ fontFamily: "var(--mono)", fontSize: 12, background: "rgba(255,255,255,.2)", padding: "5px 10px", borderRadius: 999 }}>₹999/mo ›</span>
         </button>
       )}
 
@@ -3009,6 +3117,181 @@ function Help({ data, ping }) {
 }
 
 /* ================= SETUP ================= */
+/* ================= MACHINE FLOOR (machining only) =================
+   Which machine is running which part, % done, time remaining.
+   Pure time math off startedAt - no background process. Estimates carry a
+   +8% breakdown / tool-change buffer (JOB_BUFFER). */
+function MachineFloor({ data, setData, ping, onBack, goSetup }) {
+  const [now, setNow] = useState(Date.now());
+  const [formOpen, setFormOpen] = useState(false);
+  const [f, setF] = useState({ part: "", customer: "", cycleMin: "", qty: "", manualMin: "", units: [] });
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(t); }, []);
+
+  const units = machineUnits(data);
+  const jobs = data.jobs || [];
+  const active = jobs.filter((j) => !j.done);
+  const doneJobs = jobs.filter((j) => j.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0)).slice(0, 5);
+  const busy = {};
+  active.forEach((j) => (j.units || []).forEach((u) => { if (!busy[u]) busy[u] = j; }));
+
+  const qty = Math.floor(+f.qty || 0);
+  const askManual = qty > 0 && qty < MANUAL_ASK_MAX;
+  const per = (+f.cycleMin || 0) + (askManual ? +f.manualMin || 0 : 0);
+  const est = f.units.length && per > 0 && qty > 0
+    ? jobStats({ cycleMin: +f.cycleMin || 0, manualMin: askManual ? +f.manualMin || 0 : 0, qty, units: f.units, startedAt: now, done: false }, now)
+    : null;
+
+  const toggleUnit = (u) => setF((x) => ({ ...x, units: x.units.includes(u) ? x.units.filter((y) => y !== u) : [...x.units, u] }));
+  const startJob = () => {
+    if (!f.part.trim()) return ping("Part ka naam likho");
+    if (!(+f.cycleMin > 0)) return ping("Cycle time (min/piece) chahiye");
+    if (!(qty > 0)) return ping("Quantity likho");
+    if (!f.units.length) return ping("Kam se kam ek machine chuno");
+    const job = { id: uid(), part: f.part.trim(), customer: f.customer.trim(), cycleMin: +f.cycleMin, manualMin: askManual ? +f.manualMin || 0 : 0, qty, units: f.units, startedAt: Date.now(), done: false };
+    setData({ ...data, jobs: [job, ...jobs] });
+    setF({ part: "", customer: "", cycleMin: "", qty: "", manualMin: "", units: [] });
+    setFormOpen(false);
+    ping("Job chalu - " + job.part);
+  };
+  const markDone = (id) => { setData({ ...data, jobs: jobs.map((j) => j.id === id ? { ...j, done: true, doneAt: Date.now() } : j) }); ping("Job complete!"); };
+  const delJob = (id) => { setData({ ...data, jobs: jobs.filter((j) => j.id !== id) }); ping("Job hataya"); };
+  const startSample = () => {
+    const u = units[0]; if (!u) return;
+    /* 200 pcs x 4.5 min x 1.08 = ~16.2 hr; started 9.7 hr ago -> ~60% done */
+    const job = { id: uid(), part: "Gland Nut - 60mm", customer: "Apex Hydraulics", cycleMin: 4.5, manualMin: 0, qty: 200, units: [u.uid], startedAt: Date.now() - 9.7 * 3600000, done: false, seed: true };
+    setData({ ...data, jobs: [job, ...jobs] }); ping("Sample job chalu - aise dikhta hai");
+  };
+
+  return (
+    <div className="scr"><div className="pagepad" style={{ paddingBottom: 40 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+        <button className="iconbtn press" onClick={onBack}><I.back /></button>
+        <div style={{ flex: 1 }}>
+          <div className="microlbl">SHOP FLOOR</div>
+          <div className="h-disp" style={{ fontSize: 23, fontWeight: 700 }}>Machine floor</div>
+        </div>
+        {units.length > 0 && <button className="btn btn-sm btn-grn press" onClick={() => setFormOpen(!formOpen)}>{formOpen ? "Close" : "+ Naya job"}</button>}
+      </div>
+      <div style={{ fontSize: 13.5, color: "var(--dim)", margin: "2px 0 16px" }}>
+        {active.length ? active.length + " job chal rahe - " + Object.keys(busy).length + "/" + units.length + " machines busy" : units.length ? "Sab machines free hain" : "Pehle machines jodo"}
+      </div>
+
+      {!units.length && (
+        <div className="card anim-in" style={{ padding: 22, textAlign: "center" }}>
+          <div style={{ fontSize: 34, marginBottom: 8 }}>🛠️</div>
+          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Pehle apni machines jodo</div>
+          <div style={{ fontSize: 13.5, color: "var(--dim)", lineHeight: 1.55, marginBottom: 14 }}>Setup me machine add karo - VMC, lathe, press, kitni bhi. Phir yahan live dikhega kaun si machine par kya chal raha hai.</div>
+          <button className="btn btn-grn press" onClick={goSetup}>Setup kholo</button>
+        </div>
+      )}
+
+      {formOpen && (
+        <div className="card anim-in" style={{ padding: 16, marginBottom: 14, border: "1.5px solid #CFE9D1" }}>
+          <div className="lbl" style={{ color: "var(--grn-d)", marginBottom: 4 }}>Kya chala rahe ho?</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div><label className="lbl" style={{ fontSize: 12.5 }}>Part / item</label><input className="input" placeholder="e.g. Gland Nut" value={f.part} onChange={(e) => setF({ ...f, part: e.target.value })} /></div>
+            <div><label className="lbl" style={{ fontSize: 12.5 }}>Customer</label><input className="input" placeholder="e.g. Apex Hydraulics" value={f.customer} onChange={(e) => setF({ ...f, customer: e.target.value })} /></div>
+            <div><label className="lbl" style={{ fontSize: 12.5 }}>Cycle time (min / pc)</label><input className="input mono" type="number" inputMode="decimal" placeholder="4.5" value={f.cycleMin} onChange={(e) => setF({ ...f, cycleMin: e.target.value })} /></div>
+            <div><label className="lbl" style={{ fontSize: 12.5 }}>Quantity (pcs)</label><input className="input mono" type="number" inputMode="numeric" placeholder="200" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} /></div>
+          </div>
+          <span className="hint">Ek piece machine par kitne minute chalta hai - wahi cycle time.</span>
+          {askManual && (<>
+            <label className="lbl" style={{ marginTop: 10 }}>Manual time (min / pc)</label>
+            <input className="input mono" type="number" inputMode="decimal" placeholder="2" value={f.manualMin} onChange={(e) => setF({ ...f, manualMin: e.target.value })} />
+            <span className="hint">Chhota batch hai - har piece pe haath ka kaam (deburr, checking) bhi time leta hai.</span>
+          </>)}
+          {qty >= MANUAL_ASK_MAX && <span className="hint" style={{ marginTop: 8 }}>Bada batch - manual kaam cycle ke saath-saath chalta hai, alag se nahi ginte.</span>}
+
+          <label className="lbl" style={{ marginTop: 12 }}>Kitni machines par chalega? (tap karke chuno)</label>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {units.map((u) => {
+              const taken = !!busy[u.uid];
+              return (
+                <button key={u.uid} disabled={taken} className={"fpill press " + (f.units.includes(u.uid) ? "on" : "")} style={taken ? { opacity: 0.45 } : undefined} onClick={() => toggleUnit(u.uid)}>
+                  {u.name}{taken ? " - busy" : ""}
+                </button>
+              );
+            })}
+          </div>
+
+          {est && (
+            <div className="card-tint" style={{ padding: "13px 14px", marginTop: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13.5, fontWeight: 600 }}>
+                <span>{f.units.length} machine{f.units.length > 1 ? "s" : ""} · ~{Math.ceil(qty / f.units.length)} pcs each</span>
+                <b className="mono" style={{ color: "var(--grn-d)", flexShrink: 0 }}>{fmtDur(est.remainMin)}</b>
+              </div>
+              <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 3 }}>Abhi chalu karo to <b>{fmtEta(est.eta)}</b> tak khatam (+8% breakdown buffer ke saath)</div>
+            </div>
+          )}
+          <button className="btn btn-grn press" style={{ width: "100%", marginTop: 12 }} onClick={startJob}><I.bolt /> Job chalu karo</button>
+        </div>
+      )}
+
+      {units.length > 0 && active.length === 0 && !formOpen && (
+        <div className="card-tint anim-in" style={{ padding: 18, textAlign: "center", marginBottom: 12 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Koi job nahi chal raha</div>
+          <div style={{ fontSize: 13, color: "var(--dim)", marginBottom: jobs.length ? 0 : 12 }}>"+ Naya job" dabao - part, cycle time, quantity. Bas.</div>
+          {!jobs.length && <button className="btn btn-ghost press" onClick={startSample}>Sample job chala ke dekho</button>}
+        </div>
+      )}
+
+      {units.map((u) => {
+        const job = busy[u.uid];
+        if (!job) return (
+          <div key={u.uid} className="card anim-in" style={{ padding: "13px 15px", marginBottom: 9, display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ width: 38, height: 38, borderRadius: 11, background: "var(--soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>💤</span>
+            <span style={{ flex: 1, fontWeight: 600, fontSize: 15 }}>{u.name}</span>
+            <span className="mono" style={{ fontSize: 10.5, letterSpacing: ".1em", color: "var(--faint)" }}>FREE</span>
+          </div>
+        );
+        const st = jobStats(job, now);
+        const ui = Math.max(0, (job.units || []).indexOf(u.uid));
+        const us = st.units[ui] || { pct: 0, pcsDone: 0, share: 0, remainMin: 0 };
+        const ready = us.pct >= 100;
+        return (
+          <div key={u.uid} className="card anim-in" style={{ padding: "14px 15px", marginBottom: 9 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+              <span style={{ fontWeight: 700, fontSize: 15 }}>{u.name}</span>
+              <span className="mono" style={{ fontSize: 12.5, fontWeight: 700, color: ready ? "#1B7A20" : "var(--grn-d)" }}>{Math.floor(us.pct)}%</span>
+            </div>
+            <div style={{ fontSize: 13.5, color: "var(--dim)", margin: "3px 0 9px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {job.part}{job.customer ? " \u00B7 " + job.customer : ""}{(job.units || []).length > 1 ? " \u00B7 " + job.units.length + " machines par batta" : ""}
+            </div>
+            <div style={{ height: 8, borderRadius: 6, background: "var(--line)", overflow: "hidden" }}>
+              <i style={{ display: "block", height: "100%", width: Math.min(100, us.pct) + "%", background: ready ? "#1B7A20" : "linear-gradient(90deg,#3FAE45,#228B22)", borderRadius: 6, transition: "width .6s" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, gap: 8 }}>
+              <span className="mono" style={{ fontSize: 11.5, color: "var(--dim)" }}>~{us.pcsDone}/{us.share} pcs</span>
+              <span className="mono" style={{ fontSize: 11.5, color: ready ? "#1B7A20" : "var(--dim)", fontWeight: ready ? 700 : 400, textAlign: "right" }}>
+                {ready ? "Ho gaya hoga - check karo" : fmtDur(us.remainMin) + " left \u00B7 " + fmtEta(now + us.remainMin * 60000)}
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <button className={"btn btn-sm press " + (ready ? "btn-grn" : "btn-soft")} style={{ flex: 1 }} onClick={() => markDone(job.id)}>Mark done</button>
+              <button className="iconbtn press" style={{ width: 36, height: 36 }} onClick={() => delJob(job.id)} aria-label="Delete job"><I.trash /></button>
+            </div>
+          </div>
+        );
+      })}
+
+      {doneJobs.length > 0 && (<>
+        <div style={{ margin: "22px 0 8px" }}><span className="eyebrow">Complete hue</span></div>
+        {doneJobs.map((j) => (
+          <div key={j.id} className="card" style={{ padding: "12px 15px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: "block", fontWeight: 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{j.part}</span>
+              <span className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>{j.qty} pcs{j.customer ? " \u00B7 " + j.customer : ""}</span>
+            </span>
+            <span className="pill won" style={{ flexShrink: 0 }}><i className="dot" />DONE</span>
+          </div>
+        ))}
+      </>)}
+
+      {units.length > 0 && <div style={{ marginTop: 14, textAlign: "center" }}><span className="hint" style={{ display: "inline" }}>Har estimate me +8% breakdown / tool-change buffer juda hai.</span></div>}
+    </div></div>
+  );
+}
+
 function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
   const [calcOpen, setCalcOpen] = useState(false);
   const [matPick, setMatPick] = useState(false);
@@ -3024,7 +3307,31 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
   const ind = industryOf(data);
   const isMach = ind.key === "machining";
 
-  const [rc, setRc] = useState({ name: "", price: 1500000, life: 8, hrsDay: 8, daysMo: 25, kw: 8, unit: 8, operator: 30000, maint: 75000 });
+  /* owner-added categories (merged into ind.cats by industryOf) */
+  const [catAdd, setCatAdd] = useState(false);
+  const [catSel, setCatSel] = useState("");
+  const [catName, setCatName] = useState("");
+  const [catEmoji, setCatEmoji] = useState("");
+  const myCats = (data.myCats && data.myCats[ind.key]) || [];
+  const catSuggestions = (CAT_SUGGEST[ind.key] || []).filter((x) => !(ind.cats || []).some((c) => c.key === x.key));
+  const saveMyCats = (list) => setData({ ...data, myCats: { ...(data.myCats || {}), [ind.key]: list } });
+  const removeCat = (key) => { saveMyCats(myCats.filter((c) => c.key !== key)); ping("Category removed"); };
+  const addCat = () => {
+    let c = null;
+    if (catSel && catSel !== "__custom") c = (CAT_SUGGEST[ind.key] || []).find((x) => x.key === catSel);
+    else if (catSel === "__custom") {
+      const label = catName.trim();
+      if (!label) return ping("Category ka naam likho");
+      const key = "c_" + (label.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 18) || uid());
+      c = { key, label, emoji: (catEmoji.trim() || "\u{1F4E6}").slice(0, 4) };
+    } else return ping("Pehle list se chuno");
+    if (!c || (ind.cats || []).some((x) => x.key === c.key)) return ping("Already added");
+    saveMyCats([...myCats, c]);
+    setCatSel(""); setCatName(""); setCatEmoji(""); setCatAdd(false);
+    ping(c.emoji + " " + c.label + " added");
+  };
+
+  const [rc, setRc] = useState({ name: "", count: 1, price: 1500000, life: 8, hrsDay: 8, daysMo: 25, kw: 8, unit: 8, operator: 30000, maint: 75000 });
   const mh = rc.hrsDay * rc.daysMo;
   const dep = rc.price / rc.life / 12 / mh, pow = rc.kw * rc.unit, op = rc.operator / mh, mnt = rc.maint / 12 / mh;
   const rate = Math.ceil(dep + pow + op + mnt);
@@ -3032,8 +3339,9 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
 
   const addMachine = () => {
     if (!rc.name.trim()) return ping("Give the machine a name");
-    setData({ ...data, machines: [...data.machines, { id: uid(), name: rc.name.trim(), rate }] });
-    setCalcOpen(false); setRc({ ...rc, name: "" }); ping("Machine added at " + inr(rate) + "/hr");
+    const n = Math.max(1, Math.floor(rc.count || 1));
+    setData({ ...data, machines: [...data.machines, { id: uid(), name: rc.name.trim(), rate, count: n }] });
+    setCalcOpen(false); setRc({ ...rc, name: "", count: 1 }); ping((n > 1 ? n + "x " : "") + rc.name.trim() + " added at " + inr(rate) + "/hr");
   };
   const addMaterial = (m) => {
     if (data.materials.some((x) => x.name.toLowerCase() === m.name.toLowerCase())) { ping(m.name + " already added"); return; }
@@ -3069,7 +3377,7 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
 
       {/* account + plan */}
       {(() => {
-        const plan = PLANS.find((p) => p.id === account?.plan);
+        const plan = PLANS.find((p) => p.id === account?.plan) || (account?.plan ? PLANS[0] : null);
         return (
           <div className="hero-card anim-in" style={{ padding: "20px 20px", marginBottom: 18 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative", zIndex: 1 }}>
@@ -3119,16 +3427,40 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
       </div>
 
       {/* categories that power the Home tiles + pipeline filter */}
-      <div className="anim-in st2" style={{ margin: "24px 0 10px" }}><span className="eyebrow">Your categories</span></div>
+      <div className="anim-in st2" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "24px 0 10px" }}>
+        <span className="eyebrow">Your categories</span>
+        <button className="btn btn-sm btn-soft press" onClick={() => setCatAdd(!catAdd)}>{catAdd ? "Close" : "+ Add category"}</button>
+      </div>
       <div className="card" style={{ padding: "14px 15px" }}>
         <span className="hint" style={{ margin: "0 0 10px" }}>These power the tiles on your Home screen and the filters in your pipeline. Every quote is sorted into one automatically.</span>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {(ind.cats || []).map((c) => (
-            <span key={c.key} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 999, padding: "7px 12px", fontSize: 13.5, fontWeight: 600 }}>
-              <span style={{ fontSize: 14 }}>{c.emoji}</span> {c.label}
-            </span>
-          ))}
+          {(ind.cats || []).map((c) => {
+            const mine = myCats.some((x) => x.key === c.key);
+            return (
+              <span key={c.key} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: mine ? "var(--grn-100)" : "var(--soft)", border: "1px solid var(--line)", borderRadius: 999, padding: "7px 12px", fontSize: 13.5, fontWeight: 600 }}>
+                <span style={{ fontSize: 14 }}>{c.emoji}</span> {c.label}
+                {mine && <button onClick={() => removeCat(c.key)} aria-label="Remove" style={{ all: "unset", cursor: "pointer", color: "var(--faint)", fontSize: 15, lineHeight: 1, marginLeft: 2 }}>×</button>}
+              </span>
+            );
+          })}
         </div>
+        {catAdd && (
+          <div className="anim-in" style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+            <label className="lbl">Pick a common one</label>
+            <select className="input" value={catSel} onChange={(e) => setCatSel(e.target.value)}>
+              <option value="">Choose...</option>
+              {catSuggestions.map((x) => (<option key={x.key} value={x.key}>{x.emoji} {x.label}</option>))}
+              <option value="__custom">Apna naam likho (custom)</option>
+            </select>
+            {catSel === "__custom" && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 76px", gap: 9, marginTop: 9 }}>
+                <div><label className="lbl" style={{ fontSize: 12.5 }}>Category name</label><input className="input" placeholder="e.g. Gears" value={catName} onChange={(e) => setCatName(e.target.value)} /></div>
+                <div><label className="lbl" style={{ fontSize: 12.5 }}>Emoji</label><input className="input" placeholder="📦" value={catEmoji} onChange={(e) => setCatEmoji(e.target.value)} style={{ textAlign: "center" }} /></div>
+              </div>
+            )}
+            <button className="btn btn-grn press" style={{ width: "100%", marginTop: 10 }} onClick={addCat}>Add category</button>
+          </div>
+        )}
       </div>
 
       {isMach && (<>
@@ -3137,22 +3469,35 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
         <span className="eyebrow">Machines</span>
         <button className="btn btn-sm btn-soft press" onClick={() => setCalcOpen(!calcOpen)}>{calcOpen ? "Close" : "+ Add machine"}</button>
       </div>
-      {data.machines.map((m) => (
-        <div key={m.id} className="card" style={{ padding: "14px 15px", marginBottom: 9, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontWeight: 600, fontSize: 15 }}>{m.name}</span>
-          <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      {data.machines.map((m) => {
+        const n = Math.max(1, Math.floor(m.count || 1));
+        const bump = (v) => setData({ ...data, machines: data.machines.map((x) => x.id === m.id ? { ...x, count: Math.max(1, n + v) } : x) });
+        return (
+        <div key={m.id} className="card" style={{ padding: "14px 15px", marginBottom: 9, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <span style={{ fontWeight: 600, fontSize: 15, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.name}</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 2, background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 999, padding: "3px 5px" }}>
+              <button className="press" onClick={() => bump(-1)} aria-label="One less" style={{ all: "unset", cursor: "pointer", width: 20, textAlign: "center", fontWeight: 700, color: n > 1 ? "var(--ink)" : "var(--line2)" }}>-</button>
+              <span className="mono" style={{ fontSize: 12.5, fontWeight: 600 }}>×{n}</span>
+              <button className="press" onClick={() => bump(1)} aria-label="One more" style={{ all: "unset", cursor: "pointer", width: 20, textAlign: "center", fontWeight: 700 }}>+</button>
+            </span>
             <b className="mono" style={{ color: "var(--grn-d)" }}>{inr(m.rate)}/hr</b>
             <button className="iconbtn press" style={{ width: 34, height: 34 }} onClick={() => { setData({ ...data, machines: data.machines.filter((x) => x.id !== m.id) }); ping("Removed"); }}><I.trash /></button>
           </span>
         </div>
-      ))}
+      );})}
 
       {calcOpen && (
         <div className="card anim-in" style={{ padding: 16, marginTop: 6, border: "1.5px solid #CFE9D1" }}>
           <div className="lbl" style={{ color: "var(--grn-d)", marginBottom: 4 }}>True hourly-rate calculator</div>
           <span className="hint">Fill these once - the app works out what one machine-hour really costs you.</span>
-          <label className="lbl" style={{ marginTop: 8 }}>Machine name</label>
-          <input className="input" placeholder="e.g. VMC 850 #2" value={rc.name} onChange={(e) => setRc({ ...rc, name: e.target.value })} />
+          <label className="lbl" style={{ marginTop: 8 }}>Pick a common NCR machine</label>
+          <select className="input" value="" onChange={(e) => { if (e.target.value) setRc({ ...rc, name: e.target.value }); }}>
+            <option value="">Choose from the list...</option>
+            {MACHINE_LIB.map((nm) => (<option key={nm} value={nm}>{nm}</option>))}
+          </select>
+          <label className="lbl" style={{ marginTop: 10 }}>Machine name</label>
+          <input className="input" placeholder="e.g. VMC 850" value={rc.name} onChange={(e) => setRc({ ...rc, name: e.target.value })} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
             {[["price", "Machine price ₹"], ["life", "Life (years)"], ["hrsDay", "Hours / day"], ["daysMo", "Days / month"], ["kw", "Power (kW)"], ["unit", "₹ / unit"], ["operator", "Operator ₹/mo"], ["maint", "Maintenance ₹/yr"]].map(([k, l]) => (
               <div key={k}><label className="lbl" style={{ fontSize: 12.5 }}>{l}</label><input className="input mono" type="number" inputMode="decimal" value={rc[k]} onChange={(e) => setRc({ ...rc, [k]: +e.target.value || 0 })} /></div>
@@ -3166,6 +3511,9 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
             <span className="mono" style={{ fontSize: 10, letterSpacing: ".16em", color: "rgba(255,255,255,.82)" }}>TRUE RATE</span>
             <span className="mono" style={{ fontSize: 25, fontWeight: 600 }}><CountUp value={rate} />/hr</span>
           </div>
+          <label className="lbl" style={{ marginTop: 12 }}>How many of this machine? (same model)</label>
+          <input className="input mono" type="number" inputMode="numeric" min="1" value={rc.count} onChange={(e) => setRc({ ...rc, count: Math.max(1, Math.floor(+e.target.value || 1)) })} />
+          <span className="hint">Har machine alag unit banegi (#1, #2...) - Machine floor par sab alag dikhengi.</span>
           <button className="btn btn-grn press" style={{ width: "100%", marginTop: 12 }} onClick={addMachine}>Save machine</button>
         </div>
       )}
@@ -3342,7 +3690,7 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
         <button className="btn btn-ghost btn-sm press" onClick={() => { const base = seedData(); const sq = buildSampleQuotes(ind.key); setData({ ...base, industry: ind.key, quotes: sq || base.quotes }); ping("Sample data loaded"); }}>Load sample</button>
         <button className="btn btn-ghost btn-sm press" style={{ color: "var(--red)" }} onClick={() => {
           if (!confirmClear) { setConfirmClear(true); setTimeout(() => setConfirmClear(false), 2500); return; }
-          const d = seedData(); d.quotes = []; d.machines = []; d.shopName = "My Shop"; setData(d); setConfirmClear(false); ping("Cleared");
+          const d = seedData(); d.quotes = []; d.machines = []; d.jobs = []; d.shopName = "My Shop"; setData(d); setConfirmClear(false); ping("Cleared");
         }}>{confirmClear ? "Tap again to confirm" : "Clear everything"}</button>
       </div>
       <button className="btn btn-ghost btn-sm press" style={{ width: "100%", marginTop: 14, color: "var(--dim)" }} onClick={onLogout}><I.logout /> Log out</button>
