@@ -653,6 +653,7 @@ const seedData = () => {
     jobs: [],
     trucks: [],
     trips: [],
+    stock: { open: {}, ins: [], outs: [], counts: [] },
     materials: [
       { id: "a", name: "MS (EN8)", rate: 85 }, { id: "b", name: "SS 304", rate: 250 },
       { id: "c", name: "Alu 6061", rate: 300 }, { id: "d", name: "Brass", rate: 560 },
@@ -1665,7 +1666,7 @@ export default function App() {
       <div className="app">
         {toast && <div className="toast">{toast}</div>}
 
-        {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} openTally={() => setTab("tally")} openFloor={() => setTab("floor")} openTrucks={() => setTab("trucks")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} />}
+        {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} openTally={() => setTab("tally")} openFloor={() => setTab("floor")} openTrucks={() => setTab("trucks")} openStock={() => setTab("stock")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} />}
         {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} cat={quotesCat} setCat={setQuotesCat} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} tallyBal={tallyBal} />}
         {tab === "log" && <QuickLog data={data} onSave={saveLogged} onExit={() => setTab("home")} ping={ping} />}
         {tab === "setup" && <Setup data={data} setData={setData} ping={ping} account={accountView} sync={sync} goSubscribe={() => setTab("subscribe")} onLogout={logout} />}
@@ -1674,6 +1675,7 @@ export default function App() {
         {tab === "tally" && <TallyInsights data={data} updateQuote={updateQuote} ping={ping} onBack={() => setTab("home")} />}
         {tab === "floor" && <MachineFloor data={data} setData={setData} ping={ping} onBack={() => setTab("home")} goSetup={() => setTab("setup")} />}
         {tab === "trucks" && <TruckBoard data={data} setData={setData} ping={ping} onBack={() => setTab("home")} goSetup={() => setTab("setup")} />}
+        {tab === "stock" && <StockYard data={data} setData={setData} ping={ping} onBack={() => setTab("home")} />}
         {tab === "subscribe" && <Subscribe account={accountView} onSubscribe={(id) => { subscribe(id); ping("You're on the " + PLANS.find(p => p.id === id).name + " plan"); setTab("home"); }} onBack={() => setTab("home")} />}
         {tab === "new" && (<Wizard data={data} draft={draft} setDraft={setDraft} step={step} setStep={setStep}
           onExit={() => setTab("home")} onSave={saveQuote} doneQuote={doneQuote} ping={ping}
@@ -1700,7 +1702,7 @@ export default function App() {
           </div>
         )}
 
-        {tab !== "new" && tab !== "analytics" && tab !== "subscribe" && tab !== "log" && tab !== "tally" && tab !== "floor" && tab !== "trucks" && (
+        {tab !== "new" && tab !== "analytics" && tab !== "subscribe" && tab !== "log" && tab !== "tally" && tab !== "floor" && tab !== "trucks" && tab !== "stock" && (
           <nav className="navbar" ref={navRef}>
             <div className="nav-pill" style={pillStyle} />
             <button ref={setNavRef("home")} className={"nav-it " + (tab === "home" ? "on" : "")} onClick={() => setTab("home")}><I.home /><span>{tx("Home", "Home", "होम")}</span></button>
@@ -1716,7 +1718,7 @@ export default function App() {
 }
 
 /* ================= HOME ================= */
-function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally, openFloor, openTrucks, goSetup, goSubscribe }) {
+function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally, openFloor, openTrucks, openStock, goSetup, goSubscribe }) {
   const ind = industryOf(data);
   const isMach = ind.key === "machining";
   const h = new Date().getHours();
@@ -1747,6 +1749,9 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
   const tbOut = {};
   (data.trips || []).forEach((t) => { if (!t.delivered && !tbOut[t.truckId]) tbOut[t.truckId] = t; });
   const tbOutMT = Object.values(tbOut).reduce((s2, t) => s2 + (Number(t.qty) || 0), 0);
+
+  /* yard stock at a glance (scrap only) */
+  const stStk = ind.key === "scrap" ? stockCalc(data) : null;
 
   /* machine floor at a glance (machining only) */
   const flUnits = machineUnits(data);
@@ -1860,6 +1865,19 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
             <span style={{ display: "block", fontSize: 12.5, color: "var(--dim)" }}>{tbTrucks.length ? Object.keys(tbOut).length + "/" + tbTrucks.length + tx(" trucks out", " gaadiyan bahar", " गाड़ियां बाहर") + (tbOutMT > 0 ? " · " + fmtQty(tbOutMT) + tx(" MT on the road", " MT ja raha", " MT जा रहा") : "") : tx("Which truck went where - live", "Kaun si gaadi kahan gayi - live", "कौन सी गाड़ी कहां गई - लाइव")}</span>
           </span>
           {Object.keys(tbOut).length > 0 && <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: "var(--grn-d)", background: "var(--grn-100)", padding: "4px 9px", borderRadius: 999, flexShrink: 0 }}>{Object.keys(tbOut).length} {tx("OUT", "OUT", "बाहर")}</span>}
+          <I.chev style={{ color: "var(--faint)" }} />
+        </button>
+      )}
+
+      {/* scrap: yard stock */}
+      {ind.key === "scrap" && (
+        <button onClick={openStock} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "#fff", border: "1px solid " + (stStk && stStk.ghataTotal > 0 ? "#EFC7C2" : "var(--line)"), boxShadow: "var(--sh-s)" }}>
+          <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>⚖️</span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", fontWeight: 700, fontSize: 15 }}>{tx("Stock", "Stock", "स्टॉक")}</span>
+            <span style={{ display: "block", fontSize: 12.5, color: "var(--dim)" }}>{stStk && stStk.total > 0 ? fmtQty(stStk.total) + tx(" MT in the yard", " MT yard me", " MT यार्ड में") + (stStk.outToday > 0 ? " · " + fmtQty(stStk.outToday) + tx(" MT sent today", " MT aaj gaya", " MT आज गया") : "") : tx("How much maal is in the yard - and is any missing?", "Yard me kitna maal hai - aur kitna gayab?", "यार्ड में कितना माल है - और कितना गायब?")}</span>
+          </span>
+          {stStk && stStk.ghataTotal > 0 && <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: "var(--red)", background: "var(--red-bg)", padding: "4px 9px", borderRadius: 999, flexShrink: 0 }}>{tx("GHATA ", "GHATA ", "घाटा ")}{fmtQty(stStk.ghataTotal)} MT</span>}
           <I.chev style={{ color: "var(--faint)" }} />
         </button>
       )}
@@ -3427,6 +3445,36 @@ function MachineFloor({ data, setData, ping, onBack, goSetup }) {
    Which truck is out, carrying how much (weighbridge MT), for which dealer.
    The yard's live view - deliberately separate from Tally Insights, which
    stays a pure Tally import. Trips live in data.trips (additive, v5). */
+/* ---- yard stock math (scrap only) ----
+   Book stock per material = baseline (last physical count or opening entry)
+   + maal aaya (stock.ins) - manual outs (stock.outs) - Truck board trips
+   (category inferred from the trip's material text). Entries BEFORE a
+   material's baseline date are excluded - a physical count resets the clock.
+   Ghata (shrinkage/theft) events are logged when a count disagrees with book. */
+const tripCat = (t) => t.cat || guessCategory(t.material || "", "scrap");
+const stockCalc = (data) => {
+  const st = data.stock || {};
+  const open = st.open || {};
+  const cats = {};
+  const base = (c) => (open[c] && Number(open[c].at)) || 0;
+  const add = (c, k, q) => {
+    if (!cats[c]) cats[c] = { qty: (open[c] && Number(open[c].qty)) || 0, inWk: 0, outWk: 0, ghata: 0 };
+    cats[c][k] = (cats[c][k] || 0) + q;
+  };
+  Object.keys(open).forEach((c) => add(c, "noop", 0));
+  const now = Date.now(), wk = now - 7 * DAY;
+  const days = [0, 0, 0, 0, 0, 0, 0]; /* out MT per day, index 6 = today */
+  const bump = (at, q) => { const d = Math.floor((startOfDay(now) - startOfDay(at)) / DAY); if (d >= 0 && d < 7) days[6 - d] += q; };
+  (st.ins || []).forEach((e) => { if (e.at > base(e.cat)) { add(e.cat, "qty", Number(e.qty) || 0); if (e.at > wk) add(e.cat, "inWk", Number(e.qty) || 0); } });
+  (st.outs || []).forEach((e) => { if (e.at > base(e.cat)) { add(e.cat, "qty", -(Number(e.qty) || 0)); if (e.at > wk) add(e.cat, "outWk", Number(e.qty) || 0); bump(e.at, Number(e.qty) || 0); } });
+  (data.trips || []).forEach((t) => { const c = tripCat(t); if (t.startedAt > base(c)) { add(c, "qty", -(Number(t.qty) || 0)); if (t.startedAt > wk) add(c, "outWk", Number(t.qty) || 0); bump(t.startedAt, Number(t.qty) || 0); } });
+  (st.counts || []).forEach((e) => { if (cats[e.cat]) cats[e.cat].ghata += Number(e.ghata) || 0; else { add(e.cat, "noop", 0); cats[e.cat].ghata += Number(e.ghata) || 0; } });
+  const total = Object.values(cats).reduce((a, x) => a + Math.max(0, x.qty), 0);
+  const ghataTotal = Object.values(cats).reduce((a, x) => a + Math.max(0, x.ghata), 0);
+  const outToday = days[6], outWkTotal = days.reduce((a, b) => a + b, 0);
+  return { cats, total, ghataTotal, days, outToday, outWkTotal };
+};
+
 function TruckBoard({ data, setData, ping, onBack, goSetup }) {
   const [now, setNow] = useState(Date.now());
   const [formOpen, setFormOpen] = useState(false);
@@ -3559,6 +3607,206 @@ function TruckBoard({ data, setData, ping, onBack, goSetup }) {
       </>)}
 
       {trucks.length > 0 && <div style={{ marginTop: 14, textAlign: "center" }}><span className="hint" style={{ display: "inline" }}>{tx("This is the yard's live board. Tally Insights stays a pure Tally import.", "Ye yard ka live board hai - Tally wala page sirf Tally ka saaf hisaab rehta hai.", "यह यार्ड का लाइव बोर्ड है - Tally वाला पेज सिर्फ Tally का साफ हिसाब रहता है।")}</span></div>}
+    </div></div>
+  );
+}
+
+/* ================= YARD STOCK (scrap only) =================
+   One page: kitna maal hai, roz kitna gaya, dene wale, aur GHATA -
+   book stock vs kanta check. Built after a real yard lost ~17 MT to
+   theft over six months without anyone noticing. */
+function StockYard({ data, setData, ping, onBack }) {
+  const [inOpen, setInOpen] = useState(false);
+  const [outOpen, setOutOpen] = useState(false);
+  const [countFor, setCountFor] = useState(null); /* cat key being counted */
+  const [f, setF] = useState({ cat: "", qty: "", party: "", ref: "" });
+  const [cQty, setCQty] = useState("");
+  const [pay, setPay] = useState(null); /* dene-wale total, cloud or sample */
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!sb) { if (alive) setPay(TALLY_SAMPLE.ledgers.filter((x) => x.grp === "creditor" && x.balance > 0).reduce((a, x) => a + x.balance, 0)); return; }
+      try {
+        const r = await sb.from("tally_ledgers").select("balance,grp");
+        const rows = (!r.error && r.data) || [];
+        if (!alive) return;
+        if (!rows.length) setPay(TALLY_SAMPLE.ledgers.filter((x) => x.grp === "creditor" && x.balance > 0).reduce((a, x) => a + x.balance, 0));
+        else setPay(rows.filter((x) => x.grp === "creditor" && x.balance > 0).reduce((a, x) => a + Number(x.balance), 0));
+      } catch { if (alive) setPay(null); }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const ind = industryOf(data);
+  const cats = (ind.cats || []).filter((c) => c.key !== "other");
+  const meta = (k) => cats.find((c) => c.key === k) || { key: k, label: k, emoji: "📦" };
+  const stk = stockCalc(data);
+  const st = data.stock || { open: {}, ins: [], outs: [], counts: [] };
+  const hasAny = Object.keys(stk.cats).length > 0;
+  const dmax = Math.max(0.001, ...stk.days);
+
+  const save = (patch) => setData({ ...data, stock: { open: {}, ins: [], outs: [], counts: [], ...st, ...patch } });
+  const logIn = () => {
+    if (!f.cat) return ping(tx("Pick the material", "Maal chuno", "माल चुनें"));
+    if (!(+f.qty > 0)) return ping(tx("Weighbridge weight (MT)?", "Kanta weight (MT) likho", "कांटा वज़न (MT) लिखें"));
+    save({ ins: [{ id: uid(), cat: f.cat, qty: +f.qty, party: f.party.trim(), ref: f.ref.trim(), at: Date.now() }, ...(st.ins || [])] });
+    setF({ cat: "", qty: "", party: "", ref: "" }); setInOpen(false);
+    ping(tx("Stock added", "Maal aaya - stock me juda", "माल आया - स्टॉक में जुड़ा"));
+  };
+  const logOut = () => {
+    if (!f.cat) return ping(tx("Pick the material", "Maal chuno", "माल चुनें"));
+    if (!(+f.qty > 0)) return ping(tx("Weight (MT)?", "Kitna gaya (MT)?", "कितना गया (MT)?"));
+    save({ outs: [{ id: uid(), cat: f.cat, qty: +f.qty, party: f.party.trim(), ref: f.ref.trim(), at: Date.now() }, ...(st.outs || [])] });
+    setF({ cat: "", qty: "", party: "", ref: "" }); setOutOpen(false);
+    ping(tx("Removed from stock", "Stock se nikla", "स्टॉक से निकला"));
+  };
+  const doCount = (catKey) => {
+    const counted = +cQty;
+    if (!(counted >= 0)) return ping(tx("Write the counted weight", "Kante ka weight likho", "कांटे का वज़न लिखें"));
+    const book = (stk.cats[catKey] && stk.cats[catKey].qty) || 0;
+    const ghata = Math.round((book - counted) * 100) / 100;
+    save({
+      open: { ...(st.open || {}), [catKey]: { qty: counted, at: Date.now() } },
+      counts: [{ id: uid(), cat: catKey, qty: counted, book: Math.round(book * 100) / 100, ghata: ghata > 0 ? ghata : 0, at: Date.now() }, ...(st.counts || [])],
+    });
+    setCountFor(null); setCQty("");
+    if (ghata > 0.05) ping(tx("GHATA of " + fmtQty(ghata) + " MT recorded!", "GHATA " + fmtQty(ghata) + " MT - record ho gaya!", "घाटा " + fmtQty(ghata) + " MT - दर्ज हुआ!"));
+    else ping(tx("Stock verified - all good", "Kanta check done - sab barabar", "कांटा चेक हुआ - सब बराबर"));
+  };
+  const sampleStock = () => {
+    const now = Date.now();
+    save({
+      open: { ms: { qty: 42.5, at: now - 30 * DAY }, copper: { qty: 3.2, at: now - 30 * DAY }, alu: { qty: 8.4, at: now - 30 * DAY } },
+      ins: [
+        { id: uid(), cat: "ms", qty: 20, party: "Yard Suppliers Co", ref: "P-88", at: now - 2 * DAY, seed: true },
+        { id: uid(), cat: "alu", qty: 4.5, party: "Local pickup", ref: "", at: now - 4 * DAY, seed: true },
+      ],
+      outs: [{ id: uid(), cat: "ms", qty: 6.2, party: "Shakti Traders", ref: "SL/144", at: now - 1 * DAY, seed: true }],
+      counts: [{ id: uid(), cat: "ms", qty: 54.5, book: 56.3, ghata: 1.8, at: now - 1 * DAY, seed: true }],
+    });
+    ping(tx("Sample stock loaded", "Sample stock aa gaya - aise dikhta hai", "सैंपल स्टॉक आ गया"));
+  };
+
+  const chipRow = (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {cats.map((c) => (
+        <button key={c.key} className={"fpill press " + (f.cat === c.key ? "on" : "")} onClick={() => setF({ ...f, cat: c.key })}>{c.emoji} {c.label}</button>
+      ))}
+    </div>
+  );
+  const formFields = (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+      <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Weighbridge weight (MT)", "Kanta weight (MT)", "कांटा वज़न (MT)")}</label><input className="input mono" type="number" inputMode="decimal" placeholder="12.5" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} /></div>
+      <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Party (optional)", "Party (optional)", "पार्टी (वैकल्पिक)")}</label><input className="input" placeholder="Yard Suppliers Co" value={f.party} onChange={(e) => setF({ ...f, party: e.target.value })} /></div>
+    </div>
+  );
+
+  return (
+    <div className="scr"><div className="pagepad" style={{ paddingBottom: 40 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+        <button className="iconbtn press" onClick={onBack}><I.back /></button>
+        <div style={{ flex: 1 }}>
+          <div className="microlbl">{tx("YARD", "YARD", "यार्ड")}</div>
+          <div className="h-disp" style={{ fontSize: 23, fontWeight: 700 }}>{tx("Stock", "Stock", "स्टॉक")}</div>
+        </div>
+        <button className="btn btn-sm btn-grn press" onClick={() => { setInOpen(!inOpen); setOutOpen(false); }}>{inOpen ? tx("Close", "Close", "बंद") : tx("+ Maal aaya", "+ Maal aaya", "+ माल आया")}</button>
+      </div>
+      <div style={{ fontSize: 13.5, color: "var(--dim)", margin: "2px 0 16px" }}>
+        {tx("What should be in the yard vs what is - catch ghata before it grows.", "Yard me kitna hona chahiye vs kitna hai - ghata badhne se pehle pakdo.", "यार्ड में कितना होना चाहिए बनाम कितना है - घाटा बढ़ने से पहले पकड़ें।")}
+      </div>
+
+      {/* top tiles */}
+      <div className="anim-in st1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div className="card" style={{ padding: "14px 15px", background: "#F3FBF4", borderColor: "#CFE9D1" }}>
+          <div className="microlbl" style={{ color: "var(--grn-d)" }}>{tx("IN THE YARD", "YARD ME MAAL", "यार्ड में माल")}</div>
+          <div className="h-disp mono" style={{ fontSize: 24, fontWeight: 700, color: "var(--grn-d)", marginTop: 4 }}>{fmtQty(stk.total)} MT</div>
+        </div>
+        <div className="card" style={{ padding: "14px 15px", background: stk.ghataTotal > 0 ? "var(--red-bg)" : "var(--soft)", borderColor: stk.ghataTotal > 0 ? "#EFC7C2" : "var(--line)" }}>
+          <div className="microlbl" style={{ color: stk.ghataTotal > 0 ? "var(--red)" : "var(--faint)" }}>{tx("GHATA (missing)", "GHATA", "घाटा")}</div>
+          <div className="h-disp mono" style={{ fontSize: 24, fontWeight: 700, color: stk.ghataTotal > 0 ? "var(--red)" : "var(--ink)", marginTop: 4 }}>{stk.ghataTotal > 0 ? fmtQty(stk.ghataTotal) + " MT" : "0"}</div>
+        </div>
+      </div>
+      <div className="anim-in st1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
+        <div className="card" style={{ padding: "14px 15px" }}>
+          <div className="microlbl">{tx("SENT TODAY / 7 DIN", "AAJ GAYA / 7 DIN", "आज गया / 7 दिन")}</div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
+            <div className="h-disp mono" style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{fmtQty(stk.outToday)} <span style={{ fontSize: 13 }}>MT</span></div>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 26, flex: 1, paddingBottom: 3 }}>
+              {stk.days.map((v, i) => (<i key={i} style={{ flex: 1, borderRadius: 2, background: v ? "var(--grn)" : "var(--line2)", opacity: v ? 0.4 + (v / dmax) * 0.6 : 1, height: 4 + (v / dmax) * 20, display: "block" }} />))}
+            </div>
+          </div>
+          <div className="mono" style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 3 }}>{fmtQty(stk.outWkTotal)} MT {tx("this week", "is hafte", "इस हफ्ते")}</div>
+        </div>
+        <div className="card" style={{ padding: "14px 15px", background: "#FFFBF2", borderColor: "#F0DCB8" }}>
+          <div className="microlbl" style={{ color: "var(--amber)" }}>{tx("YOU OWE (suppliers)", "DENE WALE", "देने वाले")}</div>
+          <div className="h-disp mono" style={{ fontSize: 24, fontWeight: 700, color: "var(--amber)", marginTop: 4 }}>{pay == null ? "-" : inr(pay)}</div>
+          <div className="mono" style={{ fontSize: 10, color: "var(--faint)", marginTop: 2 }}>{sb ? tx("from Tally", "Tally se", "Tally से") : tx("sample", "sample", "सैंपल")}</div>
+        </div>
+      </div>
+
+      {(inOpen || outOpen) && (
+        <div className="card anim-in" style={{ padding: 16, marginTop: 12, border: "1.5px solid #CFE9D1" }}>
+          <div className="lbl" style={{ color: "var(--grn-d)", marginBottom: 8 }}>{inOpen ? tx("Material arrived (kanta done)", "Maal aaya (kanta ho gaya)", "माल आया (कांटा हो गया)") : tx("Material left WITHOUT truck board", "Maal gaya - bina Truck board ke", "माल गया - बिना ट्रक बोर्ड के")}</div>
+          {chipRow}
+          {formFields}
+          {outOpen && <span className="hint" style={{ marginTop: 8 }}>{tx("If it went by truck, use the Truck board - it counts here automatically. This form is only for other outflows.", "Gaadi se gaya to Truck board me likho - wahan se yahan apne aap ginta hai. Ye sirf baki nikasi ke liye.", "गाड़ी से गया तो ट्रक बोर्ड में लिखें - वहां से यहां अपने आप गिनता है। यह सिर्फ बाकी निकासी के लिए।")}</span>}
+          <button className="btn btn-grn press" style={{ width: "100%", marginTop: 12 }} onClick={inOpen ? logIn : logOut}>{inOpen ? tx("Add to stock", "Stock me jodo", "स्टॉक में जोड़ें") : tx("Remove from stock", "Stock se nikalo", "स्टॉक से निकालें")}</button>
+        </div>
+      )}
+
+      {!hasAny && !inOpen && (
+        <div className="card anim-in" style={{ padding: 22, textAlign: "center", marginTop: 12 }}>
+          <div style={{ fontSize: 34, marginBottom: 8 }}>⚖️</div>
+          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{tx("Start tracking your yard", "Yard ka hisaab shuru karo", "यार्ड का हिसाब शुरू करें")}</div>
+          <div style={{ fontSize: 13.5, color: "var(--dim)", lineHeight: 1.55, marginBottom: 14 }}>{tx("A yard nearby lost 17 MT to theft over six months - nobody noticed. Log maal aaya / gaya, then verify with a kanta check. Ghata shows up the same day.", "Ek yard me 6 mahine me 17 MT chori ho gaya - kisi ko pata nahi chala. Maal aaya/gaya likho, phir kanta check karo. Ghata usi din dikh jayega.", "एक यार्ड में 6 महीने में 17 MT चोरी हो गया - किसी को पता नहीं चला। माल आया/गया लिखें, फिर कांटा चेक करें। घाटा उसी दिन दिख जाएगा।")}</div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+            <button className="btn btn-grn press" onClick={() => setInOpen(true)}>{tx("+ Maal aaya", "+ Maal aaya", "+ माल आया")}</button>
+            <button className="btn btn-ghost press" onClick={sampleStock}>{tx("See a sample", "Sample dekho", "सैंपल देखें")}</button>
+          </div>
+        </div>
+      )}
+
+      {/* per-material cards */}
+      {Object.keys(stk.cats).sort((a, b) => (stk.cats[b].qty || 0) - (stk.cats[a].qty || 0)).map((k) => {
+        const c = stk.cats[k]; const m = meta(k);
+        const counting = countFor === k;
+        const lastCount = (st.counts || []).find((x) => x.cat === k);
+        return (
+          <div key={k} className="card anim-in" style={{ padding: "14px 15px", marginTop: 10, borderColor: c.ghata > 0 ? "#EFC7C2" : undefined }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>{m.emoji}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>{m.label}</div>
+                <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>
+                  {tx("in: ", "aaya: ", "आया: ")}{fmtQty(c.inWk || 0)} · {tx("out: ", "gaya: ", "गया: ")}{fmtQty(c.outWk || 0)} MT / {tx("wk", "hafta", "हफ्ता")}
+                </div>
+              </div>
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <div className="h-disp mono" style={{ fontSize: 20, fontWeight: 700, color: "var(--grn-d)" }}>{fmtQty(Math.max(0, c.qty))} MT</div>
+                {c.ghata > 0 && <div className="mono" style={{ fontSize: 10.5, fontWeight: 700, color: "var(--red)" }}>{tx("ghata ", "ghata ", "घाटा ")}{fmtQty(c.ghata)} MT</div>}
+              </div>
+            </div>
+            {counting ? (
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <input className="input mono" type="number" inputMode="decimal" placeholder={tx("counted MT", "kante ka weight", "कांटे का वज़न")} value={cQty} onChange={(e) => setCQty(e.target.value)} style={{ flex: 1 }} />
+                <button className="btn btn-sm btn-grn press" onClick={() => doCount(k)}>{tx("Verify", "Check", "जांचें")}</button>
+                <button className="btn btn-sm btn-soft press" onClick={() => { setCountFor(null); setCQty(""); }}>{tx("Cancel", "Cancel", "रहने दो")}</button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 9 }}>
+                <span className="mono" style={{ fontSize: 10.5, color: "var(--faint)" }}>{lastCount ? tx("last check ", "aakhri kanta check ", "आखिरी कांटा चेक ") + fdateShort(lastCount.at) : tx("never verified", "kabhi kanta check nahi hua", "कभी कांटा चेक नहीं हुआ")}</span>
+                <button className="btn btn-sm btn-soft press" onClick={() => { setCountFor(k); setCQty(""); }}>⚖️ {tx("Kanta check", "Kanta check", "कांटा चेक")}</button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {hasAny && (
+        <button className="btn btn-ghost press" style={{ width: "100%", marginTop: 12 }} onClick={() => { setOutOpen(!outOpen); setInOpen(false); }}>{outOpen ? tx("Close", "Close", "बंद") : tx("- Maal gaya (without truck)", "- Maal gaya (bina gaadi)", "- माल गया (बिना गाड़ी)")}</button>
+      )}
+
+      {hasAny && <div style={{ marginTop: 14, textAlign: "center" }}><span className="hint" style={{ display: "inline" }}>{tx("Truck board dispatches subtract from stock automatically. Do a kanta check weekly - ghata hides in months, not days.", "Truck board ki nikasi stock se apne aap kat-ti hai. Hafte me ek baar kanta check karo - ghata mahino me chhupta hai, dino me nahi.", "ट्रक बोर्ड की निकासी स्टॉक से अपने आप कटती है। हफ्ते में एक बार कांटा चेक करें।")}</span></div>}
     </div></div>
   );
 }
@@ -4013,7 +4261,7 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
         <button className="btn btn-ghost btn-sm press" onClick={() => { const base = seedData(); const sq = buildSampleQuotes(ind.key); setData({ ...base, industry: ind.key, quotes: sq || base.quotes }); ping("Sample data loaded"); }}>Load sample</button>
         <button className="btn btn-ghost btn-sm press" style={{ color: "var(--red)" }} onClick={() => {
           if (!confirmClear) { setConfirmClear(true); setTimeout(() => setConfirmClear(false), 2500); return; }
-          const d = seedData(); d.quotes = []; d.machines = []; d.jobs = []; d.trucks = []; d.trips = []; d.shopName = "My Shop"; setData(d); setConfirmClear(false); ping("Cleared");
+          const d = seedData(); d.quotes = []; d.machines = []; d.jobs = []; d.trucks = []; d.trips = []; d.stock = { open: {}, ins: [], outs: [], counts: [] }; d.shopName = "My Shop"; setData(d); setConfirmClear(false); ping("Cleared");
         }}>{confirmClear ? "Tap again to confirm" : "Clear everything"}</button>
       </div>
       <button className="btn btn-ghost btn-sm press" style={{ width: "100%", marginTop: 14, color: "var(--dim)" }} onClick={onLogout}><I.logout /> Log out</button>
