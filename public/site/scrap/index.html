@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TrackRakho for Scrap Traders — yard, trucks, Tally, sab phone pe</title>
+<meta name="description" content="Kitna aana hai, kitna dena hai, maal kahan gaya, gaadi kahan hai — a scrap trader's whole business, live on one phone. With ghata detection that catches theft in days, not months.">
+<link rel="canonical" href="https://trackrakho.com/site/scrap/">
+<meta property="og:title" content="TrackRakho for Scrap Traders">
+<meta property="og:description" content="6 mahine. 17 tonne. Chori. Nobody noticed — because nobody was tracking. Your yard, live on your phone.">
+<meta property="og:url" content="https://trackrakho.com/site/scrap/">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#070B08">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 3C15.4 3 3 14.2 3 28.4c0 8.1 4.4 15.2 11.5 19.7-.6 3.4-2.2 7.6-5 10.6 5.4-.5 10.4-2.5 13.9-4.7 2.8.6 5.7.9 8.6.9 16.6 0 29-11.3 29-25.5S48.6 3 32 3z' fill='%233FAE45'/%3E%3Cpath d='M20 29.5l8.4 8.5L45 21.5' stroke='%23070B08' stroke-width='6.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070B08; --bg2:#0A100C; --panel:#0C1410;
+  --line:rgba(124,227,131,.13); --line2:rgba(124,227,131,.24);
+  --grn:#7CE383; --grn-d:#4CBB5B; --ink:#EAF5EC; --dim:#A8C2AF; --faint:#6E8A77;
+  --red:#F08A7E; --red-deep:#E0685A; --redline:rgba(240,138,126,.25); --redbg:rgba(240,138,126,.07);
+  --amber:#E8C173;
+  --disp:'Space Grotesk',sans-serif; --sans:'Inter',sans-serif; --mono:'IBM Plex Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);overflow-x:hidden;line-height:1.6}
+::selection{background:rgba(124,227,131,.3)}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1120px;margin:0 auto;padding:0 22px}
+.mono{font-family:var(--mono)}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.24em;color:var(--grn);text-transform:uppercase}
+.eyebrow.red{color:var(--red)}
+h1,h2,h3{font-family:var(--disp);font-weight:700;line-height:1.08}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:14px 26px;border-radius:999px;font-weight:700;font-size:15px;cursor:pointer;border:none;font-family:var(--sans);transition:transform .18s}
+.btn:hover{transform:translateY(-2px)}
+.btn-grn{background:linear-gradient(135deg,#8CF193,#4CBB5B);color:#06230B;box-shadow:0 12px 34px -12px rgba(124,227,131,.55)}
+.btn-ghost{background:rgba(124,227,131,.08);color:var(--grn);border:1px solid var(--line2)}
+
+header{position:fixed;top:0;left:0;right:0;z-index:50;backdrop-filter:blur(14px);background:rgba(7,11,8,.74);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;gap:16px;height:64px}
+.logo{font-family:var(--disp);font-weight:700;font-size:19px}
+.logo b{color:var(--grn)}
+.logo small{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:var(--faint);display:block;margin-top:-3px}
+.nav .sp{flex:1}
+.nav a.lnk{font-size:13.5px;color:var(--dim);font-weight:600;padding:8px 9px}
+.nav a.lnk:hover{color:var(--ink)}
+.cta-sm{padding:10px 18px;font-size:13.5px}
+@media(max-width:820px){.nav a.lnk{display:none}}
+
+/* ---------- hero: the theft ---------- */
+.hero{position:relative;padding:150px 0 70px;overflow:hidden}
+.hero-glow{position:absolute;width:1000px;height:1000px;border-radius:50%;background:radial-gradient(circle,rgba(240,138,126,.10),transparent 60%);top:-380px;left:50%;margin-left:-500px;pointer-events:none}
+.hgrid{display:grid;grid-template-columns:1.04fr .96fr;gap:40px;align-items:center}
+@media(max-width:900px){.hgrid{grid-template-columns:1fr}}
+.hero .shock{font-family:var(--disp);font-weight:700;font-size:clamp(38px,5.6vw,62px);letter-spacing:-.02em;line-height:1.05}
+.hero .shock .r{color:var(--red)}
+.hero .shock .g{color:var(--grn)}
+.hero p.sub{font-size:17.5px;color:var(--dim);margin:20px 0 0;max-width:530px}
+.truthtag{display:inline-flex;align-items:center;gap:8px;background:var(--redbg);border:1px solid var(--redline);color:var(--red);font-family:var(--mono);font-size:11px;letter-spacing:.14em;padding:7px 14px;border-radius:999px;margin-bottom:20px}
+.trustline{display:flex;gap:26px;flex-wrap:wrap;margin-top:32px}
+.trustline .t{font-family:var(--mono);font-size:12px;color:var(--faint)}
+.trustline .t b{color:var(--grn);font-size:14px;display:block}
+
+/* 3D phone (scrap home) */
+.stage{perspective:1400px;position:relative;height:620px}
+.phone{position:absolute;left:50%;top:50%;width:290px;height:590px;margin:-295px 0 0 -145px;border-radius:42px;background:linear-gradient(160deg,#101B12,#0A120C);border:1px solid var(--line2);box-shadow:0 60px 120px -40px rgba(0,0,0,.85),inset 0 1px 0 rgba(124,227,131,.25);transform-style:preserve-3d;padding:14px;transition:transform .15s ease-out}
+.phone .notch{width:96px;height:22px;border-radius:12px;background:#050805;margin:2px auto 10px}
+.scrn{background:#0B130D;border-radius:28px;height:calc(100% - 40px);padding:16px 13px;overflow:hidden;border:1px solid rgba(124,227,131,.08)}
+.scrn .greet{font-family:var(--disp);font-weight:700;font-size:17px}
+.scrn .greet small{display:block;font-family:var(--mono);font-size:8.5px;letter-spacing:.18em;color:var(--faint);margin-bottom:3px}
+.kgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}
+.kpi{background:rgba(124,227,131,.06);border:1px solid var(--line);border-radius:13px;padding:10px}
+.kpi b{font-family:var(--mono);font-size:14px;color:var(--grn);display:block}
+.kpi span{font-size:8.5px;font-family:var(--mono);letter-spacing:.08em;color:var(--faint)}
+.mrow{display:flex;align-items:center;gap:9px;background:rgba(124,227,131,.05);border:1px solid var(--line);border-radius:13px;padding:10px;margin-top:8px}
+.mrow.alert{background:var(--redbg);border-color:var(--redline)}
+.mrow .ic{width:30px;height:30px;border-radius:9px;background:rgba(124,227,131,.12);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.mrow .tx{flex:1;min-width:0}
+.mrow .tx b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mrow .tx span{font-size:9.5px;color:var(--faint);font-family:var(--mono)}
+.mrow .badge{font-family:var(--mono);font-size:9.5px;font-weight:700;color:var(--red);background:var(--redbg);border:1px solid var(--redline);padding:3px 8px;border-radius:999px;flex-shrink:0}
+.chip3d{position:absolute;background:#0E1911;border:1px solid var(--line2);border-radius:16px;padding:12px 15px;box-shadow:0 24px 50px -18px rgba(0,0,0,.75);font-size:12.5px;font-weight:600;z-index:2}
+.chip3d .mono{display:block;color:var(--grn);font-size:14px;font-weight:600}
+.chip3d.red .mono{color:var(--red)}
+.chip3d small{color:var(--faint);font-weight:500;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em}
+@media(max-width:900px){.stage{height:540px;margin-top:8px}.chip3d{display:none}}
+
+/* ---------- sections ---------- */
+section.blk{padding:92px 0;position:relative}
+.sechead{max-width:760px;margin-bottom:42px}
+.sechead h2{font-size:clamp(28px,4vw,44px);margin-top:12px;letter-spacing:-.01em}
+.sechead p{color:var(--dim);font-size:16px;margin-top:14px}
+
+/* four questions */
+.qgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:820px){.qgrid{grid-template-columns:1fr}}
+.qcard{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:28px;transition:transform .25s,border-color .25s}
+.qcard:hover{transform:translateY(-5px);border-color:var(--line2)}
+.qcard .q{font-family:var(--disp);font-size:22px;font-weight:700}
+.qcard .q span{color:var(--grn)}
+.qcard p{font-size:14px;color:var(--dim);margin-top:10px}
+.qcard .ans{margin-top:14px;font-family:var(--mono);font-size:12px;color:var(--grn);display:flex;align-items:center;gap:8px}
+
+/* feature rows */
+.feat{scroll-margin-top:90px;border:1px solid var(--line);border-radius:30px;background:linear-gradient(165deg,var(--panel) 0%,var(--bg2) 100%);padding:50px;margin-bottom:32px;display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center;overflow:hidden}
+.feat.rev .mock{order:-1}
+@media(max-width:900px){.feat{grid-template-columns:1fr;padding:28px}.feat.rev .mock{order:0}}
+.feat.redzone{border-color:var(--redline);background:linear-gradient(165deg,#150E0C 0%,var(--bg2) 100%)}
+.fbadge{display:inline-flex;align-items:center;gap:8px;background:rgba(124,227,131,.1);border:1px solid var(--line2);color:var(--grn);font-family:var(--mono);font-size:11px;letter-spacing:.18em;padding:7px 14px;border-radius:999px;margin-bottom:16px}
+.fbadge.red{background:var(--redbg);border-color:var(--redline);color:var(--red)}
+.feat h3{font-size:clamp(24px,3vw,33px);letter-spacing:-.01em}
+.feat p.lead{color:var(--dim);font-size:15px;margin:14px 0 6px}
+.feats{list-style:none;margin-top:16px}
+.feats li{display:flex;gap:12px;padding:8px 0;font-size:14.5px}
+.feats li b{color:var(--grn)}
+.feats li:before{content:"";width:17px;height:17px;flex-shrink:0;margin-top:4px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#9CF7A2,#3F9E4D);box-shadow:0 0 12px rgba(124,227,131,.5)}
+.feat.redzone .feats li:before{background:radial-gradient(circle at 35% 35%,#F7B3A9,#C25548);box-shadow:0 0 12px rgba(240,138,126,.45)}
+
+/* mocks */
+.mock{background:#0B130D;border:1px solid var(--line2);border-radius:24px;padding:20px;box-shadow:0 40px 90px -35px rgba(0,0,0,.8)}
+.mock .mh{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.mock .mh b{font-family:var(--disp);font-size:15px}
+.mock .mh span{font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--grn);background:rgba(124,227,131,.1);padding:4px 10px;border-radius:999px;border:1px solid var(--line)}
+.mock .mh span.red{color:var(--red);background:var(--redbg);border-color:var(--redline)}
+.tile2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.tile2 .t{border-radius:15px;padding:13px;border:1px solid var(--line)}
+.tile2 .t.g{background:rgba(124,227,131,.07)}
+.tile2 .t.a{background:rgba(232,193,115,.07);border-color:rgba(232,193,115,.25)}
+.tile2 .t.r{background:var(--redbg);border-color:var(--redline)}
+.tile2 .t small{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;color:var(--faint);display:block}
+.tile2 .t b{font-family:var(--mono);font-size:17px;color:var(--grn)}
+.tile2 .t.a b{color:var(--amber)}
+.tile2 .t.r b{color:var(--red)}
+.rowm{display:flex;align-items:center;gap:10px;background:rgba(124,227,131,.05);border:1px solid var(--line);border-radius:14px;padding:11px;margin-top:9px}
+.rowm.red{background:var(--redbg);border-color:var(--redline)}
+.rowm .ic{width:34px;height:34px;border-radius:10px;background:rgba(124,227,131,.12);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.rowm .tx{flex:1;min-width:0}
+.rowm .tx b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rowm .tx span{font-size:10px;color:var(--faint);font-family:var(--mono)}
+.rowm .amt{font-family:var(--mono);font-size:12.5px;color:var(--grn);flex-shrink:0}
+.rowm .amt.red{color:var(--red)}
+.reason{display:inline-flex;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:4px 10px;border-radius:999px;margin:6px 6px 0 0;background:rgba(232,193,115,.1);border:1px solid rgba(232,193,115,.3);color:var(--amber)}
+.reason.red{background:var(--redbg);border-color:var(--redline);color:var(--red)}
+.reason.grn{background:rgba(124,227,131,.1);border-color:var(--line2);color:var(--grn)}
+
+/* ghata big-vs visual */
+.vsbox{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#0B130D;border:1px solid var(--redline);border-radius:20px;padding:22px;margin-top:14px}
+.vsbox .side{text-align:center;flex:1}
+.vsbox .side small{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--faint);display:block;margin-bottom:6px}
+.vsbox .side b{font-family:var(--disp);font-size:clamp(24px,3vw,34px);color:var(--ink)}
+.vsbox .side.miss b{color:var(--red)}
+.vsbox .arrow{font-size:20px;color:var(--faint)}
+
+/* stat band */
+.band{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(124,227,131,.05),transparent);padding:44px 0}
+.bgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}
+@media(max-width:760px){.bgrid{grid-template-columns:1fr 1fr}}
+.bstat b{font-family:var(--disp);font-size:clamp(28px,4vw,42px);color:var(--grn);display:block}
+.bstat span{font-size:13px;color:var(--dim)}
+
+/* pricing */
+.price{max-width:520px;margin:0 auto;background:linear-gradient(165deg,#101B12,#0A130C);border:1px solid var(--line2);border-radius:30px;padding:42px;text-align:center;box-shadow:0 40px 100px -40px rgba(124,227,131,.25)}
+.price .amt{font-family:var(--disp);font-size:62px;font-weight:700;color:var(--grn)}
+.price .amt small{font-size:18px;color:var(--dim);font-weight:500}
+.price ul{list-style:none;margin:22px 0 28px;text-align:left}
+.price li{padding:8px 0;font-size:14.5px;color:var(--dim);display:flex;gap:10px}
+.price li:before{content:"✓";color:var(--grn);font-weight:700}
+.pnote{font-size:12px;color:var(--faint);margin-top:16px}
+
+.faq{max-width:760px;margin:0 auto}
+.faq details{border:1px solid var(--line);border-radius:16px;padding:18px 22px;margin-bottom:12px;background:var(--panel)}
+.faq summary{cursor:pointer;font-weight:700;font-size:15px;font-family:var(--disp)}
+.faq details p{color:var(--dim);font-size:14px;margin-top:10px}
+footer{border-top:1px solid var(--line);padding:42px 0;text-align:center;color:var(--faint);font-size:13px}
+
+.rv{opacity:0;transform:translateY(34px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)}
+.rv.in{opacity:1;transform:none}
+[data-plx]{will-change:transform;transform:translateY(var(--plxY,0))}
+@media (prefers-reduced-motion:reduce){
+  .rv{opacity:1;transform:none;transition:none}
+  [data-plx]{transform:none}
+  .phone{transform:none!important}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="logo" href="https://trackrakho.com/site/">Track<b>Rakho</b><small>SCRAP EDITION ♻️</small></a>
+    <span class="sp"></span>
+    <a class="lnk" href="#ghata">Ghata</a>
+    <a class="lnk" href="#trucks">Trucks</a>
+    <a class="lnk" href="#tally">Tally</a>
+    <a class="lnk" href="#pricing">Pricing</a>
+    <a class="btn btn-grn cta-sm" href="https://trackrakho.com">Open the app</a>
+  </div>
+</header>
+
+<main>
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <div class="hero-glow" data-plx data-speed="-0.08"></div>
+  <div class="wrap hgrid">
+    <div>
+      <div class="truthtag rv">⚠ TRUE STORY · FARIDABAD YARD · 2026</div>
+      <h1 class="shock rv">6 mahine.<br><span class="r">17 tonne.</span> Chori.<br><span class="g">Kisi ko pata nahi chala.</span></h1>
+      <p class="sub rv">Nobody stole 17 tonnes in one night. It left the yard kilo by kilo, truck by truck, for six months — because nobody was comparing what <b>should</b> be there with what <b>was</b>. TrackRakho does that comparison every week, on your phone.</p>
+      <div class="rv" style="margin-top:28px;display:flex;gap:12px;flex-wrap:wrap">
+        <a class="btn btn-grn" href="https://trackrakho.com">Start free</a>
+        <a class="btn btn-ghost" href="https://wa.me/919910605207?text=Scrap%20wala%20TrackRakho%20demo%20chahiye">Demo on WhatsApp</a>
+      </div>
+      <div class="trustline rv">
+        <div class="t"><b>0 hardware</b>sirf phone + kanta</div>
+        <div class="t"><b>2 min</b>per entry, bas</div>
+        <div class="t"><b>₹999/mo</b>everything included</div>
+      </div>
+    </div>
+    <div class="stage" id="stage">
+      <div class="phone" id="phone">
+        <div class="notch"></div>
+        <div class="scrn">
+          <div class="greet"><small>SATURDAY, 25 JUL</small>Good morning</div>
+          <div class="kgrid">
+            <div class="kpi"><b>₹62,96,000</b><span>PENDING VALUE</span></div>
+            <div class="kpi"><b>₹32,40,000</b><span>WON THIS MONTH</span></div>
+          </div>
+          <div class="mrow alert"><div class="ic">⚖️</div><div class="tx"><b>Stock · 72.4 MT</b><span>book vs kanta check</span></div><div class="badge">GHATA 1.8 MT</div></div>
+          <div class="mrow"><div class="ic">🚚</div><div class="tx"><b>HR 38 AB 1234 · Apex Alloys</b><span>12.5 MT · MS Scrap · out 3 hr</span></div></div>
+          <div class="mrow"><div class="ic">📒</div><div class="tx"><b>Tally - seedha hisaab</b><span>aane wale ₹7,08,700</span></div></div>
+          <div class="mrow"><div class="ic">🎯</div><div class="tx"><b>Agla dispatch: Om Metals</b><span>deadline nikal gayi · 26.6 MT baki</span></div></div>
+        </div>
+      </div>
+      <div class="chip3d red" style="top:36px;left:-34px" data-plx data-speed="0.06"><small>KANTA CHECK</small><span class="mono">book 56.3 · mila 54.5</span></div>
+      <div class="chip3d" style="top:160px;right:-40px" data-plx data-speed="-0.05"><small>MAAL GAYA · JULY</small><span class="mono">55.6 MT</span></div>
+      <div class="chip3d" style="bottom:120px;left:-48px" data-plx data-speed="-0.09"><small>DENE WALE</small><span class="mono">₹2,78,500</span></div>
+      <div class="chip3d" style="bottom:30px;right:-18px" data-plx data-speed="0.07"><small>TRUCK OUT</small><span class="mono">12.5 MT · #SL/142</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOUR QUESTIONS ================= -->
+<section class="blk" style="padding-top:60px">
+  <div class="wrap">
+    <div class="sechead rv">
+      <div class="eyebrow">Roz ke chaar sawaal</div>
+      <h2>A scrap trader's day is four questions,<br>asked twenty times each.</h2>
+      <p>Today the answers live in the munshi's register, the accountant's Tally, the driver's phone, and your memory. TrackRakho puts all four on one screen.</p>
+    </div>
+    <div class="qgrid">
+      <div class="qcard rv"><div class="q">"Kitna <span>aana</span> hai?"</div><p>Who owes you, how much, and since when — dealer by dealer, straight from Tally, without opening Tally.</p><div class="ans">→ TALLY · SEEDHA HISAAB</div></div>
+      <div class="qcard rv"><div class="q">"Maal kahan <span>gaya</span>?"</div><p>This month's tonnage, dealer-wise, date-wise, with the bill reference on every entry. Tap any number for the full story.</p><div class="ans">→ DISPATCH DRILL-DOWN</div></div>
+      <div class="qcard rv"><div class="q">"Gaadi <span>kahan</span> hai?"</div><p>Which truck is out, carrying how much, for whom, since how many hours. No more evening phone calls to drivers.</p><div class="ans">→ TRUCK BOARD</div></div>
+      <div class="qcard rv"><div class="q">"Yard me kitna <span>bacha</span>?"</div><p>Book stock per material — and the red alert when the kanta says something different. This is the question the 17-tonne yard never asked.</p><div class="ans">→ STOCK + GHATA</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= GHATA (hero feature) ================= -->
+<section class="blk" id="ghata" style="padding-top:20px">
+  <div class="wrap">
+    <div class="feat redzone rv">
+      <div>
+        <span class="fbadge red">⚖️ STOCK + GHATA DETECTION</span>
+        <h3>Chori mahino me chhupti hai.<br>Kanta check dino me pakadta hai.</h3>
+        <p class="lead">The app always knows what <b>should</b> be in the yard: purana stock + maal aaya − truck gaya. Once a week, weigh a material and type one number. If the yard disagrees with the book — you see it the same day, in red.</p>
+        <ul class="feats">
+          <li><span><b>Book stock, live</b> — every material in MT: MS, aluminium, copper, sab alag. Truck dispatches subtract automatically.</span></li>
+          <li><span><b>Kanta check</b> — type the weighed amount; the app compares and logs any ghata with the date. Evidence, not suspicion.</span></li>
+          <li><span><b>Roz kitna gaya</b> — daily outflow bars, so a heavy week is visible before month-end.</span></li>
+        </ul>
+      </div>
+      <div class="mock" data-tilt>
+        <div class="mh"><b>Stock · yard</b><span class="red">GHATA 1.8 MT</span></div>
+        <div class="vsbox">
+          <div class="side"><small>BOOK BOLTA HAI</small><b data-count="56.3">0</b><small style="margin-top:4px">MT · MS / Iron</small></div>
+          <div class="arrow">→</div>
+          <div class="side"><small>KANTA BOLA</small><b data-count="54.5">0</b><small style="margin-top:4px">MT · weighed</small></div>
+          <div class="arrow">=</div>
+          <div class="side miss"><small>GHATA</small><b data-count="1.8">0</b><small style="margin-top:4px">MT missing</small></div>
+        </div>
+        <div class="rowm"><div class="ic">🧲</div><div class="tx"><b>Aluminium</b><span>aaya: 4.5 · gaya: 0 MT / hafta</span></div><div class="amt">12.9 MT</div></div>
+        <div class="rowm red"><div class="ic">⚠️</div><div class="tx"><b>At the 17-tonne yard's rates</b><span>that ghata was worth ~₹5,00,000</span></div><div class="amt red">gone</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TRUCKS ================= -->
+<section class="blk" id="trucks" style="padding-top:0">
+  <div class="wrap">
+    <div class="feat rev rv">
+      <div>
+        <span class="fbadge">🚚 TRUCK BOARD</span>
+        <h3>Har gaadi, har trip —<br>bina phone ghumaye.</h3>
+        <p class="lead">Every loading gets logged in ten seconds at the kanta: which truck, whose maal, how many tonnes. From that moment the truck is "out" on your board until it delivers.</p>
+        <ul class="feats">
+          <li><span><b>Live board</b> — kaun si gaadi bahar hai, kitne ghante se, kitna leke. One glance from anywhere.</span></li>
+          <li><span><b>Weighbridge weight + bill ref</b> on every trip — the same entry feeds your stock automatically.</span></li>
+          <li><span><b>Delivered?</b> One tap frees the truck. Full trip history stays.</span></li>
+        </ul>
+      </div>
+      <div class="mock" data-tilt>
+        <div class="mh"><b>Truck board</b><span>1/2 OUT · 12.5 MT ON ROAD</span></div>
+        <div class="rowm"><div class="ic">🚚</div><div class="tx"><b>HR 38 AB 1234 → Apex Alloys</b><span>12.5 MT · MS Scrap · #SL/142</span></div><div class="amt">OUT · 3 hr</div></div>
+        <div class="rowm"><div class="ic">🚚</div><div class="tx"><b>HR 55 C 7788</b><span>yard me khadi</span></div><div class="amt">FREE</div></div>
+        <div class="rowm"><div class="ic">✅</div><div class="tx"><b>Bharat Steels · delivered</b><span>8.2 MT · CI Scrap · kal</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TALLY ================= -->
+<section class="blk" id="tally" style="padding-top:0">
+  <div class="wrap">
+    <div class="feat rv">
+      <div>
+        <span class="fbadge">📒 TALLY · SEEDHA HISAAB</span>
+        <h3>Tally accountant ke paas.<br>Hisaab aapke paas.</h3>
+        <p class="lead">A small connector on the Tally computer sends the numbers that matter to your phone. You never open Tally; your accountant never changes how they work.</p>
+        <ul class="feats">
+          <li><span><b>Aane wale / dene wale</b> — receivables and payables, dealer-wise, with share bars. Tap for the full party story.</span></li>
+          <li><span><b>Maal gaya is mahine</b> — tonnage + value, and a dealer-wise drill-down with dates and <b>voucher/bill references</b> on every entry.</span></li>
+          <li><span><b>AI dispatch planner</b> — weighs deadlines, waiting days and pending payments, then suggests who the next truck should go to. Every reason shown openly.</span></li>
+        </ul>
+      </div>
+      <div class="mock" data-tilt>
+        <div class="mh"><b>Tally · seedha hisaab</b><span>LIVE</span></div>
+        <div class="tile2">
+          <div class="t g"><small>AANE WALE</small><b>₹7,08,700</b></div>
+          <div class="t a"><small>DENE WALE</small><b>₹2,78,500</b></div>
+        </div>
+        <div class="rowm"><div class="ic">📦</div><div class="tx"><b>Maal gaya is mahine</b><span>6 dispatches · ₹21,96,500</span></div><div class="amt">55.6 MT</div></div>
+        <div class="rowm"><div class="ic">🧾</div><div class="tx"><b>Apex Alloys · 16 Jul · 12.5 MT</b><span>MS Scrap · #APX/PO-118</span></div><div class="amt">₹4,12,500</div></div>
+        <div style="margin-top:10px">
+          <span class="reason red">Deadline nikal gayi (1 din)</span>
+          <span class="reason">4 din se koi dispatch nahi</span>
+          <span class="reason grn">Sirf 26.6 MT bacha - khatam karo</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DUES / FOLLOW-UP ================= -->
+<section class="blk" style="padding-top:0">
+  <div class="wrap">
+    <div class="feat rev rv">
+      <div>
+        <span class="fbadge">🔔 SAUDE + PAYMENT FOLLOW-UP</span>
+        <h3>Har sauda yaad.<br>Har payment ka peecha.</h3>
+        <p class="lead">Every deal you quote — pending, won, lost — lives in one pipeline with crore-scale totals. And when payment is late, the app remembers to chase so you don't have to.</p>
+        <ul class="feats">
+          <li><span><b>2-minute deal log</b> — dealer, material, MT, rate. Even a WhatsApp message pastes straight in.</span></li>
+          <li><span><b>Follow-up reminders</b> — one tap opens WhatsApp with the message ready.</span></li>
+          <li><span><b>Tally baki chip</b> — a dealer's pending balance shows right on their deal card. You negotiate knowing everything.</span></li>
+        </ul>
+      </div>
+      <div class="mock" data-tilt>
+        <div class="mh"><b>Pipeline</b><span>JULY</span></div>
+        <div class="tile2">
+          <div class="t g"><small>PENDING VALUE</small><b>₹62,96,000</b></div>
+          <div class="t g"><small>WON THIS MONTH</small><b>₹32,40,000</b></div>
+        </div>
+        <div class="rowm"><div class="ic">♻️</div><div class="tx"><b>Apex Alloys · MS scrap 50 MT</b><span>follow-up aaj · Tally baki ₹4,12,000</span></div><div class="amt">WON</div></div>
+        <div class="rowm"><div class="ic">💬</div><div class="tx"><b>"Bhai 40 MT CI ka rate bhejo"</b><span>WhatsApp se aaya · 1 tap me logged</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STAT BAND ================= -->
+<section class="band">
+  <div class="wrap">
+    <div class="bgrid">
+      <div class="bstat rv"><b>0</b><span>hardware, sensors, ya naya kanta</span></div>
+      <div class="bstat rv"><b>2 min</b><span>per entry — register se tez</span></div>
+      <div class="bstat rv"><b>3 bhasha</b><span>English · Hinglish · हिन्दी</span></div>
+      <div class="bstat rv"><b>24×7</b><span>yard aapki jeb me</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRICING ================= -->
+<section class="blk" id="pricing">
+  <div class="wrap">
+    <div class="sechead rv" style="text-align:center;margin-left:auto;margin-right:auto">
+      <div class="eyebrow">Pricing</div>
+      <h2>Ek plan. ₹999.<br>Ek tonne ghata pakda = saal bhar free.</h2>
+    </div>
+    <div class="price rv">
+      <div class="amt">₹999<small>/month</small></div>
+      <ul>
+        <li>Stock + ghata detection (kanta check)</li>
+        <li>Truck board — live fleet view</li>
+        <li>Tally connector — seedha hisaab + voucher refs</li>
+        <li>AI dispatch planner</li>
+        <li>Deal pipeline + payment follow-ups + WhatsApp inbox</li>
+        <li>Excel export — your data stays yours</li>
+      </ul>
+      <a class="btn btn-grn" href="https://wa.me/919910605207?text=Scrap%20TrackRakho%20chahiye" style="width:100%;justify-content:center">Talk to us on WhatsApp</a>
+      <div class="pnote">Early access — payment arranged personally on WhatsApp. No card, no auto-debit. GST extra.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section class="blk" style="padding-top:16px">
+  <div class="wrap faq">
+    <div class="sechead rv"><div class="eyebrow">Seedhi baat</div><h2>Jo sab puchte hain</h2></div>
+    <details class="rv"><summary>Mera munshi register me likhta hai. Wahi kaafi nahi?</summary><p>The register records — it never compares. It will faithfully note every entry while 17 tonnes walk out, because paper cannot subtract trucks from stock or ring an alarm. TrackRakho does both, and your munshi can be the one typing the entries.</p></details>
+    <details class="rv"><summary>Tally to accountant ke paas hai. Kaise connect hoga?</summary><p>A small connector program runs on the Tally computer — a 10-minute one-time setup. Your accountant changes nothing. The numbers appear on your phone, read-only, safe.</p></details>
+    <details class="rv"><summary>Kya naya kanta ya hardware lagega?</summary><p>Nothing. Your existing weighbridge, your existing phone. The app is the discipline, not the machinery.</p></details>
+    <details class="rv"><summary>Ghata dikha to kya proof milega?</summary><p>Every kanta check is logged with date, book quantity, weighed quantity, and the difference. A dated trail of when stock last matched — exactly what you need for a serious conversation.</p></details>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div style="font-family:var(--disp);font-weight:700;font-size:17px;margin-bottom:8px">Track<b style="color:var(--grn)">Rakho</b> <span style="font-size:12px;color:var(--faint)">· Scrap Edition</span></div>
+  <div>Made in Faridabad. · <a href="https://trackrakho.com/site/" style="color:var(--grn)">All trades</a> · <a href="https://wa.me/919910605207" style="color:var(--grn)">WhatsApp us</a></div>
+  <div class="mono" style="margin-top:10px;font-size:11px">TRACKRAKHO · EARLY ACCESS</div>
+</footer>
+
+<script>
+(function(){
+  var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* reveals */
+  var io = new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, {threshold: 0.12});
+  document.querySelectorAll('.rv').forEach(function(el){ io.observe(el); });
+
+  /* count-up for the ghata vs-box */
+  var counted = false;
+  var cio = new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if(!e.isIntersecting || counted) return;
+      counted = true;
+      document.querySelectorAll('[data-count]').forEach(function(el){
+        var target = parseFloat(el.getAttribute('data-count'));
+        if(reduced){ el.textContent = target.toFixed(1); return; }
+        var t0 = null;
+        function step(ts){
+          if(!t0) t0 = ts;
+          var p = Math.min(1, (ts - t0) / 1200);
+          el.textContent = (target * (0.5 - Math.cos(Math.PI * p) / 2)).toFixed(1);
+          if(p < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      });
+    });
+  }, {threshold: 0.4});
+  var vs = document.querySelector('.vsbox');
+  if(vs) cio.observe(vs);
+
+  if(reduced) return;
+
+  /* scroll parallax */
+  var plx = [].slice.call(document.querySelectorAll('[data-plx]'));
+  var ticking = false;
+  function onScroll(){
+    if(ticking) return; ticking = true;
+    requestAnimationFrame(function(){
+      var y = window.scrollY;
+      plx.forEach(function(el){
+        var sp = parseFloat(el.getAttribute('data-speed') || '0.05');
+        el.style.setProperty('--plxY', (y * sp).toFixed(1) + 'px');
+      });
+      ticking = false;
+    });
+  }
+  addEventListener('scroll', onScroll, {passive:true}); onScroll();
+
+  /* 3D phone tilt */
+  var stage = document.getElementById('stage'), phone = document.getElementById('phone');
+  if(stage && phone){
+    phone.style.transform = 'rotateY(14deg) rotateX(-8deg)';
+    stage.addEventListener('mousemove', function(e){
+      var r = stage.getBoundingClientRect();
+      var ry = ((e.clientX - r.left) / r.width - 0.5) * 26 + 8;
+      var rx = -((e.clientY - r.top) / r.height - 0.5) * 18 - 4;
+      phone.style.transform = 'rotateY(' + ry + 'deg) rotateX(' + rx + 'deg)';
+    });
+    stage.addEventListener('mouseleave', function(){
+      phone.style.transform = 'rotateY(14deg) rotateX(-8deg)';
+    });
+  }
+  document.querySelectorAll('[data-tilt]').forEach(function(m){
+    m.addEventListener('mousemove', function(e){
+      var r = m.getBoundingClientRect();
+      var ry2 = ((e.clientX - r.left) / r.width - 0.5) * 10;
+      var rx2 = -((e.clientY - r.top) / r.height - 0.5) * 8;
+      m.style.transform = 'perspective(900px) rotateY(' + ry2 + 'deg) rotateX(' + rx2 + 'deg)';
+    });
+    m.addEventListener('mouseleave', function(){ m.style.transform = 'none'; });
+  });
+})();
+</script>
+</body>
+</html>
