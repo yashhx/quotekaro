@@ -213,26 +213,25 @@ footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:v
 .finale{position:relative;height:340vh;background:linear-gradient(180deg,#fff,var(--soft) 30%,var(--soft) 70%,#fff)}
 .fin-sticky{position:sticky;top:0;height:100vh;overflow:hidden;display:flex;align-items:flex-end;justify-content:center}
 .fin-inner{position:relative;width:min(760px,94vw);height:min(700px,92vh)}
-.fin-person{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:min(430px,76vw)}
-.fin-person svg{width:100%;height:auto;display:block}
-.fchip{position:absolute;display:inline-flex;gap:7px;align-items:center;background:#fff;border:1px solid var(--line2);border-radius:999px;padding:8px 14px;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink);box-shadow:var(--sh);white-space:nowrap;will-change:transform,opacity}
-.fchip i{font-style:normal}
+.fin-scene{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:min(540px,94vw)}
+.fin-scene svg{width:100%;height:auto;display:block}
+#gCloud,#gPhone,#gPalm,#gFingers,#gPocket{will-change:transform,opacity}
 .fin-text{position:absolute;left:0;right:0;top:5%;text-align:center;opacity:0;will-change:opacity,transform;z-index:3}
 .fin-text h2{font-size:clamp(28px,4vw,46px)}
 .fin-text p{color:var(--dim);font-size:16px;margin-top:10px}
 .fin-cta{margin-top:22px}
 .fin-hint{position:absolute;left:0;right:0;bottom:18px;text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;color:var(--faint);z-index:3}
-@media(max-width:600px){.fchip{font-size:9.5px;padding:6px 10px}}
+
 
 @media (prefers-reduced-motion:reduce){
   .finale{height:auto}
   .fin-sticky{position:static;height:auto;padding:80px 0}
-  .fchip{display:none}
-  #armUp{display:none}
-  #armDown{opacity:1!important}
-  #finPhoneG{transform:translate(-26px,146px)}
+  #gCloud,#gPalm,#gFingers{display:none}
+  #gPhone{transform:translate(35px,356px)}
+  #gScreenYard{opacity:1}
+  #gPeek{opacity:1}
   .fin-text{position:static;opacity:1;margin-bottom:30px;transform:none!important}
-  .fin-person{position:static;transform:none;margin:0 auto}
+  .fin-scene{position:static;transform:none;margin:0 auto}
   .tr{transform:none!important}
 
   .rv{opacity:1;transform:none;transition:none}
@@ -414,31 +413,56 @@ footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:v
         </div>
         <div class="cap"><b>What you're seeing:</b> the fleet board. The first row is a truck currently on the road — you know where it went, with how much, three hours ago.</div>
         <div class="truckscene rv" id="truckscene">
-          <svg viewBox="0 0 560 150" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Trucks leaving the yard as you scroll">
+          <svg viewBox="0 0 640 230" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Loaded trucks leaving the yard one by one, each labelled with its number, material, weight and ETA">
+            <defs>
+              <g id="truckT">
+                <rect x="0" y="64" width="152" height="7" rx="3" fill="#4E5E53"/>
+                <path d="M2 66 V26 q0-6 6-6 h84 q6 0 6 6 v40 Z" fill="#D7E4D9" stroke="#8FA894" stroke-width="2"/>
+                <line x1="26" y1="20" x2="26" y2="66" stroke="#8FA894" stroke-width="1.2" opacity=".7"/>
+                <line x1="50" y1="20" x2="50" y2="66" stroke="#8FA894" stroke-width="1.2" opacity=".7"/>
+                <line x1="74" y1="20" x2="74" y2="66" stroke="#8FA894" stroke-width="1.2" opacity=".7"/>
+                <path d="M4 20 C10 6 26 2 38 8 C46 -2 66 -2 74 8 C86 4 94 10 96 20 Z" fill="#8CA093"/>
+                <path d="M12 20 C18 10 32 8 42 13 C48 6 64 6 70 13 C78 10 84 14 86 20 Z" fill="#55655B"/>
+                <path d="M104 66 V34 q0-5 5-5 h24 q7 0 11 6 l9 13 q3 4 3 9 v9 Z" fill="#C9DACC" stroke="#8FA894" stroke-width="2"/>
+                <path d="M112 36 h22 v14 h-22 Z" fill="#EDF4FA" stroke="#8FA894" stroke-width="1.5"/>
+                <rect x="100" y="66" width="58" height="5" rx="2.5" fill="#3F4E44"/>
+                <rect x="150" y="58" width="7" height="6" rx="2" fill="#D9A441"/>
+                <circle cx="30" cy="76" r="12" fill="#2E3833"/><circle cx="30" cy="76" r="5.5" fill="#C9DACC"/>
+                <circle cx="60" cy="76" r="12" fill="#2E3833"/><circle cx="60" cy="76" r="5.5" fill="#C9DACC"/>
+                <circle cx="128" cy="76" r="12" fill="#2E3833"/><circle cx="128" cy="76" r="5.5" fill="#C9DACC"/>
+              </g>
+            </defs>
             <!-- yard gate + shed -->
-            <path d="M18 118 V52 L58 34 L98 52 V118" fill="#E8F4E9" stroke="#B9CDBD" stroke-width="2"/>
-            <path d="M18 52 L58 34 L98 52" fill="none" stroke="#A6BCAA" stroke-width="2"/>
-            <rect x="44" y="84" width="28" height="34" fill="#C9DACC" stroke="#B9CDBD" stroke-width="2"/>
-            <rect x="104" y="46" width="6" height="72" rx="2" fill="#C9DACC"/>
+            <path d="M14 196 V120 L56 100 L98 120 V196" fill="#E8F4E9" stroke="#B9CDBD" stroke-width="2"/>
+            <path d="M14 120 L56 100 L98 120" fill="none" stroke="#A6BCAA" stroke-width="2"/>
+            <rect x="42" y="158" width="30" height="38" fill="#C9DACC" stroke="#B9CDBD" stroke-width="2"/>
+            <rect x="104" y="112" width="6" height="84" rx="2" fill="#C9DACC"/>
             <!-- road -->
-            <line x1="0" y1="120" x2="560" y2="120" stroke="#B9CDBD" stroke-width="2"/>
-            <line x1="120" y1="120" x2="560" y2="120" stroke="#8CA093" stroke-width="1" stroke-dasharray="10 12" opacity=".5"/>
-            <!-- truck template x2 leaving, 1 parked -->
+            <line x1="0" y1="198" x2="640" y2="198" stroke="#B9CDBD" stroke-width="2"/>
+            <line x1="116" y1="198" x2="640" y2="198" stroke="#8CA093" stroke-width="1" stroke-dasharray="10 12" opacity=".5"/>
+            <!-- truck 1 -->
             <g class="tr" id="tr1">
-              <rect x="128" y="70" width="66" height="34" rx="4" fill="#DFEAE1" stroke="#A6BCAA" stroke-width="2"/>
-              <path d="M138 76 L186 76 M138 84 L186 84 M138 92 L186 92" stroke="#8CA093" stroke-width="2" opacity=".6"/>
-              <path d="M194 104 V80 h16 l12 12 v12 Z" fill="#C9DACC" stroke="#A6BCAA" stroke-width="2"/>
-              <circle cx="146" cy="108" r="9" fill="#fff" stroke="#4E5E53" stroke-width="2.5"/>
-              <circle cx="206" cy="108" r="9" fill="#fff" stroke="#4E5E53" stroke-width="2.5"/>
-              <text x="160" y="64" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9" fill="#155E18" font-weight="600">12.5 MT</text>
+              <g transform="translate(126 110)"><use href="#truckT"/></g>
+              <rect x="118" y="52" width="180" height="40" rx="10" fill="#fff" stroke="#CFE0D1" stroke-width="1.5"/>
+              <line x1="204" y1="92" x2="204" y2="106" stroke="#CFE0D1" stroke-width="1.5"/>
+              <text x="208" y="69" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="12" font-weight="600" fill="#16201A">HR 38 AB 1234</text>
+              <text x="208" y="84" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9" fill="#4E5E53">MS SCRAP · 12.5 MT · ETA 4:30 PM</text>
             </g>
-            <g class="tr" id="tr2">
-              <rect x="128" y="70" width="66" height="34" rx="4" fill="#DFEAE1" stroke="#A6BCAA" stroke-width="2"/>
-              <path d="M138 76 L186 76 M138 84 L186 84 M138 92 L186 92" stroke="#8CA093" stroke-width="2" opacity=".6"/>
-              <path d="M194 104 V80 h16 l12 12 v12 Z" fill="#C9DACC" stroke="#A6BCAA" stroke-width="2"/>
-              <circle cx="146" cy="108" r="9" fill="#fff" stroke="#4E5E53" stroke-width="2.5"/>
-              <circle cx="206" cy="108" r="9" fill="#fff" stroke="#4E5E53" stroke-width="2.5"/>
-              <text x="160" y="64" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9" fill="#155E18" font-weight="600">8.2 MT</text>
+            <!-- truck 2 -->
+            <g class="tr" id="tr2" transform="translate(-320 0)">
+              <g transform="translate(126 110)"><use href="#truckT"/></g>
+              <rect x="118" y="52" width="180" height="40" rx="10" fill="#fff" stroke="#CFE0D1" stroke-width="1.5"/>
+              <line x1="204" y1="92" x2="204" y2="106" stroke="#CFE0D1" stroke-width="1.5"/>
+              <text x="208" y="69" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="12" font-weight="600" fill="#16201A">HR 55 C 7788</text>
+              <text x="208" y="84" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9" fill="#4E5E53">CI SCRAP · 8.2 MT · ETA 6:00 PM</text>
+            </g>
+            <!-- truck 3 -->
+            <g class="tr" id="tr3" transform="translate(-640 0)">
+              <g transform="translate(126 110)"><use href="#truckT"/></g>
+              <rect x="118" y="52" width="184" height="40" rx="10" fill="#fff" stroke="#CFE0D1" stroke-width="1.5"/>
+              <line x1="204" y1="92" x2="204" y2="106" stroke="#CFE0D1" stroke-width="1.5"/>
+              <text x="210" y="69" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="12" font-weight="600" fill="#16201A">DL 01 LA 9834</text>
+              <text x="210" y="84" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9" fill="#4E5E53">ALUMINIUM · 6.4 MT · ETA 10:15 AM</text>
             </g>
           </svg>
           <div class="ts-cap">EACH DISPATCH LEAVES THE BOARD — AND THE YARD — IN REAL TIME</div>
@@ -659,7 +683,7 @@ footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:v
   </div>
 </section>
 
-<!-- ================= FINALE: operations -> phone -> pocket ================= -->
+<!-- ================= FINALE: yard-in-a-cloud -> phone in hand -> pocket ================= -->
 <section class="finale" id="finale" aria-label="Your whole operation in your pocket">
   <div class="fin-sticky">
     <div class="fin-inner">
@@ -669,60 +693,81 @@ footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:v
         <div class="fin-cta"><a class="btn btn-grn" href="https://wa.me/919910605207?text=TrackRakho%20-%20scrap%20trading%20demo">Request a demo</a></div>
       </div>
 
-      <div class="fchip" style="left:2%;top:8%"><i>⚖️</i>42.0 MT WEIGHED</div>
-      <div class="fchip" style="right:3%;top:11%"><i>₹</i>7,08,700 TO COLLECT</div>
-      <div class="fchip" style="left:5%;top:30%"><i>🚚</i>TRUCK OUT · SL/142</div>
-      <div class="fchip" style="right:6%;top:33%"><i>📒</i>TALLY SYNCED</div>
-      <div class="fchip" style="left:12%;top:52%"><i>📦</i>55.6 MT DISPATCHED</div>
-      <div class="fchip" style="right:10%;top:55%"><i>🔔</i>FOLLOW-UP DUE</div>
-      <div class="fchip" style="left:30%;top:2%"><i>🧾</i>BILL REF APX/PO-118</div>
-      <div class="fchip" style="right:28%;top:0%"><i>📋</i>DEAL WON · 50 MT</div>
+      <div class="fin-scene" id="finScene">
+        <svg viewBox="0 0 800 900" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A scrapyard inside a cloud streams into a phone held in a hand, which places it into a pocket">
+          <defs>
+            <g id="miniYard">
+              <!-- mini weighbridge + loaded truck -->
+              <rect x="0" y="96" width="240" height="8" rx="3" fill="#C4D6C8" stroke="#9FB5A4" stroke-width="1.5"/>
+              <rect x="14" y="104" width="10" height="6" rx="1.5" fill="#3F4E44"/>
+              <rect x="212" y="104" width="10" height="6" rx="1.5" fill="#3F4E44"/>
+              <rect x="30" y="74" width="118" height="4" rx="2" fill="#4E5E53"/>
+              <path d="M32 76 V48 q0-4 4-4 h62 q4 0 4 4 v28 Z" fill="#D7E4D9" stroke="#8FA894" stroke-width="1.5"/>
+              <path d="M34 44 C40 32 52 30 60 34 C66 27 80 27 86 34 C94 30 100 36 100 44 Z" fill="#8CA093"/>
+              <path d="M106 76 V54 q0-3 3-3 h16 q5 0 8 4 l6 9 q2 3 2 6 v6 Z" fill="#C9DACC" stroke="#8FA894" stroke-width="1.5"/>
+              <path d="M111 55 h14 v9 h-14 Z" fill="#EDF4FA" stroke="#8FA894" stroke-width="1"/>
+              <circle cx="52" cy="82" r="8" fill="#2E3833"/><circle cx="52" cy="82" r="3.5" fill="#C9DACC"/>
+              <circle cx="74" cy="82" r="8" fill="#2E3833"/><circle cx="74" cy="82" r="3.5" fill="#C9DACC"/>
+              <circle cx="124" cy="82" r="8" fill="#2E3833"/><circle cx="124" cy="82" r="3.5" fill="#C9DACC"/>
+              <!-- indicator -->
+              <rect x="196" y="40" width="6" height="56" rx="2" fill="#9FB5A4"/>
+              <rect x="178" y="18" width="46" height="24" rx="5" fill="#16201A"/>
+              <text x="201" y="34" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" font-weight="600" fill="#7CE383">42.0</text>
+              <!-- crane + heap -->
+              <rect x="252" y="40" width="6" height="64" fill="#C9DACC" stroke="#B9CDBD" stroke-width="1"/>
+              <path d="M255 44 L318 30" stroke="#A6BCAA" stroke-width="3" stroke-linecap="round"/>
+              <line x1="315" y1="31" x2="315" y2="58" stroke="#8CA093" stroke-width="2"/>
+              <path d="M306 58 q9 14 18 0" stroke="#4E5E53" stroke-width="2.5" fill="none"/>
+              <path d="M270 104 C282 74 312 66 336 76 C352 62 382 66 392 84 C402 88 406 98 404 104 Z" fill="#8CA093" opacity=".85"/>
+              <path d="M292 104 C300 86 324 80 340 88 C350 78 370 82 378 94 C384 96 388 100 386 104 Z" fill="#55655B" opacity=".8"/>
+            </g>
+          </defs>
 
-      <div class="fin-person" id="finPerson">
-        <svg viewBox="0 0 520 660" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A person places their phone into their pocket">
-          <ellipse cx="260" cy="636" rx="118" ry="13" fill="#16201A" opacity=".07"/>
-          <!-- legs -->
-          <rect x="204" y="388" width="48" height="230" rx="20" fill="#3F4E44"/>
-          <rect x="266" y="388" width="48" height="230" rx="20" fill="#4E5E53"/>
-          <rect x="194" y="606" width="64" height="22" rx="10" fill="#16201A"/>
-          <rect x="258" y="606" width="68" height="22" rx="10" fill="#16201A"/>
-          <!-- belt -->
-          <rect x="202" y="378" width="114" height="14" rx="7" fill="#2E3833"/>
-          <!-- torso / shirt -->
-          <path d="M196 262 q0-22 22-22 h84 q22 0 22 22 v104 q0 14 -14 14 h-100 q-14 0 -14 -14 Z" fill="#DFEAE1" stroke="#A6BCAA" stroke-width="2.5"/>
-          <line x1="260" y1="244" x2="260" y2="380" stroke="#A6BCAA" stroke-width="1.5" opacity=".7"/>
-          <circle cx="260" cy="290" r="2.5" fill="#8CA093"/><circle cx="260" cy="322" r="2.5" fill="#8CA093"/>
-          <path d="M244 244 L260 260 L276 244" fill="none" stroke="#A6BCAA" stroke-width="2.5"/>
-          <!-- left arm (static, hanging) -->
-          <path d="M206 260 q-18 4 -20 26 l-6 74 q-1 12 10 14 q11 2 13 -10 l10 -76 Z" fill="#DFEAE1" stroke="#A6BCAA" stroke-width="2.5"/>
-          <circle cx="188" cy="382" r="12" fill="#D9B99B" stroke="#C6A183" stroke-width="2"/>
-          <!-- head -->
-          <rect x="248" y="212" width="26" height="30" rx="8" fill="#D9B99B"/>
-          <circle cx="261" cy="184" r="33" fill="#D9B99B" stroke="#C6A183" stroke-width="2"/>
-          <path d="M228 176 q4-26 33-26 q29 0 33 26 q1 8 -4 8 q-20 -12 -58 0 q-5 0 -4 -8 Z" fill="#2E3833"/>
-          <circle cx="230" cy="188" r="5" fill="#D9B99B" stroke="#C6A183" stroke-width="1.5"/>
-          <!-- right arm DOWN pose (hand at pocket) -->
-          <g id="armDown" opacity="0">
-            <path d="M312 260 q20 4 22 26 l4 60 q2 14 -8 26 l-14 34 q-5 10 -15 6 q-10 -4 -7 -14 l12 -36 l-8 -60 Z" fill="#DFEAE1" stroke="#A6BCAA" stroke-width="2.5"/>
-            <circle cx="298" cy="414" r="12" fill="#D9B99B" stroke="#C6A183" stroke-width="2"/>
+          <!-- CLOUD with the yard inside -->
+          <g id="gCloud">
+            <path d="M170 236 q-58 0 -58 -52 q0 -44 44 -50 q6 -58 66 -58 q34 0 52 24 q16 -34 58 -34 q52 0 62 44 q8 -4 20 -4 q44 0 44 44 q30 4 30 40 q0 46 -52 46 Z" fill="#FFFFFF" stroke="#CFE0D1" stroke-width="3" transform="translate(120 40) scale(1.32)"/>
+            <g transform="translate(200 118)"><use href="#miniYard"/></g>
           </g>
-          <!-- right arm UP pose (reading the phone) -->
-          <g id="armUp">
-            <path d="M312 260 q22 2 26 24 l6 30 q3 14 -9 20 l-42 22 q-11 5 -16 -5 q-5 -10 5 -16 l36 -20 l-10 -30 Z" fill="#DFEAE1" stroke="#A6BCAA" stroke-width="2.5"/>
-            <circle cx="303" cy="330" r="12" fill="#D9B99B" stroke="#C6A183" stroke-width="2"/>
+
+          <!-- palm (behind phone) + forearm -->
+          <g id="gPalm">
+            <path d="M368 560 q-10 -10 -6 -26 l6 -60 q3 -18 22 -18 h96 q20 0 22 20 l4 64 q2 18 -12 26 l-40 22 h-56 Z" fill="#D9A98E" stroke="#C08F73" stroke-width="2.5"/>
+            <path d="M382 574 q-26 96 -18 326 h132 q16 -238 -8 -330 Z" fill="#DFEAE1" stroke="#A6BCAA" stroke-width="2.5"/>
+            <path d="M378 596 h140" stroke="#A6BCAA" stroke-width="2" opacity=".7"/>
           </g>
-          <!-- phone (travels from hand to pocket via JS) -->
-          <g id="finPhoneG">
-            <rect x="296" y="262" width="46" height="88" rx="10" fill="#16201A"/>
-            <rect x="301" y="270" width="36" height="72" rx="6" fill="#F7FAF7"/>
-            <rect x="305" y="278" width="28" height="7" rx="3" fill="#3FAE45" opacity=".85"/>
-            <rect x="305" y="291" width="28" height="5" rx="2.5" fill="#CFE0D1"/>
-            <rect x="305" y="301" width="20" height="5" rx="2.5" fill="#CFE0D1"/>
-            <rect x="305" y="313" width="28" height="5" rx="2.5" fill="#A6BCAA"/>
+
+          <!-- PHONE (authored at held position; JS moves it into the pocket) -->
+          <g id="gPhone">
+            <rect x="352" y="330" width="96" height="188" rx="18" fill="#16201A"/>
+            <rect x="360" y="342" width="80" height="164" rx="10" fill="#F7FAF7"/>
+            <g id="gScreenYard" opacity="0" transform="translate(364 388) scale(0.175)"><use href="#miniYard"/></g>
+            <rect x="368" y="352" width="52" height="9" rx="4" fill="#3FAE45" opacity=".8"/>
+            <rect x="368" y="368" width="64" height="6" rx="3" fill="#CFE0D1"/>
           </g>
-          <!-- pocket front panel (topmost - phone tucks behind it) -->
-          <path d="M266 414 L318 420 L314 502 Q290 512 264 504 Z" fill="#4E5E53" stroke="#37453C" stroke-width="2.5"/>
-          <path d="M270 418 L314 424" stroke="#8CA093" stroke-width="1.5" stroke-dasharray="5 5"/>
+
+          <!-- fingers wrapping the phone (in front) -->
+          <g id="gFingers">
+            <rect x="340" y="368" width="34" height="24" rx="12" fill="#D9A98E" stroke="#C08F73" stroke-width="2"/>
+            <rect x="338" y="398" width="38" height="24" rx="12" fill="#D9A98E" stroke="#C08F73" stroke-width="2"/>
+            <rect x="338" y="428" width="38" height="24" rx="12" fill="#D9A98E" stroke="#C08F73" stroke-width="2"/>
+            <rect x="342" y="458" width="34" height="24" rx="12" fill="#D9A98E" stroke="#C08F73" stroke-width="2"/>
+            <path d="M448 430 q26 -6 26 16 q0 34 -30 42 l-14 4 l-4 -50 Z" fill="#D9A98E" stroke="#C08F73" stroke-width="2"/>
+          </g>
+
+          <!-- POCKET band (rises; painted last so the phone tucks behind the fabric) -->
+          <g id="gPocket">
+            <rect x="0" y="640" width="800" height="260" fill="#3F4E44"/>
+            <rect x="0" y="640" width="800" height="46" fill="#2E3833"/>
+            <rect x="374" y="652" width="52" height="22" rx="6" fill="#16201A" stroke="#101B12" stroke-width="2"/>
+            <path d="M300 720 Q400 700 520 726" stroke="#8CA093" stroke-width="3" stroke-dasharray="8 7" fill="none"/>
+            <path d="M296 726 Q400 706 524 732" stroke="#31403A" stroke-width="4" fill="none"/>
+            <path d="M60 686 q30 90 22 214 M740 686 q-26 90 -20 214" stroke="#37453C" stroke-width="3" fill="none" opacity=".6"/>
+            <g id="gPeek" opacity="0">
+              <rect x="389" y="676" width="92" height="30" rx="9" fill="#16201A"/>
+              <rect x="397" y="683" width="76" height="17" rx="5" fill="#F7FAF7"/>
+              <rect x="403" y="688" width="40" height="7" rx="3.5" fill="#3FAE45" opacity=".85"/>
+            </g>
+          </g>
         </svg>
       </div>
       <div class="fin-hint" id="finHint">KEEP SCROLLING</div>
@@ -783,16 +828,18 @@ footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:v
       return Math.min(1, Math.max(0, (vh - r.top) / (r.height + vh)));
     }
     var wb = document.getElementById('wb');
-    var tr1 = document.getElementById('tr1'), tr2 = document.getElementById('tr2');
+    var tr1 = document.getElementById('tr1'), tr2 = document.getElementById('tr2'), tr3 = document.getElementById('tr3');
     var tscene = document.getElementById('truckscene');
     var fin = document.getElementById('finale');
     var finText = document.getElementById('finText');
     var finHint = document.getElementById('finHint');
-    var finPhoneG = document.getElementById('finPhoneG');
-    var armUp = document.getElementById('armUp');
-    var armDown = document.getElementById('armDown');
-    var chips = [].slice.call(document.querySelectorAll('.fchip'));
-    var chipTarget = null; /* phone-at-chest position, computed lazily */
+    var gCloud = document.getElementById('gCloud');
+    var gPhone = document.getElementById('gPhone');
+    var gScreenYard = document.getElementById('gScreenYard');
+    var gPalm = document.getElementById('gPalm');
+    var gFingers = document.getElementById('gFingers');
+    var gPocket = document.getElementById('gPocket');
+    var gPeek = document.getElementById('gPeek');
     var ease = function(t){ return t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2; };
 
     var ticking2 = false;
@@ -807,52 +854,50 @@ footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:v
         /* trucks leave the yard one after the other */
         if(tscene && tr1 && tr2){
           var pt = crossProg(tscene);
-          var p1 = ease(Math.min(1, Math.max(0, (pt - 0.18) / 0.5)));
-          var p2 = ease(Math.min(1, Math.max(0, (pt - 0.42) / 0.5)));
-          tr1.setAttribute('transform', 'translate(' + (p1 * 460) + ' 0)');
-          tr2.setAttribute('transform', 'translate(' + (p2 * 460) + ' 0)');
+          var p1 = ease(Math.min(1, Math.max(0, (pt - 0.10) / 0.42)));
+          var p2 = ease(Math.min(1, Math.max(0, (pt - 0.30) / 0.44)));
+          var p3 = ease(Math.min(1, Math.max(0, (pt - 0.50) / 0.46)));
+          tr1.setAttribute('transform', 'translate(' + (p1 * 600) + ' 0)');
+          tr2.setAttribute('transform', 'translate(' + (-320 + p2 * 940) + ' 0)');
+          if(tr3) tr3.setAttribute('transform', 'translate(' + (-640 + p3 * 1280) + ' 0)');
         }
-        /* finale: chips stream into the phone, then it goes into the pocket */
+        /* finale: the yard-in-a-cloud streams into the phone, which is
+           then placed into the pocket */
         if(fin){
           var r = fin.getBoundingClientRect();
           var total = r.height - window.innerHeight;
           var pf = Math.min(1, Math.max(0, -r.top / (total || 1)));
 
-          /* phase A (0 -> .42): the operations cloud converges on the phone */
-          var inner = fin.querySelector('.fin-inner').getBoundingClientRect();
-          if(pf < 0.46 || !chipTarget){
-            var pr = finPhoneG.getBoundingClientRect();
-            if(pf < 0.02) chipTarget = { x: pr.left + pr.width/2 - inner.left, y: pr.top + pr.height/2 - inner.top };
-          }
-          var pA = Math.min(1, pf / 0.42);
-          chips.forEach(function(ch, i){
-            var t = ease(Math.min(1, Math.max(0, (pA - i * 0.045) / 0.62)));
-            if(!ch.__x){
-              var cr = ch.getBoundingClientRect();
-              ch.__x = cr.left + cr.width/2 - inner.left;
-              ch.__y = cr.top + cr.height/2 - inner.top;
-            }
-            var tx = (chipTarget ? chipTarget.x - ch.__x : 0) * t;
-            var ty = (chipTarget ? chipTarget.y - ch.__y : 0) * t;
-            ch.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + (1 - t * 0.8) + ')';
-            ch.style.opacity = Math.max(0, 1 - t * 1.15);
-          });
+          /* phase A (0 -> .45): cloud shrinks into the phone screen */
+          var a = ease(Math.min(1, pf / 0.45));
+          /* cloud centre ~ (400,190); phone screen centre ~ (400,420) */
+          gCloud.setAttribute('transform',
+            'translate(' + (0) + ' ' + (230 * a) + ') ' +
+            'translate(400 190) scale(' + (1 - 0.9 * a) + ') translate(-400 -190)');
+          gCloud.style.opacity = a < 0.8 ? 1 : Math.max(0, 1 - (a - 0.8) / 0.2);
+          /* the mini yard appears ON the phone screen as the cloud lands */
+          gScreenYard.style.opacity = Math.min(1, Math.max(0, (a - 0.72) / 0.28));
 
-          /* phase B (.46 -> .84): arm lowers, phone arcs into the pant pocket */
-          var pB = ease(Math.min(1, Math.max(0, (pf - 0.46) / 0.38)));
-          /* quadratic bezier in the person's SVG space: chest -> out -> pocket */
-          var bx = 2 * (1 - pB) * pB * 85 + pB * pB * (-26);
-          var by = 2 * (1 - pB) * pB * 95 + pB * pB * 146;
-          var rot = 16 * Math.sin(Math.PI * pB);
-          finPhoneG.setAttribute('transform', 'translate(' + bx + ' ' + by + ') rotate(' + rot + ' 319 306)');
-          if(armUp) armUp.style.opacity = String(Math.max(0, 1 - Math.max(0, (pf - 0.50) / 0.12)));
-          if(armDown) armDown.style.opacity = String(Math.min(1, Math.max(0, (pf - 0.56) / 0.14)));
+          /* phase B (.5 -> .85): pocket rises, hand lowers phone into it */
+          var pb = Math.min(1, Math.max(0, (pf - 0.50) / 0.35));
+          var rise = 1 - ease(Math.min(1, pb / 0.5));
+          gPocket.setAttribute('transform', 'translate(0 ' + (rise * 300) + ')');
+          var seat = ease(Math.min(1, Math.max(0, (pb - 0.22) / 0.62)));
+          var dx = 35 * seat, dy = 356 * seat;
+          gPhone.setAttribute('transform', 'translate(' + dx + ' ' + dy + ')');
+          if(gPeek) gPeek.style.opacity = String(Math.min(1, Math.max(0, (seat - 0.82) / 0.18)));
+          /* the hand travels with the phone, then releases and withdraws */
+          var rel = ease(Math.min(1, Math.max(0, (pf - 0.80) / 0.10)));
+          var hy = dy + rel * 140;
+          gPalm.setAttribute('transform', 'translate(' + dx + ' ' + hy + ')');
+          gFingers.setAttribute('transform', 'translate(' + dx + ' ' + hy + ')');
+          gPalm.style.opacity = gFingers.style.opacity = String(Math.max(0, 1 - rel * 1.4));
 
           /* phase C: closing statement */
-          var d = ease(Math.min(1, Math.max(0, (pf - 0.84) / 0.13)));
+          var d = ease(Math.min(1, Math.max(0, (pf - 0.86) / 0.12)));
           finText.style.opacity = d;
           finText.style.transform = 'translateY(' + ((1 - d) * 18) + 'px)';
-          if(finHint) finHint.style.opacity = pf > 0.04 && pf < 0.8 ? 1 : 0;
+          if(finHint) finHint.style.opacity = pf > 0.04 && pf < 0.78 ? 1 : 0;
         }
         ticking2 = false;
       });
