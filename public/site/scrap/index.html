@@ -97,6 +97,37 @@ section.blk{padding:96px 0}
 .fcard p{font-size:14px;color:var(--dim)}
 .fcard .note{margin-top:12px;font-size:12.5px;color:var(--grn-d);font-weight:600}
 
+/* full explanatory feature sections */
+.fsec{display:grid;grid-template-columns:1.05fr .95fr;gap:60px;align-items:center;padding:64px 0;border-top:1px solid var(--line);scroll-margin-top:80px}
+.fsec:first-of-type{border-top:none;padding-top:10px}
+.fsec.rev .fmockcol{order:-1}
+@media(max-width:900px){.fsec{grid-template-columns:1fr;gap:28px;padding:44px 0}.fsec.rev .fmockcol{order:0}}
+.fnum{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--grn);font-weight:600}
+.fsec h3{font-size:clamp(24px,3vw,33px);margin:12px 0 12px}
+.flead{color:var(--dim);font-size:15.5px}
+.blist{list-style:none;margin-top:16px}
+.blist li{display:flex;gap:12px;padding:8px 0;font-size:14.5px;color:var(--ink)}
+.blist li b{color:var(--grn-d)}
+.blist li:before{content:"";width:16px;height:16px;flex-shrink:0;margin-top:5px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#5FCB66,#1B7A20)}
+.fnote{margin-top:16px;font-size:13.5px;color:var(--grn-d);font-weight:600;background:var(--grn-100);border-radius:12px;padding:11px 15px;display:inline-block}
+.mockl{background:#fff;border:1px solid var(--line2);border-radius:22px;padding:22px;box-shadow:var(--sh-l)}
+.mh2{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--disp);font-weight:700;font-size:16px;margin-bottom:12px}
+.mh2 span{font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--grn-d);background:var(--grn-100);padding:4px 10px;border-radius:999px;white-space:nowrap}
+.mrow2{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 15px;border:1px solid var(--line);border-radius:14px;margin-top:9px;background:#FAFCFA}
+.mrow2 .l{min-width:0}
+.mrow2 .l b{display:block;font-size:14px}
+.mrow2 .l span{font-size:11.5px;color:var(--faint);font-family:var(--mono)}
+.mrow2 .v{font-family:var(--mono);font-weight:600;font-size:16px;color:var(--grn-d);white-space:nowrap;flex-shrink:0}
+.mrow2.warn .v{color:var(--amber)}
+.mrow2.alert{background:var(--red-bg);border-color:var(--redline)}
+.mrow2.alert .v{color:var(--red)}
+.chiprow{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.chip{font-family:var(--mono);font-size:10.5px;font-weight:600;padding:5px 11px;border-radius:999px;background:var(--amber-bg);color:var(--amber);border:1px solid #EBDBB6}
+.chip.red{background:var(--red-bg);color:var(--red);border-color:var(--redline)}
+.chip.grn{background:var(--grn-100);color:var(--grn-d);border-color:var(--line2)}
+.cap{font-size:12.5px;color:var(--faint);margin-top:12px;line-height:1.55;padding-left:4px}
+.cap b{color:var(--dim)}
+
 /* ---------- walkthrough (sticky live demo) ---------- */
 .walkwrap{background:linear-gradient(180deg,var(--soft),#fff);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .walk{display:grid;grid-template-columns:1fr 400px;gap:64px;align-items:start}
@@ -169,7 +200,43 @@ footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:v
 
 .rv{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
 .rv.in{opacity:1;transform:none}
+/* ---- scene illustrations (weighbridge, trucks, finale) ---- */
+.scene{margin-bottom:14px}
+.wb-stage{perspective:1000px}
+.wb{transform:rotateX(7deg);transform-origin:50% 90%;transition:transform .2s;will-change:transform}
+.wb svg{width:100%;height:auto;display:block}
+.truckscene{margin-top:16px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,#FAFCFA,#F0F6F1);padding:14px 0 6px;overflow:hidden}
+.truckscene svg{width:100%;height:auto;display:block}
+.tr{will-change:transform}
+.ts-cap{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--faint);text-align:center;padding:6px 0 4px}
+/* finale: factory -> phone -> pocket */
+.finale{position:relative;height:340vh;background:linear-gradient(180deg,#fff,var(--soft) 30%,var(--soft) 70%,#fff)}
+.fin-sticky{position:sticky;top:0;height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.fin-inner{position:relative;width:min(680px,92vw);height:min(640px,86vh)}
+.fin-factory{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:min(620px,88vw);will-change:transform,opacity}
+.fin-factory svg{width:100%;height:auto;display:block}
+.fin-phone{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:190px;will-change:transform,opacity;opacity:0}
+.fin-phone .frame{background:#101B12;border-radius:30px;padding:9px;box-shadow:0 26px 60px -22px rgba(22,32,26,.4)}
+.fin-phone .notch{width:64px;height:14px;border-radius:8px;background:#060A07;margin:1px auto 6px}
+.fin-phone .scr{background:#F7FAF7;border-radius:21px;height:330px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.fin-phone .scr svg{width:88%;height:auto}
+.fin-pocket{position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);width:min(660px,96vw);opacity:0;will-change:opacity,transform}
+.fin-pocket svg{width:100%;height:auto;display:block}
+.fin-text{position:absolute;left:0;right:0;top:8%;text-align:center;opacity:0;will-change:opacity,transform}
+.fin-text h2{font-size:clamp(28px,4vw,46px)}
+.fin-text p{color:var(--dim);font-size:16px;margin-top:10px}
+.fin-cta{margin-top:22px}
+.fin-hint{position:absolute;left:0;right:0;bottom:26px;text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;color:var(--faint)}
+@media(max-width:600px){.fin-phone{width:150px}.fin-phone .scr{height:260px}}
+
 @media (prefers-reduced-motion:reduce){
+  .finale{height:auto}
+  .fin-sticky{position:static;height:auto;padding:80px 0}
+  .fin-factory,.fin-pocket{display:none}
+  .fin-phone{position:static;transform:none;opacity:1;margin:0 auto}
+  .fin-text{position:static;opacity:1;margin-bottom:30px}
+  .tr{transform:none!important}
+
   .rv{opacity:1;transform:none;transition:none}
   .screen{transition:none}
   html{scroll-behavior:auto}
@@ -183,6 +250,7 @@ footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:v
     <a class="logo" href="https://trackrakho.com/site/">Track<b>Rakho</b><small>SCRAP &amp; METAL TRADING</small></a>
     <span class="sp"></span>
     <a class="lnk" href="#platform">Platform</a>
+    <a class="lnk" href="#tally">Tally</a>
     <a class="lnk" href="#walkthrough">See it in action</a>
     <a class="lnk" href="#pricing">Pricing</a>
     <a class="btn btn-grn cta-sm" href="https://trackrakho.com">Open the app</a>
@@ -207,64 +275,195 @@ footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:v
       <div class="m"><b>₹999 / month</b>every feature included</div>
     </div>
 
-    <!-- flat, symmetric product shot -->
-    <div class="shot rv">
-      <div class="shotgrid">
-        <div class="stat"><small>INVENTORY IN YARD</small><b>72.4 MT</b></div>
-        <div class="stat"><small>DISPATCHED · JULY</small><b>55.6 MT</b></div>
-        <div class="stat"><small>RECEIVABLES</small><b>₹7,08,700</b></div>
-        <div class="stat warn"><small>PAYABLES</small><b>₹2,78,500</b></div>
-      </div>
-      <div class="shotrow">
-        <div class="mini"><div class="ic">🚚</div><div><b>HR 38 AB 1234 — dispatched</b><span>12.5 MT · MS Scrap · REF SL/142</span></div></div>
-        <div class="mini"><div class="ic">⚖️</div><div><b>Stock verified — MS / Iron</b><span>weekly check · variance flagged</span></div></div>
-        <div class="mini"><div class="ic">🗓️</div><div><b>Next dispatch — Om Metals</b><span>suggested by delivery planner</span></div></div>
-      </div>
-    </div>
   </div>
 </section>
 
 <!-- ================= PLATFORM ================= -->
-<section class="blk" id="platform">
+<section class="blk" id="platform" style="padding-bottom:40px">
   <div class="wrap">
     <div class="sechead center rv">
       <div class="eyebrow">The platform</div>
-      <h2>Six capabilities. One system of record.</h2>
-      <p>Everything a trading operation runs on — connected, so every entry updates the whole picture.</p>
+      <h2>Five capabilities, explained simply.</h2>
+      <p>Each one replaces a register, a phone call, or a guess.</p>
     </div>
-    <div class="fgrid">
-      <div class="fcard rv">
-        <div class="ic">⚖️</div>
-        <h3>Inventory &amp; stock control</h3>
-        <p>Live stock by material in metric tonnes. Every inward entry and every dispatch updates the book quantity automatically.</p>
-        <div class="note">Weekly verification against physical stock flags discrepancies immediately — the control that prevents slow, unnoticed inventory loss and theft.</div>
+
+    <!-- 1. TALLY -->
+    <div class="fsec rv" id="tally">
+      <div>
+        <div class="fnum">01 · TALLY — "SEEDHA HISAAB"</div>
+        <h3>Your Tally answers, without opening Tally.</h3>
+        <p class="flead">Your accountant keeps Tally exactly as they do today. A small read-only connector on that computer sends the three answers you actually need to your phone:</p>
+        <ul class="blist">
+          <li><span><b>Who owes you</b> — every dealer's pending balance, dealer by dealer.</span></li>
+          <li><span><b>Whom you owe</b> — supplier balances, so payments never surprise you.</span></li>
+          <li><span><b>What went out</b> — this month's sales in tonnes, with the bill reference on every entry.</span></li>
+        </ul>
+        <div class="fnote">Nothing changes in Tally, and nothing can be edited from the phone. It is a window, not a door.</div>
       </div>
-      <div class="fcard rv">
-        <div class="ic">🚚</div>
-        <h3>Fleet &amp; dispatch board</h3>
-        <p>Every truck, every trip: material, weighbridge weight, destination and reference number. See which vehicles are out and what they carry, from anywhere.</p>
-      </div>
-      <div class="fcard rv">
-        <div class="ic">📒</div>
-        <h3>Tally integration</h3>
-        <p>A read-only connector on your accountant's computer brings receivables, payables and sales vouchers — with voucher numbers and references — to your phone. Nothing changes in Tally.</p>
-      </div>
-      <div class="fcard rv">
-        <div class="ic">💰</div>
-        <h3>Receivables &amp; payables</h3>
-        <p>Party-wise outstanding balances, always current. Every deal card also shows that party's pending balance, so you negotiate fully informed.</p>
-      </div>
-      <div class="fcard rv">
-        <div class="ic">🗓️</div>
-        <h3>Dispatch planning</h3>
-        <p>An intelligent planner weighs delivery deadlines, waiting time, remaining quantity and outstanding payments — and recommends the optimal dispatch order, with every reason shown.</p>
-      </div>
-      <div class="fcard rv">
-        <div class="ic">📋</div>
-        <h3>Deal pipeline</h3>
-        <p>Every enquiry and deal — pending, won, lost — with follow-up reminders and one-tap WhatsApp messages. Incoming WhatsApp enquiries can be logged in a single tap.</p>
+      <div class="fmockcol">
+        <div class="mockl">
+          <div class="mh2">Tally — Seedha Hisaab <span>READ-ONLY · LIVE</span></div>
+          <div class="mrow2"><div class="l"><b>To collect from dealers</b><span>outstanding, from Sundry Debtors</span></div><div class="v">₹7,08,700</div></div>
+          <div class="mrow2 warn"><div class="l"><b>To pay suppliers</b><span>outstanding, from Sundry Creditors</span></div><div class="v">₹2,78,500</div></div>
+          <div class="mrow2"><div class="l"><b>Material sold in July</b><span>6 dispatches · ₹21,96,500</span></div><div class="v">55.6 MT</div></div>
+          <div class="mrow2"><div class="l"><b>Apex Alloys · 16 Jul · 12.5 MT</b><span>MS Scrap · Bill REF APX/PO-118</span></div><div class="v">₹4,12,500</div></div>
+        </div>
+        <div class="cap"><b>What you're seeing:</b> the accountant's Tally, translated into plain answers. Tap any line in the app for the dealer-wise detail.</div>
       </div>
     </div>
+
+    <!-- 2. STOCK -->
+    <div class="fsec rev rv" id="stock">
+      <div>
+        <div class="fnum">02 · INVENTORY &amp; LOSS PREVENTION</div>
+        <h3>Live stock — and the weekly check that catches losses.</h3>
+        <p class="flead">The app always knows how much of each material <b>should</b> be in the yard: previous stock, plus material received, minus material dispatched. Then, once a week:</p>
+        <ul class="blist">
+          <li><span>Weigh one material on your existing weighbridge and enter a single number.</span></li>
+          <li><span>The app compares it with the book quantity, on the spot.</span></li>
+          <li><span>Any difference is <b>flagged and recorded with the date</b> — losses that traditionally hide for months surface within the week, with a documented trail.</span></li>
+        </ul>
+        <div class="fnote">No new hardware. Your weighbridge, your phone, one weekly habit.</div>
+      </div>
+      <div class="fmockcol">
+        <div class="scene wb-stage rv">
+          <div class="wb" id="wb">
+            <svg viewBox="0 0 560 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Weighbridge weighing scrap">
+              <ellipse cx="280" cy="272" rx="230" ry="16" fill="#16201A" opacity=".07"/>
+              <!-- platform -->
+              <path d="M70 236 L120 210 L490 210 L440 236 Z" fill="#DFEAE1" stroke="#B9CDBD" stroke-width="2"/>
+              <path d="M70 236 L440 236 L440 252 L70 252 Z" fill="#C9DACC" stroke="#B9CDBD" stroke-width="2"/>
+              <path d="M440 236 L490 210 L490 226 L440 252 Z" fill="#B4C9B8" stroke="#A6BCAA" stroke-width="2"/>
+              <!-- scrap heap -->
+              <path d="M160 210 C185 158 240 142 285 156 C315 132 375 138 395 168 C420 172 432 192 428 210 Z" fill="#8CA093" opacity=".5"/>
+              <path d="M200 210 C218 178 262 166 296 178 C318 162 356 168 372 190 C384 194 392 202 390 210 Z" fill="#4E5E53" opacity=".45"/>
+              <path d="M236 176 L252 158 L262 176 Z M312 168 L330 154 L336 172 Z" fill="#3F4E44" opacity=".5"/>
+              <!-- pillar + display -->
+              <rect x="502" y="96" width="14" height="156" rx="4" fill="#C9DACC" stroke="#B9CDBD" stroke-width="2"/>
+              <rect x="428" y="52" width="126" height="64" rx="12" fill="#16201A"/>
+              <rect x="440" y="64" width="102" height="40" rx="6" fill="#0B130D"/>
+              <text x="491" y="90" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="22" font-weight="600" fill="#7CE383">42.0 MT</text>
+              <circle cx="448" cy="60" r="3" fill="#3FAE45">
+                <animate attributeName="opacity" values="1;.25;1" dur="2s" repeatCount="indefinite"/>
+              </circle>
+              <!-- link line to app -->
+              <path d="M491 116 V 140" stroke="#3FAE45" stroke-width="2" stroke-dasharray="3 5"/>
+              <rect x="455" y="140" width="72" height="26" rx="13" fill="#E8F4E9" stroke="#CFE0D1"/>
+              <text x="491" y="157" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" font-weight="600" fill="#155E18">TO APP</text>
+            </svg>
+          </div>
+        </div>
+        <div class="mockl">
+          <div class="mh2">Stock — weekly verification <span>MS / IRON</span></div>
+          <div class="mrow2"><div class="l"><b>Should be in the yard</b><span>book quantity: stock + received − dispatched</span></div><div class="v">43.8 MT</div></div>
+          <div class="mrow2 warn"><div class="l"><b>Weighed today</b><span>entered after the weighbridge check</span></div><div class="v">42.0 MT</div></div>
+          <div class="mrow2 alert"><div class="l"><b>Difference — flagged &amp; recorded</b><span>25 Jul · visible on the dashboard</span></div><div class="v">−1.8 MT</div></div>
+        </div>
+        <div class="cap"><b>What you're seeing:</b> the stock check screen. Three lines — what should be there, what is there, and the difference. That third line is how slow theft gets caught early.</div>
+      </div>
+    </div>
+
+    <!-- 3. TRUCKS -->
+    <div class="fsec rv" id="trucks">
+      <div>
+        <div class="fnum">03 · TRUCK BOARD</div>
+        <h3>Every truck and every trip, on one board.</h3>
+        <p class="flead">Logged at the weighbridge in under a minute: which truck, whose material, how many tonnes, which bill. From that moment the whole business can see it:</p>
+        <ul class="blist">
+          <li><span>Which vehicles are <b>out</b>, since when, carrying what, for whom.</span></li>
+          <li><span>Delivered? One tap frees the truck — the trip stays in history.</span></li>
+          <li><span>Every dispatch automatically reduces yard stock. One entry, two records.</span></li>
+        </ul>
+      </div>
+      <div class="fmockcol">
+        <div class="mockl">
+          <div class="mh2">Truck board <span>1 OF 2 VEHICLES OUT</span></div>
+          <div class="mrow2"><div class="l"><b>HR 38 AB 1234 → Apex Alloys</b><span>12.5 MT · MS Scrap · Bill REF SL/142</span></div><div class="v">OUT · 3 hrs</div></div>
+          <div class="mrow2"><div class="l"><b>HR 55 C 7788</b><span>in the yard, available</span></div><div class="v">FREE</div></div>
+          <div class="mrow2"><div class="l"><b>Bharat Steels — delivered yesterday</b><span>8.2 MT · CI Scrap</span></div><div class="v">DONE</div></div>
+        </div>
+        <div class="cap"><b>What you're seeing:</b> the fleet board. The first row is a truck currently on the road — you know where it went, with how much, three hours ago.</div>
+        <div class="truckscene rv" id="truckscene">
+          <svg viewBox="0 0 560 150" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Trucks leaving the yard as you scroll">
+            <!-- yard gate + shed -->
+            <path d="M18 118 V52 L58 34 L98 52 V118" fill="#E8F4E9" stroke="#B9CDBD" stroke-width="2"/>
+            <path d="M18 52 L58 34 L98 52" fill="none" stroke="#A6BCAA" stroke-width="2"/>
+            <rect x="44" y="84" width="28" height="34" fill="#C9DACC" stroke="#B9CDBD" stroke-width="2"/>
+            <rect x="104" y="46" width="6" height="72" rx="2" fill="#C9DACC"/>
+            <!-- road -->
+            <line x1="0" y1="120" x2="560" y2="120" stroke="#B9CDBD" stroke-width="2"/>
+            <line x1="120" y1="120" x2="560" y2="120" stroke="#8CA093" stroke-width="1" stroke-dasharray="10 12" opacity=".5"/>
+            <!-- truck template x2 leaving, 1 parked -->
+            <g class="tr" id="tr1">
+              <rect x="128" y="70" width="66" height="34" rx="4" fill="#DFEAE1" stroke="#A6BCAA" stroke-width="2"/>
+              <path d="M138 76 L186 76 M138 84 L186 84 M138 92 L186 92" stroke="#8CA093" stroke-width="2" opacity=".6"/>
+              <path d="M194 104 V80 h16 l12 12 v12 Z" fill="#C9DACC" stroke="#A6BCAA" stroke-width="2"/>
+              <circle cx="146" cy="108" r="9" fill="#fff" stroke="#4E5E53" stroke-width="2.5"/>
+              <circle cx="206" cy="108" r="9" fill="#fff" stroke="#4E5E53" stroke-width="2.5"/>
+              <text x="160" y="64" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9" fill="#155E18" font-weight="600">12.5 MT</text>
+            </g>
+            <g class="tr" id="tr2">
+              <rect x="128" y="70" width="66" height="34" rx="4" fill="#DFEAE1" stroke="#A6BCAA" stroke-width="2"/>
+              <path d="M138 76 L186 76 M138 84 L186 84 M138 92 L186 92" stroke="#8CA093" stroke-width="2" opacity=".6"/>
+              <path d="M194 104 V80 h16 l12 12 v12 Z" fill="#C9DACC" stroke="#A6BCAA" stroke-width="2"/>
+              <circle cx="146" cy="108" r="9" fill="#fff" stroke="#4E5E53" stroke-width="2.5"/>
+              <circle cx="206" cy="108" r="9" fill="#fff" stroke="#4E5E53" stroke-width="2.5"/>
+              <text x="160" y="64" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9" fill="#155E18" font-weight="600">8.2 MT</text>
+            </g>
+          </svg>
+          <div class="ts-cap">EACH DISPATCH LEAVES THE BOARD — AND THE YARD — IN REAL TIME</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. PLANNER -->
+    <div class="fsec rev rv" id="planner">
+      <div>
+        <div class="fnum">04 · DISPATCH PLANNING</div>
+        <h3>"Who should the next truck go to?" — answered, with reasons.</h3>
+        <p class="flead">When several dealers are waiting, the planner weighs four things — delivery deadlines, how long each dealer has waited, how much of their order remains, and their pending payments — and recommends the order.</p>
+        <ul class="blist">
+          <li><span>Every recommendation shows its reasons openly. No black box.</span></li>
+          <li><span>Deadlines are tracked per order; overdue ones rise to the top.</span></li>
+          <li><span>A dealer with heavy pending payments is flagged before you load their truck.</span></li>
+        </ul>
+      </div>
+      <div class="fmockcol">
+        <div class="mockl">
+          <div class="mh2">Next dispatch — recommended <span>REASONS SHOWN</span></div>
+          <div class="mrow2"><div class="l"><b>1. Om Metals — Aluminium Scrap</b><span>3.4 of 30 MT delivered so far</span></div><div class="v">26.6 MT left</div></div>
+          <div class="chiprow">
+            <span class="chip red">Deadline passed (1 day)</span>
+            <span class="chip">4 days since last dispatch</span>
+            <span class="chip grn">Payments clear</span>
+          </div>
+        </div>
+        <div class="cap"><b>What you're seeing:</b> the planner's top recommendation and its reasoning — a missed deadline, a waiting dealer, and no payment concerns.</div>
+      </div>
+    </div>
+
+    <!-- 5. PIPELINE -->
+    <div class="fsec rv" id="pipeline">
+      <div>
+        <div class="fnum">05 · DEAL PIPELINE &amp; FOLLOW-UPS</div>
+        <h3>Every deal and its follow-up, remembered.</h3>
+        <p class="flead">Every enquiry and deal — pending, won, lost — in one pipeline, with the two details that close deals:</p>
+        <ul class="blist">
+          <li><span><b>Follow-up reminders</b> — the app tells you who to call today; one tap opens WhatsApp with the message ready.</span></li>
+          <li><span><b>The dealer's Tally balance on the deal card</b> — negotiate knowing exactly what they already owe you.</span></li>
+          <li><span>WhatsApp enquiries land in the app and become logged deals in one tap.</span></li>
+        </ul>
+      </div>
+      <div class="fmockcol">
+        <div class="mockl">
+          <div class="mh2">Pipeline <span>2 FOLLOW-UPS DUE TODAY</span></div>
+          <div class="mrow2"><div class="l"><b>Shakti Traders — MS scrap, 50 MT</b><span>follow-up due today · pending balance ₹15,200</span></div><div class="v">PENDING</div></div>
+          <div class="mrow2"><div class="l"><b>New WhatsApp enquiry</b><span>"40 MT CI scrap ka rate bhejiye" · tap to log</span></div><div class="v">1 TAP</div></div>
+        </div>
+        <div class="cap"><b>What you're seeing:</b> a deal awaiting follow-up (with that dealer's outstanding balance right on the card) and an incoming WhatsApp enquiry ready to be logged.</div>
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -430,6 +629,84 @@ footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:v
   </div>
 </section>
 
+<!-- ================= FINALE: factory -> phone -> pocket ================= -->
+<section class="finale" id="finale" aria-label="Your whole operation in your pocket">
+  <div class="fin-sticky">
+    <div class="fin-inner">
+      <div class="fin-text" id="finText">
+        <h2>Your entire operation.<br><span style="color:var(--grn)">In your pocket.</span></h2>
+        <p>The yard, the fleet, the accounts — wherever you are.</p>
+        <div class="fin-cta"><a class="btn btn-grn" href="https://wa.me/919910605207?text=TrackRakho%20-%20scrap%20trading%20demo">Request a demo</a></div>
+      </div>
+      <div class="fin-factory" id="finFactory">
+        <svg viewBox="0 0 640 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A scrap yard">
+              <ellipse cx="320" cy="330" rx="300" ry="18" fill="#16201A" opacity=".06"/>
+              <!-- shed -->
+              <path d="M60 300 V170 L150 120 L240 170 V300 Z" fill="#E8F4E9" stroke="#B9CDBD" stroke-width="3"/>
+              <path d="M60 170 L150 120 L240 170" fill="none" stroke="#A6BCAA" stroke-width="3"/>
+              <rect x="118" y="230" width="64" height="70" fill="#C9DACC" stroke="#B9CDBD" stroke-width="3"/>
+              <!-- crane -->
+              <rect x="280" y="140" width="10" height="160" fill="#C9DACC" stroke="#B9CDBD" stroke-width="2"/>
+              <path d="M285 148 L400 118" stroke="#A6BCAA" stroke-width="6" stroke-linecap="round"/>
+              <line x1="396" y1="120" x2="396" y2="168" stroke="#8CA093" stroke-width="3"/>
+              <path d="M380 168 q16 26 32 0" stroke="#4E5E53" stroke-width="4" fill="none"/>
+              <!-- scrap heap -->
+              <path d="M340 300 C360 240 420 224 470 244 C500 220 560 232 574 264 C592 272 598 288 594 300 Z" fill="#8CA093" opacity=".5"/>
+              <path d="M380 300 C396 264 444 252 480 266 C500 250 534 258 548 280 C558 284 564 292 562 300 Z" fill="#4E5E53" opacity=".45"/>
+              <!-- weighbridge -->
+              <rect x="330" y="288" width="120" height="12" rx="3" fill="#C9DACC" stroke="#A6BCAA" stroke-width="2"/>
+              <!-- small truck -->
+              <g>
+                <rect x="470" y="150" width="52" height="26" rx="3" fill="#DFEAE1" stroke="#A6BCAA" stroke-width="2"/>
+                <path d="M522 176 V158 h12 l9 9 v9 Z" fill="#C9DACC" stroke="#A6BCAA" stroke-width="2"/>
+                <circle cx="484" cy="179" r="7" fill="#fff" stroke="#4E5E53" stroke-width="2"/>
+                <circle cx="530" cy="179" r="7" fill="#fff" stroke="#4E5E53" stroke-width="2"/>
+              </g>
+            </svg>
+      </div>
+      <div class="fin-phone" id="finPhone">
+        <div class="frame">
+          <div class="notch"></div>
+          <div class="scr">
+            <svg viewBox="0 0 640 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A scrap yard">
+              <ellipse cx="320" cy="330" rx="300" ry="18" fill="#16201A" opacity=".06"/>
+              <!-- shed -->
+              <path d="M60 300 V170 L150 120 L240 170 V300 Z" fill="#E8F4E9" stroke="#B9CDBD" stroke-width="3"/>
+              <path d="M60 170 L150 120 L240 170" fill="none" stroke="#A6BCAA" stroke-width="3"/>
+              <rect x="118" y="230" width="64" height="70" fill="#C9DACC" stroke="#B9CDBD" stroke-width="3"/>
+              <!-- crane -->
+              <rect x="280" y="140" width="10" height="160" fill="#C9DACC" stroke="#B9CDBD" stroke-width="2"/>
+              <path d="M285 148 L400 118" stroke="#A6BCAA" stroke-width="6" stroke-linecap="round"/>
+              <line x1="396" y1="120" x2="396" y2="168" stroke="#8CA093" stroke-width="3"/>
+              <path d="M380 168 q16 26 32 0" stroke="#4E5E53" stroke-width="4" fill="none"/>
+              <!-- scrap heap -->
+              <path d="M340 300 C360 240 420 224 470 244 C500 220 560 232 574 264 C592 272 598 288 594 300 Z" fill="#8CA093" opacity=".5"/>
+              <path d="M380 300 C396 264 444 252 480 266 C500 250 534 258 548 280 C558 284 564 292 562 300 Z" fill="#4E5E53" opacity=".45"/>
+              <!-- weighbridge -->
+              <rect x="330" y="288" width="120" height="12" rx="3" fill="#C9DACC" stroke="#A6BCAA" stroke-width="2"/>
+              <!-- small truck -->
+              <g>
+                <rect x="470" y="150" width="52" height="26" rx="3" fill="#DFEAE1" stroke="#A6BCAA" stroke-width="2"/>
+                <path d="M522 176 V158 h12 l9 9 v9 Z" fill="#C9DACC" stroke="#A6BCAA" stroke-width="2"/>
+                <circle cx="484" cy="179" r="7" fill="#fff" stroke="#4E5E53" stroke-width="2"/>
+                <circle cx="530" cy="179" r="7" fill="#fff" stroke="#4E5E53" stroke-width="2"/>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="fin-pocket" id="finPocket">
+        <svg viewBox="0 0 560 240" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A shirt pocket">
+          <path d="M40 42 Q280 6 520 42 L520 240 L40 240 Z" fill="#F0F6F1" stroke="#CFE0D1" stroke-width="3"/>
+          <path d="M150 78 Q280 58 410 78 L404 200 Q280 226 156 200 Z" fill="#E4EEE6" stroke="#B9CDBD" stroke-width="3"/>
+          <path d="M158 86 Q280 67 402 86" stroke="#A6BCAA" stroke-width="2" stroke-dasharray="7 7"/>
+        </svg>
+      </div>
+      <div class="fin-hint" id="finHint">KEEP SCROLLING</div>
+    </div>
+  </div>
+</section>
+
 </main>
 
 <footer>
@@ -474,6 +751,75 @@ footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:v
   addEventListener('scroll', onScroll, {passive:true});
   addEventListener('resize', onScroll);
   nearestStep();
+
+  var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!reduced){
+    /* generic 0..1 progress as an element crosses the viewport */
+    function crossProg(el){
+      var r = el.getBoundingClientRect(), vh = window.innerHeight;
+      return Math.min(1, Math.max(0, (vh - r.top) / (r.height + vh)));
+    }
+    var wb = document.getElementById('wb');
+    var tr1 = document.getElementById('tr1'), tr2 = document.getElementById('tr2');
+    var tscene = document.getElementById('truckscene');
+    var fin = document.getElementById('finale');
+    var finFactory = document.getElementById('finFactory');
+    var finPhone = document.getElementById('finPhone');
+    var finPocket = document.getElementById('finPocket');
+    var finText = document.getElementById('finText');
+    var finHint = document.getElementById('finHint');
+    var ease = function(t){ return t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2; };
+
+    var ticking2 = false;
+    function scenes(){
+      if(ticking2) return; ticking2 = true;
+      requestAnimationFrame(function(){
+        /* weighbridge: gentle 3D settle as it scrolls through */
+        if(wb){
+          var pw = crossProg(wb);
+          wb.style.transform = 'rotateX(' + (10 - pw * 6) + 'deg) translateY(' + ((0.5 - pw) * 14) + 'px)';
+        }
+        /* trucks leave the yard one after the other */
+        if(tscene && tr1 && tr2){
+          var pt = crossProg(tscene);
+          var p1 = ease(Math.min(1, Math.max(0, (pt - 0.18) / 0.5)));
+          var p2 = ease(Math.min(1, Math.max(0, (pt - 0.42) / 0.5)));
+          tr1.setAttribute('transform', 'translate(' + (p1 * 460) + ' 0)');
+          tr2.setAttribute('transform', 'translate(' + (p2 * 460) + ' 0)');
+        }
+        /* finale: factory shrinks into phone, phone slides into pocket */
+        if(fin){
+          var r = fin.getBoundingClientRect();
+          var total = r.height - window.innerHeight;
+          var pf = Math.min(1, Math.max(0, -r.top / (total || 1)));
+          /* phase 1: 0 -> .42 factory shrinks toward phone screen */
+          var a = ease(Math.min(1, pf / 0.42));
+          var scale = 1 - a * 0.78;
+          finFactory.style.transform = 'translate(-50%,-50%) scale(' + scale + ')';
+          finFactory.style.opacity = pf < 0.40 ? 1 : Math.max(0, 1 - (pf - 0.40) / 0.05);
+          /* phone appears under it */
+          var b = ease(Math.min(1, Math.max(0, (pf - 0.22) / 0.2)));
+          finPhone.style.opacity = b;
+          /* phase 2: .45 -> .85 phone descends into pocket */
+          var c = ease(Math.min(1, Math.max(0, (pf - 0.45) / 0.4)));
+          var inner = fin.querySelector('.fin-inner').getBoundingClientRect();
+          var drop = c * (inner.height * 0.46);
+          finPhone.style.transform = 'translate(-50%,-50%) translateY(' + drop + 'px) scale(' + (1 - c * 0.25) + ')';
+          finPocket.style.opacity = Math.min(1, Math.max(0, (pf - 0.40) / 0.15));
+          finPocket.style.transform = 'translateX(-50%) translateY(' + ((1 - Math.min(1, Math.max(0, (pf - 0.40) / 0.2))) * 40) + 'px)';
+          /* text at the end */
+          var d = ease(Math.min(1, Math.max(0, (pf - 0.82) / 0.14)));
+          finText.style.opacity = d;
+          finText.style.transform = 'translateY(' + ((1 - d) * 18) + 'px)';
+          if(finHint) finHint.style.opacity = pf > 0.06 && pf < 0.8 ? 1 : 0;
+        }
+        ticking2 = false;
+      });
+    }
+    addEventListener('scroll', scenes, {passive:true});
+    addEventListener('resize', scenes);
+    scenes();
+  }
 })();
 </script>
 </body>
