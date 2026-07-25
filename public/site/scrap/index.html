@@ -209,32 +209,30 @@ footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:v
 .truckscene svg{width:100%;height:auto;display:block}
 .tr{will-change:transform}
 .ts-cap{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--faint);text-align:center;padding:6px 0 4px}
-/* finale: factory -> phone -> pocket */
+/* finale: operations cloud -> phone in hand -> pant pocket */
 .finale{position:relative;height:340vh;background:linear-gradient(180deg,#fff,var(--soft) 30%,var(--soft) 70%,#fff)}
-.fin-sticky{position:sticky;top:0;height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.fin-inner{position:relative;width:min(680px,92vw);height:min(640px,86vh)}
-.fin-factory{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:min(620px,88vw);will-change:transform,opacity}
-.fin-factory svg{width:100%;height:auto;display:block}
-.fin-phone{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:190px;will-change:transform,opacity;opacity:0}
-.fin-phone .frame{background:#101B12;border-radius:30px;padding:9px;box-shadow:0 26px 60px -22px rgba(22,32,26,.4)}
-.fin-phone .notch{width:64px;height:14px;border-radius:8px;background:#060A07;margin:1px auto 6px}
-.fin-phone .scr{background:#F7FAF7;border-radius:21px;height:330px;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.fin-phone .scr svg{width:88%;height:auto}
-.fin-pocket{position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);width:min(660px,96vw);opacity:0;will-change:opacity,transform}
-.fin-pocket svg{width:100%;height:auto;display:block}
-.fin-text{position:absolute;left:0;right:0;top:8%;text-align:center;opacity:0;will-change:opacity,transform}
+.fin-sticky{position:sticky;top:0;height:100vh;overflow:hidden;display:flex;align-items:flex-end;justify-content:center}
+.fin-inner{position:relative;width:min(760px,94vw);height:min(700px,92vh)}
+.fin-person{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:min(430px,76vw)}
+.fin-person svg{width:100%;height:auto;display:block}
+.fchip{position:absolute;display:inline-flex;gap:7px;align-items:center;background:#fff;border:1px solid var(--line2);border-radius:999px;padding:8px 14px;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink);box-shadow:var(--sh);white-space:nowrap;will-change:transform,opacity}
+.fchip i{font-style:normal}
+.fin-text{position:absolute;left:0;right:0;top:5%;text-align:center;opacity:0;will-change:opacity,transform;z-index:3}
 .fin-text h2{font-size:clamp(28px,4vw,46px)}
 .fin-text p{color:var(--dim);font-size:16px;margin-top:10px}
 .fin-cta{margin-top:22px}
-.fin-hint{position:absolute;left:0;right:0;bottom:26px;text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;color:var(--faint)}
-@media(max-width:600px){.fin-phone{width:150px}.fin-phone .scr{height:260px}}
+.fin-hint{position:absolute;left:0;right:0;bottom:18px;text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;color:var(--faint);z-index:3}
+@media(max-width:600px){.fchip{font-size:9.5px;padding:6px 10px}}
 
 @media (prefers-reduced-motion:reduce){
   .finale{height:auto}
   .fin-sticky{position:static;height:auto;padding:80px 0}
-  .fin-factory,.fin-pocket{display:none}
-  .fin-phone{position:static;transform:none;opacity:1;margin:0 auto}
-  .fin-text{position:static;opacity:1;margin-bottom:30px}
+  .fchip{display:none}
+  #armUp{display:none}
+  #armDown{opacity:1!important}
+  #finPhoneG{transform:translate(-26px,146px)}
+  .fin-text{position:static;opacity:1;margin-bottom:30px;transform:none!important}
+  .fin-person{position:static;transform:none;margin:0 auto}
   .tr{transform:none!important}
 
   .rv{opacity:1;transform:none;transition:none}
@@ -328,28 +326,60 @@ footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:v
       <div class="fmockcol">
         <div class="scene wb-stage rv">
           <div class="wb" id="wb">
-            <svg viewBox="0 0 560 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Weighbridge weighing scrap">
-              <ellipse cx="280" cy="272" rx="230" ry="16" fill="#16201A" opacity=".07"/>
-              <!-- platform -->
-              <path d="M70 236 L120 210 L490 210 L440 236 Z" fill="#DFEAE1" stroke="#B9CDBD" stroke-width="2"/>
-              <path d="M70 236 L440 236 L440 252 L70 252 Z" fill="#C9DACC" stroke="#B9CDBD" stroke-width="2"/>
-              <path d="M440 236 L490 210 L490 226 L440 252 Z" fill="#B4C9B8" stroke="#A6BCAA" stroke-width="2"/>
-              <!-- scrap heap -->
-              <path d="M160 210 C185 158 240 142 285 156 C315 132 375 138 395 168 C420 172 432 192 428 210 Z" fill="#8CA093" opacity=".5"/>
-              <path d="M200 210 C218 178 262 166 296 178 C318 162 356 168 372 190 C384 194 392 202 390 210 Z" fill="#4E5E53" opacity=".45"/>
-              <path d="M236 176 L252 158 L262 176 Z M312 168 L330 154 L336 172 Z" fill="#3F4E44" opacity=".5"/>
-              <!-- pillar + display -->
-              <rect x="502" y="96" width="14" height="156" rx="4" fill="#C9DACC" stroke="#B9CDBD" stroke-width="2"/>
-              <rect x="428" y="52" width="126" height="64" rx="12" fill="#16201A"/>
-              <rect x="440" y="64" width="102" height="40" rx="6" fill="#0B130D"/>
-              <text x="491" y="90" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="22" font-weight="600" fill="#7CE383">42.0 MT</text>
-              <circle cx="448" cy="60" r="3" fill="#3FAE45">
-                <animate attributeName="opacity" values="1;.25;1" dur="2s" repeatCount="indefinite"/>
-              </circle>
-              <!-- link line to app -->
-              <path d="M491 116 V 140" stroke="#3FAE45" stroke-width="2" stroke-dasharray="3 5"/>
-              <rect x="455" y="140" width="72" height="26" rx="13" fill="#E8F4E9" stroke="#CFE0D1"/>
-              <text x="491" y="157" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" font-weight="600" fill="#155E18">TO APP</text>
+            <svg viewBox="0 0 640 340" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A loaded truck standing on a weighbridge, its weight on the indicator display">
+              <ellipse cx="330" cy="316" rx="272" ry="14" fill="#16201A" opacity=".06"/>
+              <!-- indicator pillar + display (load cells feed this) -->
+              <rect x="60" y="128" width="10" height="168" rx="3" fill="#9FB5A4"/>
+              <rect x="44" y="292" width="42" height="10" rx="3" fill="#8CA093"/>
+              <rect x="14" y="64" width="132" height="64" rx="12" fill="#16201A"/>
+              <rect x="24" y="74" width="112" height="44" rx="7" fill="#0B130D"/>
+              <text x="80" y="103" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="24" font-weight="600" fill="#7CE383" letter-spacing="1">42.0</text>
+              <text x="80" y="114" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="8" fill="#4CBB5B" letter-spacing="2">METRIC TONNES</text>
+              <circle cx="132" cy="72" r="3" fill="#3FAE45"><animate attributeName="opacity" values="1;.2;1" dur="1.8s" repeatCount="indefinite"/></circle>
+              <rect x="34" y="140" width="92" height="22" rx="11" fill="#E8F4E9" stroke="#CFE0D1"/>
+              <text x="80" y="155" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9.5" font-weight="600" fill="#155E18">LIVE → APP</text>
+              <!-- signal cable from load cells to indicator -->
+              <path d="M150 296 Q88 296 74 240 L74 132" stroke="#8CA093" stroke-width="2" stroke-dasharray="4 5" fill="none"/>
+              <!-- approach ramps -->
+              <path d="M120 296 L156 282 L156 296 Z" fill="#B4C9B8"/>
+              <path d="M616 296 L580 282 L580 296 Z" fill="#B4C9B8"/>
+              <!-- platform deck -->
+              <rect x="152" y="282" width="432" height="14" rx="3" fill="#C4D6C8" stroke="#9FB5A4" stroke-width="2"/>
+              <line x1="240" y1="282" x2="240" y2="296" stroke="#9FB5A4" stroke-width="1.5"/>
+              <line x1="368" y1="282" x2="368" y2="296" stroke="#9FB5A4" stroke-width="1.5"/>
+              <line x1="496" y1="282" x2="496" y2="296" stroke="#9FB5A4" stroke-width="1.5"/>
+              <!-- hazard stripes at deck ends -->
+              <path d="M152 282 l12 0 l-8 14 l-12 0 Z M172 282 l12 0 l-8 14 l-12 0 Z" fill="#D9A441" opacity=".8"/>
+              <path d="M560 282 l12 0 l-8 14 l-12 0 Z M540 282 l12 0 l-8 14 l-12 0 Z" fill="#D9A441" opacity=".8"/>
+              <!-- load cells under deck -->
+              <rect x="180" y="296" width="18" height="10" rx="2" fill="#3F4E44"/>
+              <rect x="530" y="296" width="18" height="10" rx="2" fill="#3F4E44"/>
+              <rect x="352" y="296" width="18" height="10" rx="2" fill="#3F4E44"/>
+              <!-- truck: chassis -->
+              <rect x="196" y="240" width="316" height="9" rx="3" fill="#4E5E53"/>
+              <!-- tipper body with scrap load -->
+              <path d="M200 244 V162 q0-8 8-8 h180 q8 0 8 8 v82 Z" fill="#D7E4D9" stroke="#8FA894" stroke-width="2.5"/>
+              <line x1="244" y1="156" x2="244" y2="244" stroke="#8FA894" stroke-width="1.5" opacity=".7"/>
+              <line x1="292" y1="156" x2="292" y2="244" stroke="#8FA894" stroke-width="1.5" opacity=".7"/>
+              <line x1="340" y1="156" x2="340" y2="244" stroke="#8FA894" stroke-width="1.5" opacity=".7"/>
+              <!-- scrap heap above the rim -->
+              <path d="M204 156 C218 128 250 118 276 130 C292 112 330 112 348 130 C368 122 388 132 392 150 L392 156 Z" fill="#8CA093"/>
+              <path d="M220 156 C234 138 262 132 282 142 C296 128 326 128 340 142 C354 136 368 142 372 156 Z" fill="#55655B"/>
+              <path d="M258 128 l10 -12 l8 14 Z M316 122 l12 -10 l6 14 Z" fill="#3F4E44"/>
+              <!-- cab -->
+              <path d="M420 244 V180 q0-6 6-6 h52 q10 0 16 8 l16 22 q4 6 4 12 v28 Z" fill="#C9DACC" stroke="#8FA894" stroke-width="2.5"/>
+              <path d="M432 186 h44 v26 h-44 Z" fill="#EDF4FA" stroke="#8FA894" stroke-width="2"/>
+              <line x1="470" y1="244" x2="470" y2="186" stroke="#8FA894" stroke-width="1.5"/>
+              <rect x="436" y="222" width="14" height="4" rx="2" fill="#8FA894"/>
+              <rect x="506" y="230" width="10" height="8" rx="2" fill="#D9A441"/>
+              <rect x="412" y="244" width="104" height="6" rx="3" fill="#3F4E44"/>
+              <!-- wheels -->
+              <g>
+                <circle cx="238" cy="264" r="21" fill="#2E3833"/><circle cx="238" cy="264" r="10" fill="#C9DACC"/><circle cx="238" cy="264" r="3.5" fill="#4E5E53"/>
+                <circle cx="292" cy="264" r="21" fill="#2E3833"/><circle cx="292" cy="264" r="10" fill="#C9DACC"/><circle cx="292" cy="264" r="3.5" fill="#4E5E53"/>
+                <circle cx="474" cy="264" r="21" fill="#2E3833"/><circle cx="474" cy="264" r="10" fill="#C9DACC"/><circle cx="474" cy="264" r="3.5" fill="#4E5E53"/>
+              </g>
+              <rect x="316" y="250" width="22" height="14" rx="2" fill="#3F4E44" opacity=".8"/>
             </svg>
           </div>
         </div>
@@ -629,7 +659,7 @@ footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:v
   </div>
 </section>
 
-<!-- ================= FINALE: factory -> phone -> pocket ================= -->
+<!-- ================= FINALE: operations -> phone -> pocket ================= -->
 <section class="finale" id="finale" aria-label="Your whole operation in your pocket">
   <div class="fin-sticky">
     <div class="fin-inner">
@@ -638,68 +668,61 @@ footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:v
         <p>The yard, the fleet, the accounts — wherever you are.</p>
         <div class="fin-cta"><a class="btn btn-grn" href="https://wa.me/919910605207?text=TrackRakho%20-%20scrap%20trading%20demo">Request a demo</a></div>
       </div>
-      <div class="fin-factory" id="finFactory">
-        <svg viewBox="0 0 640 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A scrap yard">
-              <ellipse cx="320" cy="330" rx="300" ry="18" fill="#16201A" opacity=".06"/>
-              <!-- shed -->
-              <path d="M60 300 V170 L150 120 L240 170 V300 Z" fill="#E8F4E9" stroke="#B9CDBD" stroke-width="3"/>
-              <path d="M60 170 L150 120 L240 170" fill="none" stroke="#A6BCAA" stroke-width="3"/>
-              <rect x="118" y="230" width="64" height="70" fill="#C9DACC" stroke="#B9CDBD" stroke-width="3"/>
-              <!-- crane -->
-              <rect x="280" y="140" width="10" height="160" fill="#C9DACC" stroke="#B9CDBD" stroke-width="2"/>
-              <path d="M285 148 L400 118" stroke="#A6BCAA" stroke-width="6" stroke-linecap="round"/>
-              <line x1="396" y1="120" x2="396" y2="168" stroke="#8CA093" stroke-width="3"/>
-              <path d="M380 168 q16 26 32 0" stroke="#4E5E53" stroke-width="4" fill="none"/>
-              <!-- scrap heap -->
-              <path d="M340 300 C360 240 420 224 470 244 C500 220 560 232 574 264 C592 272 598 288 594 300 Z" fill="#8CA093" opacity=".5"/>
-              <path d="M380 300 C396 264 444 252 480 266 C500 250 534 258 548 280 C558 284 564 292 562 300 Z" fill="#4E5E53" opacity=".45"/>
-              <!-- weighbridge -->
-              <rect x="330" y="288" width="120" height="12" rx="3" fill="#C9DACC" stroke="#A6BCAA" stroke-width="2"/>
-              <!-- small truck -->
-              <g>
-                <rect x="470" y="150" width="52" height="26" rx="3" fill="#DFEAE1" stroke="#A6BCAA" stroke-width="2"/>
-                <path d="M522 176 V158 h12 l9 9 v9 Z" fill="#C9DACC" stroke="#A6BCAA" stroke-width="2"/>
-                <circle cx="484" cy="179" r="7" fill="#fff" stroke="#4E5E53" stroke-width="2"/>
-                <circle cx="530" cy="179" r="7" fill="#fff" stroke="#4E5E53" stroke-width="2"/>
-              </g>
-            </svg>
-      </div>
-      <div class="fin-phone" id="finPhone">
-        <div class="frame">
-          <div class="notch"></div>
-          <div class="scr">
-            <svg viewBox="0 0 640 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A scrap yard">
-              <ellipse cx="320" cy="330" rx="300" ry="18" fill="#16201A" opacity=".06"/>
-              <!-- shed -->
-              <path d="M60 300 V170 L150 120 L240 170 V300 Z" fill="#E8F4E9" stroke="#B9CDBD" stroke-width="3"/>
-              <path d="M60 170 L150 120 L240 170" fill="none" stroke="#A6BCAA" stroke-width="3"/>
-              <rect x="118" y="230" width="64" height="70" fill="#C9DACC" stroke="#B9CDBD" stroke-width="3"/>
-              <!-- crane -->
-              <rect x="280" y="140" width="10" height="160" fill="#C9DACC" stroke="#B9CDBD" stroke-width="2"/>
-              <path d="M285 148 L400 118" stroke="#A6BCAA" stroke-width="6" stroke-linecap="round"/>
-              <line x1="396" y1="120" x2="396" y2="168" stroke="#8CA093" stroke-width="3"/>
-              <path d="M380 168 q16 26 32 0" stroke="#4E5E53" stroke-width="4" fill="none"/>
-              <!-- scrap heap -->
-              <path d="M340 300 C360 240 420 224 470 244 C500 220 560 232 574 264 C592 272 598 288 594 300 Z" fill="#8CA093" opacity=".5"/>
-              <path d="M380 300 C396 264 444 252 480 266 C500 250 534 258 548 280 C558 284 564 292 562 300 Z" fill="#4E5E53" opacity=".45"/>
-              <!-- weighbridge -->
-              <rect x="330" y="288" width="120" height="12" rx="3" fill="#C9DACC" stroke="#A6BCAA" stroke-width="2"/>
-              <!-- small truck -->
-              <g>
-                <rect x="470" y="150" width="52" height="26" rx="3" fill="#DFEAE1" stroke="#A6BCAA" stroke-width="2"/>
-                <path d="M522 176 V158 h12 l9 9 v9 Z" fill="#C9DACC" stroke="#A6BCAA" stroke-width="2"/>
-                <circle cx="484" cy="179" r="7" fill="#fff" stroke="#4E5E53" stroke-width="2"/>
-                <circle cx="530" cy="179" r="7" fill="#fff" stroke="#4E5E53" stroke-width="2"/>
-              </g>
-            </svg>
-          </div>
-        </div>
-      </div>
-      <div class="fin-pocket" id="finPocket">
-        <svg viewBox="0 0 560 240" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A shirt pocket">
-          <path d="M40 42 Q280 6 520 42 L520 240 L40 240 Z" fill="#F0F6F1" stroke="#CFE0D1" stroke-width="3"/>
-          <path d="M150 78 Q280 58 410 78 L404 200 Q280 226 156 200 Z" fill="#E4EEE6" stroke="#B9CDBD" stroke-width="3"/>
-          <path d="M158 86 Q280 67 402 86" stroke="#A6BCAA" stroke-width="2" stroke-dasharray="7 7"/>
+
+      <div class="fchip" style="left:2%;top:8%"><i>⚖️</i>42.0 MT WEIGHED</div>
+      <div class="fchip" style="right:3%;top:11%"><i>₹</i>7,08,700 TO COLLECT</div>
+      <div class="fchip" style="left:5%;top:30%"><i>🚚</i>TRUCK OUT · SL/142</div>
+      <div class="fchip" style="right:6%;top:33%"><i>📒</i>TALLY SYNCED</div>
+      <div class="fchip" style="left:12%;top:52%"><i>📦</i>55.6 MT DISPATCHED</div>
+      <div class="fchip" style="right:10%;top:55%"><i>🔔</i>FOLLOW-UP DUE</div>
+      <div class="fchip" style="left:30%;top:2%"><i>🧾</i>BILL REF APX/PO-118</div>
+      <div class="fchip" style="right:28%;top:0%"><i>📋</i>DEAL WON · 50 MT</div>
+
+      <div class="fin-person" id="finPerson">
+        <svg viewBox="0 0 520 660" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A person places their phone into their pocket">
+          <ellipse cx="260" cy="636" rx="118" ry="13" fill="#16201A" opacity=".07"/>
+          <!-- legs -->
+          <rect x="204" y="388" width="48" height="230" rx="20" fill="#3F4E44"/>
+          <rect x="266" y="388" width="48" height="230" rx="20" fill="#4E5E53"/>
+          <rect x="194" y="606" width="64" height="22" rx="10" fill="#16201A"/>
+          <rect x="258" y="606" width="68" height="22" rx="10" fill="#16201A"/>
+          <!-- belt -->
+          <rect x="202" y="378" width="114" height="14" rx="7" fill="#2E3833"/>
+          <!-- torso / shirt -->
+          <path d="M196 262 q0-22 22-22 h84 q22 0 22 22 v104 q0 14 -14 14 h-100 q-14 0 -14 -14 Z" fill="#DFEAE1" stroke="#A6BCAA" stroke-width="2.5"/>
+          <line x1="260" y1="244" x2="260" y2="380" stroke="#A6BCAA" stroke-width="1.5" opacity=".7"/>
+          <circle cx="260" cy="290" r="2.5" fill="#8CA093"/><circle cx="260" cy="322" r="2.5" fill="#8CA093"/>
+          <path d="M244 244 L260 260 L276 244" fill="none" stroke="#A6BCAA" stroke-width="2.5"/>
+          <!-- left arm (static, hanging) -->
+          <path d="M206 260 q-18 4 -20 26 l-6 74 q-1 12 10 14 q11 2 13 -10 l10 -76 Z" fill="#DFEAE1" stroke="#A6BCAA" stroke-width="2.5"/>
+          <circle cx="188" cy="382" r="12" fill="#D9B99B" stroke="#C6A183" stroke-width="2"/>
+          <!-- head -->
+          <rect x="248" y="212" width="26" height="30" rx="8" fill="#D9B99B"/>
+          <circle cx="261" cy="184" r="33" fill="#D9B99B" stroke="#C6A183" stroke-width="2"/>
+          <path d="M228 176 q4-26 33-26 q29 0 33 26 q1 8 -4 8 q-20 -12 -58 0 q-5 0 -4 -8 Z" fill="#2E3833"/>
+          <circle cx="230" cy="188" r="5" fill="#D9B99B" stroke="#C6A183" stroke-width="1.5"/>
+          <!-- right arm DOWN pose (hand at pocket) -->
+          <g id="armDown" opacity="0">
+            <path d="M312 260 q20 4 22 26 l4 60 q2 14 -8 26 l-14 34 q-5 10 -15 6 q-10 -4 -7 -14 l12 -36 l-8 -60 Z" fill="#DFEAE1" stroke="#A6BCAA" stroke-width="2.5"/>
+            <circle cx="298" cy="414" r="12" fill="#D9B99B" stroke="#C6A183" stroke-width="2"/>
+          </g>
+          <!-- right arm UP pose (reading the phone) -->
+          <g id="armUp">
+            <path d="M312 260 q22 2 26 24 l6 30 q3 14 -9 20 l-42 22 q-11 5 -16 -5 q-5 -10 5 -16 l36 -20 l-10 -30 Z" fill="#DFEAE1" stroke="#A6BCAA" stroke-width="2.5"/>
+            <circle cx="303" cy="330" r="12" fill="#D9B99B" stroke="#C6A183" stroke-width="2"/>
+          </g>
+          <!-- phone (travels from hand to pocket via JS) -->
+          <g id="finPhoneG">
+            <rect x="296" y="262" width="46" height="88" rx="10" fill="#16201A"/>
+            <rect x="301" y="270" width="36" height="72" rx="6" fill="#F7FAF7"/>
+            <rect x="305" y="278" width="28" height="7" rx="3" fill="#3FAE45" opacity=".85"/>
+            <rect x="305" y="291" width="28" height="5" rx="2.5" fill="#CFE0D1"/>
+            <rect x="305" y="301" width="20" height="5" rx="2.5" fill="#CFE0D1"/>
+            <rect x="305" y="313" width="28" height="5" rx="2.5" fill="#A6BCAA"/>
+          </g>
+          <!-- pocket front panel (topmost - phone tucks behind it) -->
+          <path d="M266 414 L318 420 L314 502 Q290 512 264 504 Z" fill="#4E5E53" stroke="#37453C" stroke-width="2.5"/>
+          <path d="M270 418 L314 424" stroke="#8CA093" stroke-width="1.5" stroke-dasharray="5 5"/>
         </svg>
       </div>
       <div class="fin-hint" id="finHint">KEEP SCROLLING</div>
@@ -763,11 +786,13 @@ footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:v
     var tr1 = document.getElementById('tr1'), tr2 = document.getElementById('tr2');
     var tscene = document.getElementById('truckscene');
     var fin = document.getElementById('finale');
-    var finFactory = document.getElementById('finFactory');
-    var finPhone = document.getElementById('finPhone');
-    var finPocket = document.getElementById('finPocket');
     var finText = document.getElementById('finText');
     var finHint = document.getElementById('finHint');
+    var finPhoneG = document.getElementById('finPhoneG');
+    var armUp = document.getElementById('armUp');
+    var armDown = document.getElementById('armDown');
+    var chips = [].slice.call(document.querySelectorAll('.fchip'));
+    var chipTarget = null; /* phone-at-chest position, computed lazily */
     var ease = function(t){ return t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2; };
 
     var ticking2 = false;
@@ -787,31 +812,47 @@ footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:v
           tr1.setAttribute('transform', 'translate(' + (p1 * 460) + ' 0)');
           tr2.setAttribute('transform', 'translate(' + (p2 * 460) + ' 0)');
         }
-        /* finale: factory shrinks into phone, phone slides into pocket */
+        /* finale: chips stream into the phone, then it goes into the pocket */
         if(fin){
           var r = fin.getBoundingClientRect();
           var total = r.height - window.innerHeight;
           var pf = Math.min(1, Math.max(0, -r.top / (total || 1)));
-          /* phase 1: 0 -> .42 factory shrinks toward phone screen */
-          var a = ease(Math.min(1, pf / 0.42));
-          var scale = 1 - a * 0.78;
-          finFactory.style.transform = 'translate(-50%,-50%) scale(' + scale + ')';
-          finFactory.style.opacity = pf < 0.40 ? 1 : Math.max(0, 1 - (pf - 0.40) / 0.05);
-          /* phone appears under it */
-          var b = ease(Math.min(1, Math.max(0, (pf - 0.22) / 0.2)));
-          finPhone.style.opacity = b;
-          /* phase 2: .45 -> .85 phone descends into pocket */
-          var c = ease(Math.min(1, Math.max(0, (pf - 0.45) / 0.4)));
+
+          /* phase A (0 -> .42): the operations cloud converges on the phone */
           var inner = fin.querySelector('.fin-inner').getBoundingClientRect();
-          var drop = c * (inner.height * 0.46);
-          finPhone.style.transform = 'translate(-50%,-50%) translateY(' + drop + 'px) scale(' + (1 - c * 0.25) + ')';
-          finPocket.style.opacity = Math.min(1, Math.max(0, (pf - 0.40) / 0.15));
-          finPocket.style.transform = 'translateX(-50%) translateY(' + ((1 - Math.min(1, Math.max(0, (pf - 0.40) / 0.2))) * 40) + 'px)';
-          /* text at the end */
-          var d = ease(Math.min(1, Math.max(0, (pf - 0.82) / 0.14)));
+          if(pf < 0.46 || !chipTarget){
+            var pr = finPhoneG.getBoundingClientRect();
+            if(pf < 0.02) chipTarget = { x: pr.left + pr.width/2 - inner.left, y: pr.top + pr.height/2 - inner.top };
+          }
+          var pA = Math.min(1, pf / 0.42);
+          chips.forEach(function(ch, i){
+            var t = ease(Math.min(1, Math.max(0, (pA - i * 0.045) / 0.62)));
+            if(!ch.__x){
+              var cr = ch.getBoundingClientRect();
+              ch.__x = cr.left + cr.width/2 - inner.left;
+              ch.__y = cr.top + cr.height/2 - inner.top;
+            }
+            var tx = (chipTarget ? chipTarget.x - ch.__x : 0) * t;
+            var ty = (chipTarget ? chipTarget.y - ch.__y : 0) * t;
+            ch.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + (1 - t * 0.8) + ')';
+            ch.style.opacity = Math.max(0, 1 - t * 1.15);
+          });
+
+          /* phase B (.46 -> .84): arm lowers, phone arcs into the pant pocket */
+          var pB = ease(Math.min(1, Math.max(0, (pf - 0.46) / 0.38)));
+          /* quadratic bezier in the person's SVG space: chest -> out -> pocket */
+          var bx = 2 * (1 - pB) * pB * 85 + pB * pB * (-26);
+          var by = 2 * (1 - pB) * pB * 95 + pB * pB * 146;
+          var rot = 16 * Math.sin(Math.PI * pB);
+          finPhoneG.setAttribute('transform', 'translate(' + bx + ' ' + by + ') rotate(' + rot + ' 319 306)');
+          if(armUp) armUp.style.opacity = String(Math.max(0, 1 - Math.max(0, (pf - 0.50) / 0.12)));
+          if(armDown) armDown.style.opacity = String(Math.min(1, Math.max(0, (pf - 0.56) / 0.14)));
+
+          /* phase C: closing statement */
+          var d = ease(Math.min(1, Math.max(0, (pf - 0.84) / 0.13)));
           finText.style.opacity = d;
           finText.style.transform = 'translateY(' + ((1 - d) * 18) + 'px)';
-          if(finHint) finHint.style.opacity = pf > 0.06 && pf < 0.8 ? 1 : 0;
+          if(finHint) finHint.style.opacity = pf > 0.04 && pf < 0.8 ? 1 : 0;
         }
         ticking2 = false;
       });
