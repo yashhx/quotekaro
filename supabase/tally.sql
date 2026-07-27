@@ -113,3 +113,32 @@ create policy "own vouchers select" on public.tally_vouchers
 -- table predates this; harmless to re-run)
 alter table public.tally_vouchers add column if not exists vno text default '';
 alter table public.tally_vouchers add column if not exists ref text default '';
+
+-- ============================================================
+-- 5. tally_bills (2026-07-28): bill-wise outstandings from
+--    Tally's Bills Receivable - one row per OPEN bill. Powers
+--    the app's aging bar ("paisa kahan atka hai"), the
+--    bill-by-bill drill-down and the dispatch planner's credit
+--    gate. Replaced wholesale on every connector report.
+--    Safe to re-run; run this whole file again if you ran an
+--    older version before.
+-- ============================================================
+create table if not exists public.tally_bills (
+  user_id uuid references auth.users(id) on delete cascade,
+  bkey    text,                -- stable bill identity (party|ref|billdate)
+  party   text,
+  ref     text default '',     -- bill name / reference no
+  bdate   bigint,              -- bill date, ms epoch
+  due     bigint,              -- due date (bill date + credit period), ms epoch; 0 = no credit period set
+  opening numeric default 0,   -- original billed amount (debit)
+  pending numeric default 0,   -- still unpaid (remaining)
+  as_of   timestamptz default now(),
+  primary key (user_id, bkey)
+);
+
+alter table public.tally_bills enable row level security;
+
+drop policy if exists "own bills select" on public.tally_bills;
+create policy "own bills select" on public.tally_bills
+  for select using (auth.uid() = user_id);
+-- writes only via the tally-sync function (service role bypasses RLS)

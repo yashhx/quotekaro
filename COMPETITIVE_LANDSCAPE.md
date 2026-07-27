@@ -50,6 +50,29 @@ Hinglish/Hindi, 30-second setup, one price, and being a TRACKER not an ERP.
 at scale. They own "make the invoice"; nobody owns "did the quote become an order?" —
 that's our wedge and our demo line.
 
+## 3b. Tally-companion mobile apps (researched 2026-07-28, while building bill-wise insights)
+
+The direct comparables for our "Tally - seedha hisaab" page. Tally has NO official
+standalone mobile app - this whole category is "sync agent on the Tally PC + cloud +
+mobile viewer", the same architecture as our connector.
+
+| Product | Price | Notes |
+|---|---|---|
+| [Biz Analyst](https://bizanalyst.in/) (SigniFi, acquired by Khatabook) | ~Rs 2,800-3,300/yr/device | Market leader. Outstanding w/ ageing buckets (configurable, bill-date vs due-date), per-party avg-payment-days, PDC tracking, auto WhatsApp/SMS reminders (now paid credits - users angry), pending sales orders, data entry back into Tally. Recurring complaints: sync mismatch vs Tally, crashes, support. |
+| [CredFlow](https://credflow.in/) | Rs 2,999-9,999/yr | Collection-first: ageing dashboard, DSO, reminder ladders (SMS/WA/IVR), payment links, staff tasks. Complaints: support, data mismatch. |
+| Livekeeping (IndiaMART) | Rs 2,500-4,000/yr | Accountant-shaped: full reports (Daybook, P&L, balance sheet) + voucher entry on phone. |
+| TallyDekho | ~Rs 5/day | Budget viewer + share ledgers on WhatsApp. Loved idea worth stealing: "Call Predict" - party calls the owner, app pops their baki on screen. |
+
+**Where we differ at Rs 999/mo (~Rs 12k/yr = 3-4x Biz Analyst):** we cannot and should
+not win as "Tally viewer" - the price is defensible only because Tally insight is ONE
+tab inside pipeline + trucks + yard stock/ghata + WhatsApp capture, which none of them
+have. Their reviews also hand us two trust rules: always show the "last synced from
+Tally" timestamp (sync-mismatch is complaint #1 against both leaders), and chase money
+from the OWNER'S own WhatsApp number, free (Vyapar's most-loved feature; Biz Analyst
+charging credits for reminders is its most-hated change). Nobody joins bill-wise
+outstanding + order qty + dispatch history into one plain-Hinglish card - that fusion
+(shipped 2026-07-28 as the bills drill-down) is ours to own.
+
 ## 4. WhatsApp CRMs / lead trackers
 
 | Product | Price | Notes |

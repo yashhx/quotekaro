@@ -23,6 +23,7 @@ const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, 
 const MAX_PENDING = 25;
 const MAX_LEDGERS = 500;
 const MAX_VOUCHERS = 500;
+const MAX_BILLS = 600;
 const MAX_DETAIL = 300;
 const MAX_ATTEMPTS = 5;
 
@@ -207,7 +208,50 @@ export default async (req) => {
       } catch (e) { console.error("tally-sync: voucher update failed -", e && e.message); }
     }
 
-    return json({ ok: true, saved, ledgers, vouchers });
+    /* 4. replace bill-wise outstandings wholesale (Tally's Bills Receivable:
+          one row per open bill - powers the app's aging view. Absent table
+          (migration not run) logs a hint and never fails the report) */
+    let billCount = 0;
+    if (Array.isArray(body.bills)) {
+      const seenB = new Set();
+      const brows = [];
+      for (const b of body.bills) {
+        const party = b && b.party != null ? String(b.party).trim().slice(0, 80) : "";
+        if (!party) { console.warn("tally-sync: skipped a bill row without a party"); continue; }
+        const ref = String((b && b.ref) || "").trim().slice(0, 48);
+        const bdate = Number(b && b.bdate) || 0;
+        const bkey = (party + "|" + ref + "|" + bdate).slice(0, 140);
+        if (seenB.has(bkey)) continue;
+        seenB.add(bkey);
+        brows.push({
+          user_id: tenant.user_id, bkey, party, ref,
+          bdate,
+          due: Number(b && b.due) || 0,
+          opening: Number(b && b.opening) || 0,
+          pending: Number(b && b.pending) || 0,
+          as_of: new Date().toISOString(),
+        });
+        if (brows.length >= MAX_BILLS) { console.warn("tally-sync: bill list capped at", MAX_BILLS); break; }
+      }
+      try {
+        const del = await fetch(url + "/rest/v1/tally_bills?user_id=eq." + uid, { method: "DELETE", headers: hdrs });
+        if (!del.ok) {
+          console.error("tally-sync: bill clear failed -", del.status, "- keeping old bills (run supabase/tally.sql again?)");
+        } else if (brows.length) {
+          const ins = await fetch(url + "/rest/v1/tally_bills", {
+            method: "POST",
+            headers: { ...hdrs, "content-type": "application/json", prefer: "return=minimal" },
+            body: JSON.stringify(brows),
+          });
+          if (!ins.ok) console.error("tally-sync: bill insert failed -", ins.status, (await ins.text()).slice(0, 200));
+          else { billCount = brows.length; console.log("tally-sync: stored", billCount, "open bill(s) for", tenant.user_id); }
+        } else {
+          console.log("tally-sync: cleared bill-wise outstandings for", tenant.user_id, "(empty report)");
+        }
+      } catch (e) { console.error("tally-sync: bill update failed -", e && e.message); }
+    }
+
+    return json({ ok: true, saved, ledgers, vouchers, bills: billCount });
   }
 
   return json({ ok: false, error: "method not allowed" }, 405);

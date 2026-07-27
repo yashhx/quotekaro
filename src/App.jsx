@@ -596,7 +596,6 @@ const machineUnits = (data) => ((data && data.machines) || []).flatMap((m) => {
    qty splits across the chosen units; +8% breakdown / tool-change buffer.
    All progress derives from startedAt - no background process needed. */
 const JOB_BUFFER = 1.08;
-const MANUAL_ASK_MAX = 100;
 const jobShares = (job) => {
   const n = Math.max(1, (job.units || []).length);
   const q = Math.max(0, Math.floor(job.qty || 0));
@@ -1319,6 +1318,8 @@ export default function App() {
   const [quotesFilter, setQuotesFilter] = useState("all");
   const [quotesCat, setQuotesCat] = useState(null); // category filter set from Home tiles
   const [fabOpen, setFabOpen] = useState(false);
+  const [floorDraft, setFloorDraft] = useState(null); /* quote -> machine floor prefill */
+  const sendToFloor = (q) => { setFloorDraft({ part: q.part, customer: q.customer, qty: q.qty }); setTab("floor"); ping(tx("Quote sent to the Machine floor - pick machines", "Quote Machine floor par gaya - machines chuno", "कोटेशन मशीन फ्लोर पर गया - मशीनें चुनें")); };
   const [enquiries, setEnquiries] = useState([]); // inbound WhatsApp messages (backend only)
   const [waOn, setWaOn] = useState(false); // true once the WhatsApp backend has answered
   const [sync, setSync] = useState(sb ? "synced" : "local"); // cloud sync state: local|synced|saving|offline
@@ -1667,13 +1668,13 @@ export default function App() {
         {toast && <div className="toast">{toast}</div>}
 
         {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} openTally={() => setTab("tally")} openFloor={() => setTab("floor")} openTrucks={() => setTab("trucks")} openStock={() => setTab("stock")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} />}
-        {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} cat={quotesCat} setCat={setQuotesCat} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} tallyBal={tallyBal} />}
+        {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} cat={quotesCat} setCat={setQuotesCat} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} tallyBal={tallyBal} sendToFloor={sendToFloor} />}
         {tab === "log" && <QuickLog data={data} onSave={saveLogged} onExit={() => setTab("home")} ping={ping} />}
         {tab === "setup" && <Setup data={data} setData={setData} ping={ping} account={accountView} sync={sync} goSubscribe={() => setTab("subscribe")} onLogout={logout} />}
         {tab === "help" && <Help data={data} ping={ping} />}
         {tab === "analytics" && <Analytics data={data} onBack={() => setTab("home")} goQuotes={goQuotes} />}
         {tab === "tally" && <TallyInsights data={data} updateQuote={updateQuote} ping={ping} onBack={() => setTab("home")} />}
-        {tab === "floor" && <MachineFloor data={data} setData={setData} ping={ping} onBack={() => setTab("home")} goSetup={() => setTab("setup")} />}
+        {tab === "floor" && <MachineFloor data={data} setData={setData} ping={ping} onBack={() => setTab("home")} goSetup={() => setTab("setup")} draft={floorDraft} clearDraft={() => setFloorDraft(null)} />}
         {tab === "trucks" && <TruckBoard data={data} setData={setData} ping={ping} onBack={() => setTab("home")} goSetup={() => setTab("setup")} />}
         {tab === "stock" && <StockYard data={data} setData={setData} ping={ping} onBack={() => setTab("home")} />}
         {tab === "subscribe" && <Subscribe account={accountView} onSubscribe={(id) => { subscribe(id); ping("You're on the " + PLANS.find(p => p.id === id).name + " plan"); setTab("home"); }} onBack={() => setTab("home")} />}
@@ -2297,7 +2298,7 @@ function WaImage({ src }) {
   );
 }
 
-function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, filter, setFilter, cat = null, setCat, onLog, enquiries = [], logEnquiry, dismissEnquiry, waOn, refreshEnquiries, tallyBal = null }) {
+function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, filter, setFilter, cat = null, setCat, onLog, enquiries = [], logEnquiry, dismissEnquiry, waOn, refreshEnquiries, tallyBal = null, sendToFloor }) {
   const ind = industryOf(data);
   const [open, setOpen] = useState(null);
   const [q, setQ] = useState("");
@@ -2439,6 +2440,12 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
         </div>
       )}
 
+      {/* heading above the quote list */}
+      <div className="anim-in st2" style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "4px 0 10px" }}>
+        <span className="eyebrow">{filter === "all" ? tx("All quotes", "All quotes", "सभी कोटेशन") : filter === "pending" ? tx("Pending quotes", "Pending quotes", "पेंडिंग कोटेशन") : filter === "won" ? tx("Won orders", "Won orders", "जीते ऑर्डर") : filter === "lost" ? tx("Lost quotes", "Lost quotes", "गए कोटेशन") : tx("Follow-ups due", "Follow-ups due", "फॉलो-अप बाकी")}</span>
+        <span className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>{list.length}</span>
+      </div>
+
       {list.length === 0 && (
         <div className="card-tint anim-in st2" style={{ padding: 28, textAlign: "center", color: "var(--dim)", fontSize: 14.5 }}>
           {term || filter !== "all" ? "No quotes match." : <>Nothing here yet.<br /><button className="btn btn-soft btn-sm press" style={{ marginTop: 14 }} onClick={onLog}><I.bolt /> Log your first quote</button></>}
@@ -2506,6 +2513,7 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
                   {q.status !== "won" && <button className="btn btn-sm btn-soft press" onClick={() => { setStatus(q.id, "won"); ping("Marked as Won 🎉"); }}>Mark Won</button>}
                   {q.status !== "lost" && <button className="btn btn-sm btn-ghost press" onClick={() => { setStatus(q.id, "lost"); ping("Marked as Lost"); }}>Mark Lost</button>}
                   {q.status !== "pending" && <button className="btn btn-sm btn-ghost press" onClick={() => { setStatus(q.id, "pending"); ping("Reopened"); }}>Reopen</button>}
+                  {ind.key === "machining" && q.qty > 0 && sendToFloor && <button className="btn btn-sm btn-soft press" onClick={() => sendToFloor(q)}>🛠️ {tx("Send to floor", "Floor pe bhejo", "फ्लोर पर भेजें")}</button>}
                   {q.phone && <a className="btn btn-sm btn-ghost press" style={{ textDecoration: "none" }} href={"tel:+91" + q.phone}><I.phone /></a>}
                   <button className="btn btn-sm btn-ghost press" onClick={() => { attachId.current = q.id; photoForRef.current && photoForRef.current.click(); }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 8h3l1.5-2h7L18 8h2a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><circle cx="12" cy="13" r="3.2" stroke="currentColor" strokeWidth="1.8"/></svg>
@@ -2788,6 +2796,18 @@ const TALLY_SAMPLE = {
     { customer: "Bharat Steels", item: "CI Scrap", ordered: 25, unit: "MT", shipped: 18.2, atDays: 12, deadlineDays: 10, lastDays: 1.2, balance: 185500 },
     { customer: "Om Metals", item: "Aluminium Scrap", ordered: 30, unit: "MT", shipped: 3.4, atDays: 16, deadlineDays: -1, lastDays: 3.5, balance: 96000 },
   ],
+  /* bill-wise outstandings (Tally's Bills Receivable). d = bill age in days,
+     dueIn = days until due (negative = overdue). Per-party pending sums MATCH
+     the ledger balances above - keep it that way. */
+  bills: [
+    { party: "Apex Alloys", ref: "APX/PO-112", d: 23, dueIn: -8, opening: 660000, pending: 249500 },
+    { party: "Apex Alloys", ref: "APX/PO-118", d: 0.4, dueIn: 15, opening: 412500, pending: 162500 },
+    { party: "Bharat Steels", ref: "BS/PO-1104", d: 40, dueIn: -33, opening: 340000, pending: 90000 },
+    { party: "Bharat Steels", ref: "147", d: 1.2, dueIn: 6, opening: 278800, pending: 95500 },
+    { party: "Om Metals", ref: "OM/2214", d: 78, dueIn: -71, opening: 220000, pending: 42000 },
+    { party: "Om Metals", ref: "OM/2287", d: 3.5, dueIn: 4, opening: 455600, pending: 54000 },
+    { party: "Shakti Traders", ref: "ST/188", d: 55, dueIn: -48, opening: 49600, pending: 15200 },
+  ],
 };
 const fmtQty = (n) => {
   const v = Math.round((Number(n) || 0) * 100) / 100;
@@ -2797,8 +2817,12 @@ const fmtQty = (n) => {
 function TallyInsights({ data, updateQuote, ping, onBack }) {
   const [led, setLed] = useState(null);   // ledger rows | null while loading
   const [vch, setVch] = useState(null);   // voucher rows
+  const [bills, setBills] = useState([]); // bill-wise outstandings (tally_bills; [] when not synced)
   const [demo, setDemo] = useState(!sb);  // sample mode (no cloud / nothing synced)
-  const [view, setView] = useState(null); // null overview | "recv" | "pay" drill-down
+  const [view, setView] = useState(null); // null overview | "recv" | "pay" | "sent" | "bills" drill-down
+  const [knowHow, setKnowHow] = useState(false); // planner "how it works" panel
+  const [openBill, setOpenBill] = useState(null); // expanded bill key in the bills drill-down
+  const [billFilter, setBillFilter] = useState("all"); // aging-bucket filter in the bills drill-down
 
   useEffect(() => {
     let alive = true;
@@ -2810,10 +2834,13 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
            cleanly for tenants who have not run the migration yet */
         let v = await sb.from("tally_vouchers").select("vdate,vtype,party,amount,item,qty,unit,vno,ref").order("vdate", { ascending: false }).limit(400);
         if (v.error) v = await sb.from("tally_vouchers").select("vdate,vtype,party,amount,item,qty,unit").order("vdate", { ascending: false }).limit(400);
+        /* tally_bills arrives with supabase/tally.sql 2026-07-28 - absent table
+           just means no aging view, never an error state */
+        const b = await sb.from("tally_bills").select("party,ref,bdate,due,opening,pending").limit(600);
         if (!alive) return;
         const lr = (!l.error && l.data) || [], vr = (!v.error && v.data) || [];
         if (!lr.length && !vr.length) { setDemo(true); return; }
-        setLed(lr); setVch(vr); setDemo(false);
+        setLed(lr); setVch(vr); setBills((!b.error && b.data) || []); setDemo(false);
       } catch { if (alive) setDemo(true); }
     })();
     return () => { alive = false; };
@@ -2844,6 +2871,42 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
     const hit = receivable.find((x) => String(x.name).trim().toLowerCase() === String(name).trim().toLowerCase());
     return hit ? Number(hit.balance) : 0;
   };
+
+  /* ---- bill-wise aging (Tally's Bills Receivable / F6 age-wise logic:
+          age counts from the DUE date, falling back to the bill date when
+          the accountant never set a credit period) ---- */
+  const B = (demo
+    ? TALLY_SAMPLE.bills.map((x) => ({ ...x, bdate: now - x.d * DAY, due: x.dueIn == null ? null : now + x.dueIn * DAY }))
+    : bills
+  ).filter((x) => Number(x.pending) > 0);
+  const billAge = (x) => Math.floor((startOfDay(now) - startOfDay(Number(x.due) || Number(x.bdate))) / DAY); /* +ve = days late */
+  const AGE_BUCKETS = [
+    { key: "ok", c: "#2E9E33", label: tx("Not due yet", "Time hai", "अभी समय है") },
+    { key: "b30", c: "#D97706", label: tx("1-30 days late", "1-30 din late", "1-30 दिन लेट") },
+    { key: "b60", c: "#EA580C", label: tx("31-60 days late", "31-60 din late", "31-60 दिन लेट") },
+    { key: "b90", c: "#DC2626", label: tx("60+ days late", "60+ din late", "60+ दिन लेट") },
+  ];
+  const bucketOf = (x) => { const a = billAge(x); return a <= 0 ? "ok" : a <= 30 ? "b30" : a <= 60 ? "b60" : "b90"; };
+  const ageSum = { ok: 0, b30: 0, b60: 0, b90: 0 }, ageCount = { ok: 0, b30: 0, b60: 0, b90: 0 };
+  B.forEach((x) => { const k = bucketOf(x); ageSum[k] += Number(x.pending); ageCount[k]++; });
+  const billsTotal = B.reduce((s, x) => s + Number(x.pending), 0);
+  const overdueTotal = ageSum.b30 + ageSum.b60 + ageSum.b90;
+  const overdueCount = ageCount.b30 + ageCount.b60 + ageCount.b90;
+  const billsOf = (name) => B.filter((x) => String(x.party).trim().toLowerCase() === String(name).trim().toLowerCase())
+    .sort((p, q) => billAge(q) - billAge(p));
+  /* tie a bill back to its dispatch voucher (item/qty) via reference or voucher no */
+  const voucherForBill = (x) => V.find((v2) => (v2.ref && v2.ref === x.ref) || (v2.vno && v2.vno === x.ref));
+  /* accordion identity - must be stable across renders (demo bdate is derived
+     from Date.now() per render, so raw bdate would never match twice) */
+  const bkeyOf = (x) => x.party + "|" + x.ref + "|" + Math.round(Number(x.bdate) / DAY) + "|" + x.pending;
+  /* the green -> red money bar: one glance = how much is stuck, how badly */
+  const AgeBar = ({ h = 14 }) => (
+    <div style={{ display: "flex", height: h, borderRadius: 999, overflow: "hidden", background: "var(--soft)", border: "1px solid var(--line)" }}>
+      {AGE_BUCKETS.filter((bk) => ageSum[bk.key] > 0).map((bk) => (
+        <div key={bk.key} style={{ flexGrow: ageSum[bk.key], minWidth: 6, background: bk.c }} />
+      ))}
+    </div>
+  );
 
   /* ---- open orders for the dispatch planner ---- */
   const orders = demo
@@ -2892,7 +2955,16 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
     const remFrac = o.remaining / o.ordered;
     score += 20 * remFrac;
     if (remFrac <= 0.25) reasons.push({ t: "Sirf " + fmtQty(o.remaining) + " " + (o.unit || "") + " bacha - khatam karo", c: "grn" });
-    if (o.balance > 100000) { score -= Math.min(20, o.balance / 50000); reasons.push({ t: "Baki " + inr(o.balance) + " - payment ka dhyaan", c: "red" }); }
+    /* credit caution: when bill-wise data exists, overdue bills speak (Tally's
+       own voucher-time credit gate); otherwise fall back to the flat threshold */
+    const pb = billsOf(o.customer);
+    const od = pb.filter((b2) => billAge(b2) > 0);
+    if (od.length) {
+      const odAmt = od.reduce((s, b2) => s + Number(b2.pending), 0);
+      const oldest = Math.max(...od.map(billAge));
+      score -= Math.min(25, odAmt / 40000 + oldest / 10);
+      reasons.push({ t: oldest >= 60 ? inr(odAmt) + " ka bill " + oldest + " din se late - pehle payment" : inr(odAmt) + " overdue (" + oldest + " din) - dhyaan rakho", c: "red" });
+    } else if (o.balance > 100000) { score -= Math.min(20, o.balance / 50000); reasons.push({ t: "Baki " + inr(o.balance) + " - payment ka dhyaan", c: "red" }); }
     return { ...o, score, reasons };
   }).sort((a, b) => b.score - a.score);
 
@@ -2927,6 +2999,43 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
           <span style={{ fontSize: 14, fontWeight: 600, color: "var(--dim)" }}>{monthSales.length} dispatch{monthSales.length === 1 ? "" : "es"} · {inr(monthValue)}</span>
           <b className="h-disp mono" style={{ fontSize: 24, color: "var(--grn-d)" }}>{monthQty > 0 ? fmtQty(monthQty) + " " + mainUnit : "-"}</b>
         </div>
+
+        {/* weekly dispatch trend - the 45-day voucher window as 6 weekly bars:
+            "maal barabar ja raha hai ya ruk gaya?" at a glance */}
+        {(() => {
+          const allSales = V.filter((x) => isSale(x.vtype));
+          if (!allSales.length) return null;
+          const wk = [0, 0, 0, 0, 0, 0];
+          allSales.forEach((x) => { const w = Math.floor((startOfDay(now) - startOfDay(x.vdate)) / (7 * DAY)); if (w >= 0 && w < 6) wk[w] += Number(x.amount) || 0; });
+          const bars = [5, 4, 3, 2, 1, 0].map((w) => ({ value: wk[w], label: w === 0 ? tx("this wk", "is hafte", "इस हफ्ते") : fdateShort(now - w * 7 * DAY) }));
+          const mx = Math.max(...bars.map((b3) => b3.value), 1);
+          return (
+            <div className="card anim-in st2" style={{ padding: "18px 16px 14px", marginBottom: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <span className="lbl" style={{ margin: 0 }}>{tx("Week-by-week sales", "Hafte-war maal gaya", "हफ्ते-वार गया माल")}</span>
+                <span style={{ color: "var(--grn)" }}><I.chart /></span>
+              </div>
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8, height: 110 }}>
+                {bars.map((b3, i) => (
+                  <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, height: "100%", justifyContent: "flex-end" }}>
+                    <div className="mono" style={{ fontSize: 9.5, color: b3.value ? "var(--grn-d)" : "transparent", fontWeight: 600, whiteSpace: "nowrap" }}>
+                      {b3.value >= 100000 ? "₹" + (b3.value / 100000).toFixed(1) + "L" : b3.value >= 1000 ? "₹" + (b3.value / 1000).toFixed(0) + "k" : b3.value ? "₹" + b3.value : "0"}
+                    </div>
+                    <div style={{ width: "100%", maxWidth: 34, flex: 1, display: "flex", alignItems: "flex-end" }}>
+                      <div style={{ width: "100%", height: Math.max((b3.value / mx) * 100, b3.value ? 6 : 2) + "%",
+                        background: b3.value ? "linear-gradient(180deg,#2E9E33,#7CCB80)" : "var(--line)", borderRadius: 7,
+                        boxShadow: b3.value ? "0 4px 12px -4px rgba(34,139,34,.4)" : "none",
+                        animation: "growBar .6s cubic-bezier(.2,.7,.3,1) both", animationDelay: (i * .05) + "s" }} />
+                    </div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: "var(--ink)", whiteSpace: "nowrap" }}>{b3.label}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mono" style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 10, textAlign: "center" }}>{tx("Last 6 weeks of Tally Sales vouchers", "Pichhle 6 hafte ke Tally Sales vouchers", "पिछले 6 हफ्ते के Tally सेल्स वाउचर")}</div>
+            </div>
+          );
+        })()}
+
         {groups.length === 0 && <div className="card-tint" style={{ padding: 24, textAlign: "center", color: "var(--dim)", fontSize: 14 }}>{tx("Nothing sent yet this month.", "Is mahine abhi kuch nahi gaya.", "इस महीने अभी कुछ नहीं गया।")}</div>}
         {groups.map((g, gi) => (
           <div key={g.name} className={"card anim-in st" + Math.min(6, gi + 1)} style={{ padding: "14px 15px", marginBottom: 10 }}>
@@ -2949,6 +3058,102 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
         ))}
         <div className="card-tint anim-in" style={{ padding: "13px 15px", fontSize: 12.5, color: "var(--dim)", lineHeight: 1.6, marginTop: 6 }}>
           {tx("These are this month's Sales vouchers from Tally - each with its voucher/reference number.", "Ye is mahine ke Tally Sales vouchers hain - har entry ke number/reference ke saath.", "ये इस महीने के Tally सेल्स वाउचर हैं - हर एंट्री का नंबर/रेफरेंस साथ में।")}
+        </div>
+      </div></div>
+    );
+  }
+
+  /* ---------- drill-down: bill-by-bill khaata (Tally's Bills Receivable) ---------- */
+  if (view === "bills") {
+    const shown = (billFilter === "all" ? B : B.filter((x) => bucketOf(x) === billFilter))
+      .slice().sort((p, q) => billAge(q) - billAge(p));
+    const bucketC = (x) => AGE_BUCKETS.find((bk) => bk.key === bucketOf(x)).c;
+    const parties = new Set(B.map((x) => String(x.party).trim().toLowerCase()));
+    return (
+      <div className="scr"><div className="pagepad">
+        <div className="anim-in" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+          <button className="iconbtn press" onClick={() => { setView(null); setBillFilter("all"); setOpenBill(null); }}><I.back /></button>
+          <div style={{ flex: 1 }}>
+            <div className="microlbl">{tx("BILL-WISE PENDING", "BILL-WISE BAKI", "बिल के हिसाब से बाकी")}</div>
+            <div className="h-disp" style={{ fontSize: 24, fontWeight: 700 }}>{tx("Every bill, tracked", "Har bill ka hisaab", "हर बिल का हिसाब")}</div>
+          </div>
+          {demo && <span className="demo-ribbon">SAMPLE</span>}
+        </div>
+
+        <div className="card anim-in st1" style={{ padding: "16px 16px", margin: "12px 0 14px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--dim)" }}>{B.length} bill{B.length === 1 ? "" : "s"} · {parties.size} part{parties.size === 1 ? "y" : "ies"}</span>
+            <b className="h-disp mono" style={{ fontSize: 24, color: "var(--grn-d)" }}>{inr(billsTotal)}</b>
+          </div>
+          <div style={{ marginTop: 11 }}><AgeBar h={16} /></div>
+          <div style={{ display: "grid", gap: 5, marginTop: 11 }}>
+            {AGE_BUCKETS.map((bk) => (
+              <button key={bk.key} className="press" onClick={() => setBillFilter(billFilter === bk.key ? "all" : bk.key)}
+                style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", borderRadius: 10, background: billFilter === bk.key ? "var(--soft)" : "transparent", opacity: ageCount[bk.key] ? 1 : 0.4 }}>
+                <span style={{ width: 10, height: 10, borderRadius: "50%", background: bk.c, flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{bk.label}</span>
+                <span className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>{ageCount[bk.key]} bill{ageCount[bk.key] === 1 ? "" : "s"}</span>
+                <b className="mono" style={{ fontSize: 13, color: ageSum[bk.key] > 0 && bk.key !== "ok" ? bk.c : "var(--ink)" }}>{inr(ageSum[bk.key])}</b>
+              </button>
+            ))}
+          </div>
+          {overdueTotal === 0 && <div style={{ marginTop: 10, fontSize: 13, color: "var(--grn-d)", fontWeight: 600 }}>{tx("Everything is on time. 🎉", "Sab time pe hai. 🎉", "सब समय पर है। 🎉")}</div>}
+        </div>
+
+        {shown.length === 0 && <div className="card-tint" style={{ padding: 24, textAlign: "center", color: "var(--dim)", fontSize: 14 }}>{tx("Nothing in this bucket.", "Is hisse mein kuch nahi.", "इस हिस्से में कुछ नहीं।")}</div>}
+        {shown.map((x, i) => {
+          const key = bkeyOf(x);
+          const late = billAge(x);
+          const opening = Number(x.opening) || 0, pending = Number(x.pending) || 0;
+          const received = opening >= pending && opening > 0 ? opening - pending : null;
+          const vhit = voucherForBill(x);
+          const isOpen = openBill === key;
+          const partyBills = billsOf(x.party);
+          const partyPending = partyBills.reduce((s, p) => s + Number(p.pending), 0);
+          const onAccount = balanceOf(x.party) - partyPending; /* receipts/sales never matched to a bill */
+          return (
+            <div key={key} className={"card anim-in st" + Math.min(6, i + 1)} style={{ padding: 0, marginBottom: 10, overflow: "hidden" }}>
+              <button className="press" onClick={() => setOpenBill(isOpen ? null : key)} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "13px 15px" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="mono" style={{ fontSize: 13.5, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>#{x.ref || tx("no ref", "bina ref", "बिना रेफरेंस")}</div>
+                  <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{x.party}</div>
+                </div>
+                <div style={{ flexShrink: 0, textAlign: "right" }}>
+                  <b className="mono" style={{ display: "block", fontSize: 15, color: late > 0 ? bucketC(x) : "var(--ink)" }}>{inr(pending)}</b>
+                  <span className="mono" style={{ fontSize: 10.5, fontWeight: 600, color: late > 0 ? bucketC(x) : "var(--faint)" }}>
+                    {late > 0 ? late + tx(" days late", " din late", " दिन लेट") : x.due ? tx("due ", "due ", "ड्यू ") + fdateShort(x.due) : tx("on time", "time pe", "समय पर")}
+                  </span>
+                </div>
+                <I.chev style={{ width: 14, flexShrink: 0, color: "var(--faint)", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform .2s" }} />
+              </button>
+              {isOpen && (
+                <div style={{ borderTop: "1px solid var(--line)", padding: "12px 15px 14px", background: "#FBFDFB" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px" }}>
+                    <div><div className="microlbl">{tx("BILL DATE", "BILL DATE", "बिल की तारीख")}</div><div className="mono" style={{ fontSize: 13.5, fontWeight: 600 }}>{fdateShort(x.bdate)}</div></div>
+                    <div><div className="microlbl">{tx("DUE DATE", "DUE DATE", "ड्यू डेट")}</div><div className="mono" style={{ fontSize: 13.5, fontWeight: 600, color: late > 0 ? bucketC(x) : "var(--ink)" }}>{x.due ? fdateShort(x.due) : "-"}</div></div>
+                    {opening > 0 && <div><div className="microlbl">{tx("BILLED", "BILL BANA (debit)", "बिल बना (डेबिट)")}</div><div className="mono" style={{ fontSize: 13.5, fontWeight: 600 }}>{inr(opening)}</div></div>}
+                    {received != null && <div><div className="microlbl">{tx("RECEIVED", "AA GAYA (credit)", "आ गया (क्रेडिट)")}</div><div className="mono" style={{ fontSize: 13.5, fontWeight: 600, color: "var(--grn-d)" }}>{inr(received)}</div></div>}
+                    <div><div className="microlbl">{tx("REMAINING", "BAKI", "बाकी")}</div><div className="mono" style={{ fontSize: 15, fontWeight: 700, color: late > 0 ? bucketC(x) : "var(--ink)" }}>{inr(pending)}</div></div>
+                    {vhit && (vhit.qty > 0 || vhit.item) && <div><div className="microlbl">{tx("MAAL", "MAAL", "माल")}</div><div className="mono" style={{ fontSize: 13.5, fontWeight: 600 }}>{vhit.qty > 0 ? fmtQty(vhit.qty) + " " + (vhit.unit || "") : ""}{vhit.item ? (vhit.qty > 0 ? " · " : "") + vhit.item : ""}</div></div>}
+                  </div>
+                  {received != null && opening > 0 && (
+                    <div style={{ height: 7, borderRadius: 999, background: "var(--soft)", border: "1px solid var(--line)", marginTop: 11, overflow: "hidden" }}>
+                      <div style={{ width: Math.max(3, (received / opening) * 100) + "%", height: "100%", borderRadius: 999, background: "linear-gradient(90deg,#2E9E33,#7CCB80)" }} />
+                    </div>
+                  )}
+                  {received != null && opening > 0 && <div className="mono" style={{ fontSize: 11, color: "var(--faint)", marginTop: 5 }}>{Math.round((received / opening) * 100)}% {tx("received", "aa chuka", "आ चुका")}</div>}
+                  <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 10, borderTop: "1px dashed var(--line)", paddingTop: 9 }}>
+                    {x.party}{tx(" owes in total ", " par total baki ", " पर कुल बाकी ")}<b className="mono">{inr(balanceOf(x.party))}</b>
+                    {" · "}{partyBills.length} {tx("open bill(s)", "khule bill", "खुले बिल")}
+                    {Math.abs(onAccount) > 1 && <span> · {tx("on account ", "on account ", "ऑन अकाउंट ")}<span className="mono">{inr(onAccount)}</span></span>}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <div className="card-tint anim-in" style={{ padding: "13px 15px", fontSize: 12.5, color: "var(--dim)", lineHeight: 1.6, marginTop: 6 }}>
+          {tx("This comes from Tally's Bills Receivable - every open bill with its due date. Chasing a specific bill number gets paid faster than asking for a lump sum.", "Ye Tally ke Bills Receivable se aata hai - har khula bill uski due date ke saath. 'Bill no 142, Rs 84,500, 43 din' bol kar maangne se paisa jaldi aata hai.", "यह Tally के Bills Receivable से आता है - हर खुला बिल उसकी ड्यू डेट के साथ। खास बिल नंबर बताकर मांगने से पैसा जल्दी आता है।")}
         </div>
       </div></div>
     );
@@ -2994,9 +3199,35 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
                 <div style={{ width: Math.max(3, share) + "%", height: "100%", borderRadius: 999, background: isRecv ? "linear-gradient(90deg,#2E9E33,#7CCB80)" : "linear-gradient(90deg,#C98A2B,#E8C173)" }} />
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, gap: 8 }}>
-                <span className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>{Math.round(share)}% of total</span>
+                <span className="mono" style={{ fontSize: 11, color: "var(--faint)", whiteSpace: "nowrap", flexShrink: 0 }}>{Math.round(share)}% of total</span>
                 {act && <span className="mono" style={{ fontSize: 11, color: "var(--faint)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{act}</span>}
               </div>
+              {isRecv && (() => {
+                /* bill-wise story under the party: overdue split + oldest open bills */
+                const pb = billsOf(x.name);
+                if (!pb.length) return null;
+                const od = pb.filter((b2) => billAge(b2) > 0);
+                const odAmt = od.reduce((s, b2) => s + Number(b2.pending), 0);
+                return (
+                  <div style={{ borderTop: "1px dashed var(--line)", marginTop: 9, paddingTop: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: odAmt > 0 ? "#DC2626" : "var(--grn-d)", marginBottom: 3 }}>
+                      {odAmt > 0
+                        ? inr(odAmt) + tx(" overdue (" + od.length + " bill" + (od.length === 1 ? "" : "s") + ")", " late chal raha (" + od.length + " bill)", " लेट चल रहा (" + od.length + " बिल)")
+                        : tx("All bills within time", "Sab bill time ke andar", "सभी बिल समय के अंदर")}
+                    </div>
+                    {pb.slice(0, 3).map((b2, bi) => {
+                      const a2 = billAge(b2);
+                      return (
+                        <div key={bi} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "3px 0" }}>
+                          <span className="mono" style={{ fontSize: 11.5, color: "var(--dim)", minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>#{b2.ref || "-"}</span>
+                          <span className="mono" style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 600, color: a2 > 0 ? "#DC2626" : "var(--faint)" }}>{inr(b2.pending)}{a2 > 0 ? " · " + a2 + tx("d late", " din", " दिन") : ""}</span>
+                        </div>
+                      );
+                    })}
+                    {pb.length > 3 && <button className="press" onClick={() => setView("bills")} style={{ all: "unset", cursor: "pointer", fontSize: 11.5, fontWeight: 600, color: "var(--grn-d)", marginTop: 2 }}>+{pb.length - 3} {tx("more bills", "aur bill", "और बिल")}</button>}
+                  </div>
+                );
+              })()}
             </div>
           );
         })}
@@ -3052,10 +3283,60 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
         </div>
       </div>
 
+      {/* bill-wise aging - paisa kahan atka hai (needs bill data; never faked from balances) */}
+      {B.length > 0 && (
+        <button className="card press anim-in st3" onClick={() => setView("bills")} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "block", width: "100%", padding: "16px 16px", borderRadius: 22, border: "1px solid var(--line)", background: "#fff", boxShadow: "var(--sh-s)", marginTop: 12 }}>
+          <div className="microlbl">{tx("MONEY STUCK, BY AGE (bill-wise)", "PAISA KAHAN ATKA HAI (bill-wise)", "पैसा कहां अटका है (बिल-वाइज़)")}</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginTop: 5 }}>
+            {overdueTotal > 0 ? (
+              <span className="h-disp mono" style={{ fontSize: 25, fontWeight: 700, color: "#DC2626" }}>{inr(overdueTotal)} <span style={{ display: "inline-block", fontSize: 13.5, fontFamily: "var(--sans)", fontWeight: 600, color: "var(--dim)" }}>{tx("running late", "late chal raha", "लेट चल रहा")}</span></span>
+            ) : (
+              <span className="h-disp" style={{ fontSize: 20, fontWeight: 700, color: "var(--grn-d)" }}>{tx("Everything on time", "Sab time pe hai", "सब समय पर है")} 🎉</span>
+            )}
+            <span className="mono" style={{ flexShrink: 0, fontSize: 11.5, color: "var(--faint)" }}>{overdueCount > 0 ? overdueCount + " / " : ""}{B.length} bill{B.length === 1 ? "" : "s"}</span>
+          </div>
+          <div style={{ marginTop: 10 }}><AgeBar /></div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 9 }}>
+            <span style={{ display: "flex", flexWrap: "wrap", gap: "3px 10px" }}>
+              {AGE_BUCKETS.filter((bk) => ageSum[bk.key] > 0).map((bk) => (
+                <span key={bk.key} className="mono" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, color: "var(--dim)" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: bk.c }} />{bk.label}
+                </span>
+              ))}
+            </span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 12, fontWeight: 600, color: "var(--grn-d)", flexShrink: 0 }}>{tx("Bill by bill", "Har bill", "हर बिल")} <I.chev style={{ width: 13 }} /></span>
+          </div>
+        </button>
+      )}
+
       {/* dispatch planner - kise pehle bhejein */}
       {planned.length > 0 && (<>
-        <div className="anim-in st3" style={{ margin: "22px 0 4px" }}><span className="eyebrow">Agla dispatch kise bhejein?</span></div>
-        <div style={{ fontSize: 12.5, color: "var(--faint)", marginBottom: 10 }}>{tx("Our AI calculator weighs deadlines, waiting days, remaining maal and payments - and works out the optimum delivery order. Every reason is shown openly.", "Hamara AI calculator deadline, intezaar, bacha maal aur payment - sab jod kar optimum delivery order nikalta hai. Har wajah saaf dikhti hai.", "हमारा AI कैलकुलेटर डेडलाइन, इंतज़ार, बचा माल और पेमेंट जोड़कर सही डिलीवरी क्रम निकालता है। हर वजह साफ दिखती है।")}</div>
+        <div className="anim-in st3" style={{ margin: "22px 0 10px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <span className="eyebrow">{tx("Whom to dispatch next?", "Agla dispatch kise bhejein?", "अगला डिस्पैच किसे भेजें?")}</span>
+          <button className="press" onClick={() => setKnowHow(!knowHow)} style={{ all: "unset", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 3, fontSize: 12, fontWeight: 600, color: "var(--grn-d)", fontFamily: "var(--mono)", padding: "3px 10px", borderRadius: 999, background: "var(--grn-100)", flexShrink: 0 }}>
+            {tx("Know how", "Know how", "कैसे बनता है")} <I.chev style={{ width: 12, transform: knowHow ? "rotate(90deg)" : "none", transition: "transform .2s" }} />
+          </button>
+        </div>
+        {knowHow && (
+          <div className="card-tint anim-in" style={{ padding: "14px 16px", marginBottom: 12, fontSize: 13, color: "var(--dim)", lineHeight: 1.65 }}>
+            <div style={{ fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>{tx("How this order is worked out", "Ye order kaise banta hai", "यह क्रम कैसे बनता है")}</div>
+            {tx("Our AI calculator weighs four things for every open order - and shows every reason openly on the card:", "Hamara AI calculator har order par 4 cheezein jodta hai - aur har wajah card par saaf dikhti hai:", "हमारा AI कैलकुलेटर हर ऑर्डर पर 4 चीज़ें जोड़ता है - और हर वजह कार्ड पर साफ दिखती है:")}
+            <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
+              {[
+                [tx("Deadline pressure", "Deadline ka dabav", "डेडलाइन का दबाव"), "50%", tx("The closer (or more crossed) the promised date, the higher the order climbs.", "Promised date jitni paas - ya nikal gayi - order utna upar.", "वादे की तारीख जितनी पास - या निकल गई - ऑर्डर उतना ऊपर।")],
+                [tx("Waiting days", "Intezaar ke din", "इंतज़ार के दिन"), "30%", tx("Days since the last dispatch to that party. Nobody should feel forgotten.", "Us party ko aakhri dispatch ke baad ke din. Koi bhoola hua na lage.", "उस पार्टी को आखिरी डिस्पैच के बाद के दिन। कोई भूला हुआ न लगे।")],
+                [tx("Remaining maal", "Bacha maal", "बचा माल"), "20%", tx("A nearly-finished order is worth finishing - the truck frees the commitment.", "Jo order lagbhag khatam hai use nipta do - commitment poori hoti hai.", "जो ऑर्डर लगभग खत्म है उसे निपटा दो - वादा पूरा होता है।")],
+                [tx("Payment caution", "Payment ka dhyaan", "पेमेंट का ध्यान"), tx("minus", "minus", "माइनस"), tx("A party sitting on more than Rs 1 lakh baki slides DOWN until money moves.", "Jis party par Rs 1 lakh se zyada baki hai, wo NEECHE khisakti hai jab tak payment na aaye.", "जिस पार्टी पर 1 लाख से ज़्यादा बाकी है, वह नीचे खिसकती है जब तक पेमेंट न आए।")],
+              ].map((r, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                  <span className="mono" style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 700, color: "var(--grn-d)", background: "var(--grn-100)", borderRadius: 6, padding: "2px 7px", minWidth: 34, textAlign: "center" }}>{r[1]}</span>
+                  <span><b style={{ color: "var(--ink)" }}>{r[0]}</b> - {r[2]}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 8, fontSize: 12, color: "var(--faint)" }}>{tx("No black box: the same reasons appear as chips on each card below.", "Koi black box nahi: yehi wajahein neeche har card par chip ban kar dikhti hain.", "कोई ब्लैक बॉक्स नहीं: यही वजहें नीचे हर कार्ड पर चिप बनकर दिखती हैं।")}</div>
+          </div>
+        )}
         {planned.slice(0, 4).map((o, i) => {
           const pct = Math.min(100, Math.round((o.shipped / o.ordered) * 100));
           return (
@@ -3198,12 +3479,20 @@ function Help({ data, ping }) {
    Which machine is running which part, % done, time remaining.
    Pure time math off startedAt - no background process. Estimates carry a
    +8% breakdown / tool-change buffer (JOB_BUFFER). */
-function MachineFloor({ data, setData, ping, onBack, goSetup }) {
+function MachineFloor({ data, setData, ping, onBack, goSetup, draft, clearDraft }) {
   const [now, setNow] = useState(Date.now());
   const [formOpen, setFormOpen] = useState(false);
-  const [f, setF] = useState({ part: "", customer: "", cycleMin: "", qty: "", manualMin: "", units: [] });
+  const [f, setF] = useState({ part: "", customer: "", cycleMin: "", qty: "", manualMin: "1", units: [] });
   const [xfer, setXfer] = useState(null); /* { jobId, uid, targets: [] } */
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(t); }, []);
+  /* a quote sent over from the Pipeline prefills the job form */
+  useEffect(() => {
+    if (draft) {
+      setF((x) => ({ ...x, part: draft.part || "", customer: draft.customer || "", qty: draft.qty ? String(draft.qty) : "", units: [] }));
+      setFormOpen(true);
+      if (clearDraft) clearDraft();
+    }
+  }, [draft]);
 
   const units = machineUnits(data);
   const jobs = data.jobs || [];
@@ -3213,10 +3502,9 @@ function MachineFloor({ data, setData, ping, onBack, goSetup }) {
   active.forEach((j) => jobAlloc(j).forEach((a) => { if (!a.stopped && !busy[a.uid]) busy[a.uid] = j; }));
 
   const qty = Math.floor(+f.qty || 0);
-  const askManual = qty > 0 && qty < MANUAL_ASK_MAX;
-  const per = (+f.cycleMin || 0) + (askManual ? +f.manualMin || 0 : 0);
+  const per = (+f.cycleMin || 0) + (+f.manualMin || 0);
   const est = f.units.length && per > 0 && qty > 0
-    ? jobStats({ cycleMin: +f.cycleMin || 0, manualMin: askManual ? +f.manualMin || 0 : 0, qty, units: f.units, startedAt: now, done: false }, now)
+    ? jobStats({ cycleMin: +f.cycleMin || 0, manualMin: +f.manualMin || 0, qty, units: f.units, startedAt: now, done: false }, now)
     : null;
 
   const toggleUnit = (u) => setF((x) => ({ ...x, units: x.units.includes(u) ? x.units.filter((y) => y !== u) : [...x.units, u] }));
@@ -3227,10 +3515,10 @@ function MachineFloor({ data, setData, ping, onBack, goSetup }) {
     if (!f.units.length) return ping(tx("Pick at least one machine", "Kam se kam ek machine chuno", "कम से कम एक मशीन चुनें"));
     const t0 = Date.now();
     const sh = jobShares({ qty, units: f.units });
-    const job = { id: uid(), part: f.part.trim(), customer: f.customer.trim(), cycleMin: +f.cycleMin, manualMin: askManual ? +f.manualMin || 0 : 0, qty, units: f.units, startedAt: t0, done: false,
+    const job = { id: uid(), part: f.part.trim(), customer: f.customer.trim(), cycleMin: +f.cycleMin, manualMin: +f.manualMin || 0, qty, units: f.units, startedAt: t0, done: false,
       alloc: f.units.map((u, i) => ({ uid: u, share: sh[i], startedAt: t0, pausedMin: 0, pausedAt: null, stopped: false })) };
     setData({ ...data, jobs: [job, ...jobs] });
-    setF({ part: "", customer: "", cycleMin: "", qty: "", manualMin: "", units: [] });
+    setF({ part: "", customer: "", cycleMin: "", qty: "", manualMin: "1", units: [] });
     setFormOpen(false);
     ping(tx("Job started - ", "Job chalu - ", "काम चालू - ") + job.part);
   };
@@ -3266,8 +3554,8 @@ function MachineFloor({ data, setData, ping, onBack, goSetup }) {
   };
   const startSample = () => {
     const u = units[0]; if (!u) return;
-    /* 200 pcs x 4.5 min x 1.08 = ~16.2 hr; started 9.7 hr ago -> ~60% done */
-    const job = { id: uid(), part: "Gland Nut - 60mm", customer: "Apex Hydraulics", cycleMin: 4.5, manualMin: 0, qty: 200, units: [u.uid], startedAt: Date.now() - 9.7 * 3600000, done: false, seed: true };
+    /* 200 pcs x (4.5 cycle + 0.5 handling) x 1.08 = 18 hr; started 10.8 hr ago -> 60% */
+    const job = { id: uid(), part: "Gland Nut - 60mm", customer: "Apex Hydraulics", cycleMin: 4.5, manualMin: 0.5, qty: 200, units: [u.uid], startedAt: Date.now() - 10.8 * 3600000, done: false, seed: true };
     setData({ ...data, jobs: [job, ...jobs] }); ping(tx("Sample job running - this is how it looks", "Sample job chalu - aise dikhta hai", "सैंपल काम चालू - ऐसा दिखता है"));
   };
 
@@ -3304,12 +3592,9 @@ function MachineFloor({ data, setData, ping, onBack, goSetup }) {
             <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Quantity (pcs)", "Quantity (pcs)", "मात्रा (पीस)")}</label><input className="input mono" type="number" inputMode="numeric" placeholder="200" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} /></div>
           </div>
           <span className="hint">{tx("How many minutes one piece runs on the machine - that is the cycle time.", "Ek piece machine par kitne minute chalta hai - wahi cycle time.", "एक पीस मशीन पर कितने मिनट चलता है - वही साइकिल टाइम।")}</span>
-          {askManual && (<>
-            <label className="lbl" style={{ marginTop: 10 }}>{tx("Manual time (min / pc)", "Manual time (min / pc)", "हाथ का समय (मिनट / पीस)")}</label>
-            <input className="input mono" type="number" inputMode="decimal" placeholder="2" value={f.manualMin} onChange={(e) => setF({ ...f, manualMin: e.target.value })} />
-            <span className="hint">{tx("Small batch - hand work per piece (deburring, checking) takes time too.", "Chhota batch hai - har piece pe haath ka kaam (deburr, checking) bhi time leta hai.", "छोटा बैच है - हर पीस पर हाथ का काम (डीबरिंग, जांच) भी समय लेता है।")}</span>
-          </>)}
-          {qty >= MANUAL_ASK_MAX && <span className="hint" style={{ marginTop: 8 }}>{tx("Big batch - hand work overlaps the machine cycle, so it is not counted separately.", "Bada batch - manual kaam cycle ke saath-saath chalta hai, alag se nahi ginte.", "बड़ा बैच - हाथ का काम साइकिल के साथ-साथ चलता है, अलग से नहीं गिनते।")}</span>}
+          <label className="lbl" style={{ marginTop: 10 }}>{tx("Handling per piece - load, deburr (min / pc)", "Har piece pe haath ka time - loading, deburr (min / pc)", "हर पीस पर हाथ का समय - लोडिंग, डीबरिंग (मिनट / पीस)")}</label>
+          <input className="input mono" type="number" inputMode="decimal" placeholder="1" value={f.manualMin} onChange={(e) => setF({ ...f, manualMin: e.target.value })} />
+          <span className="hint">{tx("Between every piece the machine waits - unload, deburr, load the next blank. Even 1 min per piece changes a big batch's finish time by hours, so it is counted on every piece.", "Har piece ke beech machine rukti hai - piece nikalna, deburr, agla blank lagana. 1 min/piece bhi bade batch ki ETA ghanton se badal deta hai, isliye har piece pe ginte hain.", "हर पीस के बीच मशीन रुकती है - पीस निकालना, डीबरिंग, अगला ब्लैंक लगाना। 1 मिनट/पीस भी बड़े बैच की ETA घंटों से बदल देता है, इसलिए हर पीस पर गिनते हैं।")}</span>
 
           <label className="lbl" style={{ marginTop: 12 }}>{tx("Which machines will run it? (tap to pick)", "Kitni machines par chalega? (tap karke chuno)", "कितनी मशीनों पर चलेगा? (चुनने के लिए दबाएं)")}</label>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

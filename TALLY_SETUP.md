@@ -157,3 +157,23 @@ Nothing to configure - it rides the same connector key and `pullOutstanding`
 flag. Run the updated `supabase/tally.sql` once (adds the `grp` column and the
 `tally_vouchers` table). For order-progress bars to work, the customer name on
 the app quote must match the Tally party ledger name (case-insensitive).
+
+## Bill-wise outstandings (added 2026-07-28)
+
+The connector now ALSO pulls every **open bill** under Sundry Debtors (Tally's
+Bills Receivable, bill by bill): reference/bill no, bill date, due date
+(computed as bill date + credit period), original amount and pending amount.
+The app turns this into:
+- the **"Paisa kahan atka hai"** aging bar (time hai / 1-30 / 31-60 / 60+ din late),
+- the **"Har bill ka hisaab"** drill-down (tap a bill: debit, credit received,
+  baki, item/qty via the matching voucher reference, party total),
+- per-party overdue splits in the aane-wale list, and
+- an overdue-bill credit flag in the dispatch planner.
+
+Needs: run the updated `supabase/tally.sql` once more (creates `tally_bills`).
+Two honest limits: bills exist only for parties whose Tally ledger has
+**"Maintain balances bill-by-bill" = Yes** (an empty pull is normal, the app
+just hides the aging view), and any "On Account" money (receipts never matched
+to a bill) shows as its own line so totals still reconcile with the ledger
+balance. Like everything here, exact XML tag names should be confirmed against
+a real TallyPrime once before handing to a customer's accountant.

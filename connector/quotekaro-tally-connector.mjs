@@ -268,6 +268,37 @@ function voucherExportXml(fromYmd, toYmd) {
     "</ENVELOPE>";
 }
 
+/* TDL Collection export: every OPEN bill under Sundry Debtors - Tally's
+   Bills Receivable, bill by bill (type "Bills" collection; the report-export
+   route is avoided on purpose: its EXPLODEFLAG is broken and its tag names
+   shift between Tally releases). SVTODATE = the "as on" date for pending
+   balances. Bill-wise rows only exist for parties whose ledger has
+   "Maintain balances bill-by-bill" = Yes - an empty reply is normal. */
+function billsExportXml(toYmd) {
+  return XML_PROLOG + "<ENVELOPE>" +
+    "<HEADER><VERSION>1</VERSION><TALLYREQUEST>Export</TALLYREQUEST><TYPE>Collection</TYPE><ID>QuoteKaro Bills</ID></HEADER>" +
+    "<BODY><DESC>" +
+    "<STATICVARIABLES><SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>" +
+    '<SVTODATE TYPE="Date">' + toYmd + "</SVTODATE></STATICVARIABLES>" +
+    "<TDL><TDLMESSAGE>" +
+    '<COLLECTION NAME="QuoteKaro Bills" ISMODIFY="No" ISINITIALIZE="Yes">' +
+    "<TYPE>Bills</TYPE>" +
+    "<CHILDOF>$$GroupSundryDebtors</CHILDOF>" +
+    "<BELONGSTO>Yes</BELONGSTO>" + /* include parties filed under sub-groups */
+    "<NATIVEMETHOD>Name</NATIVEMETHOD>" +
+    "<NATIVEMETHOD>Parent</NATIVEMETHOD>" +
+    "<NATIVEMETHOD>BillDate</NATIVEMETHOD>" +
+    "<NATIVEMETHOD>BillCreditPeriod</NATIVEMETHOD>" +
+    "<NATIVEMETHOD>OpeningBalance</NATIVEMETHOD>" +
+    "<NATIVEMETHOD>ClosingBalance</NATIVEMETHOD>" +
+    "<NATIVEMETHOD>IsAdvance</NATIVEMETHOD>" +
+    "<FETCH>NAME,PARENT,BILLDATE,BILLCREDITPERIOD,OPENINGBALANCE,CLOSINGBALANCE,ISADVANCE</FETCH>" +
+    "</COLLECTION>" +
+    "</TDLMESSAGE></TDL>" +
+    "</DESC></BODY>" +
+    "</ENVELOPE>";
+}
+
 /* ------------------------------------------------------ Tally XML parsing */
 
 /* Tally import replies carry <IMPORTRESULT> counters plus <LINEERROR> texts. */
@@ -381,6 +412,75 @@ function parseVouchers(rawText) {
         amount: it.amount || (idx === 0 ? vAmount : 0),
         item: it.item, qty: it.qty, unit: it.unit,
       });
+    });
+  }
+  return out;
+}
+
+/* scrub + parse the Bills collection into open-bill rows. Sign convention
+   mirrors parseLedgers: Tally exports credit-positive, so a receivable
+   (debit) bill comes back NEGATIVE - flip so positive = customer still owes.
+   Fully-settled bills leave the collection on their own; advances flip the
+   other way and are dropped by the pending > 0 guard. Due date is computed
+   HERE: BillDate + credit period ("30 Days" style; absolute dates and
+   YYYYMMDD tolerated), 0 when the accountant never set a period. */
+function parseBills(rawText) {
+  let t = String(rawText || "");
+  t = t.replace(/^\uFEFF/, "");
+  t = t.replace(/&#(\d+);/g, (full, d) => (Number(d) >= 32 ? String.fromCharCode(Number(d)) : ""));
+  t = t.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+  const tag = (body, name) => {
+    const m = body.match(new RegExp("<" + name + "[^>]*>([\\s\\S]*?)</" + name + ">", "i"));
+    return m ? xmlUnesc(m[1]).replace(/\s+/g, " ").trim() : "";
+  };
+  const ymdMs = (s) => {
+    const m = /^(\d{4})(\d{2})(\d{2})$/.exec(String(s).trim());
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]).getTime() : 0;
+  };
+  /* "-1,23,456.00 Dr" -> +123456 (owed to us); plain negative = debit too */
+  const owed = (txt) => {
+    const numTxt = String(txt).replace(/,/g, "").trim();
+    const n = parseFloat(numTxt);
+    if (!Number.isFinite(n)) return 0;
+    if (/\bDr\b/i.test(numTxt)) return Math.abs(n);
+    if (/\bCr\b/i.test(numTxt)) return -Math.abs(n);
+    return -n;
+  };
+  const out = [];
+  const bRe = /<BILL\b([^>]*)>([\s\S]*?)<\/BILL>/gi;
+  let m;
+  while ((m = bRe.exec(t))) {
+    const attrs = m[1] || "", body = m[2] || "";
+    let ref = "";
+    const an = attrs.match(/NAME="([^"]*)"/i);
+    if (an) ref = xmlUnesc(an[1]).replace(/\s+/g, " ").trim();
+    if (!ref) ref = tag(body, "NAME");
+    const party = tag(body, "PARENT");
+    const bdate = ymdMs(tag(body, "BILLDATE"));
+    if (!party || !bdate) continue;
+    if (/yes/i.test(tag(body, "ISADVANCE"))) continue;
+    const pending = owed(tag(body, "CLOSINGBALANCE"));
+    if (!(pending > 0)) continue;
+    const opening = owed(tag(body, "OPENINGBALANCE"));
+    let due = 0;
+    const cp = tag(body, "BILLCREDITPERIOD");
+    if (cp) {
+      due = ymdMs(cp);
+      if (!due) {
+        const asDate = new Date(cp.replace(/-/g, " ")); /* "15-Aug-2026" -> "15 Aug 2026" */
+        if (Number.isFinite(asDate.getTime()) && asDate.getFullYear() > 2000) due = asDate.getTime();
+      }
+      if (!due) {
+        const dm = /(\d+)/.exec(cp); /* "30 Days" / "45 Dys" */
+        if (dm) due = bdate + Number(dm[1]) * 86400000;
+      }
+    }
+    out.push({
+      party: party.slice(0, 80),
+      ref: ref.slice(0, 48),
+      bdate, due,
+      opening: opening > 0 ? Math.round(opening * 100) / 100 : 0,
+      pending: Math.round(pending * 100) / 100,
     });
   }
   return out;
@@ -545,9 +645,10 @@ async function cycle(cfg) {
     }
   }
 
-  /* e) insights pull: debtor + creditor balances and recent Sales/Purchase
-        vouchers (last 45 days, with item quantities) */
-  let ledgers = null, vouchers = null;
+  /* e) insights pull: debtor + creditor balances, recent Sales/Purchase
+        vouchers (last 45 days, with item quantities) and bill-wise
+        outstandings (Bills Receivable) */
+  let ledgers = null, vouchers = null, bills = null;
   if (cfg.pullOutstanding && ping.ok) {
     try {
       const deb = parseLedgers(await tallyPost(cfg, ledgerExportXml("Sundry Debtors")), true)
@@ -572,16 +673,27 @@ async function cycle(cfg) {
       warn("could not read vouchers from Tally - " + ((e && e.message) || "error"));
       vouchers = null;
     }
+    try {
+      const to = new Date();
+      const ymd2 = "" + to.getFullYear() + pad(to.getMonth() + 1) + pad(to.getDate());
+      bills = parseBills(await tallyPost(cfg, billsExportXml(ymd2))).slice(0, 600);
+      log("Read " + bills.length + " open bill(s) from Tally (bill-wise outstanding)" +
+        (bills.length ? "" : " - parties may not maintain balances bill-by-bill, that is fine"));
+    } catch (e) {
+      warn("could not read bill-wise outstandings from Tally - " + ((e && e.message) || "error"));
+      bills = null;
+    }
   }
 
-  /* f) report anything still unreported, plus the balances + vouchers */
+  /* f) report anything still unreported, plus the balances + vouchers + bills */
   if (cfg.dryRun) {
     log("DRY RUN - nothing was sent to Tally and nothing was saved to the cloud" +
       (Array.isArray(ledgers) ? " (would have sent " + ledgers.length + " balances" +
-        (Array.isArray(vouchers) ? ", " + vouchers.length + " voucher lines" : "") + ")" : ""));
+        (Array.isArray(vouchers) ? ", " + vouchers.length + " voucher lines" : "") +
+        (Array.isArray(bills) ? ", " + bills.length + " open bills" : "") + ")" : ""));
     return;
   }
-  if (!unreported.length && !Array.isArray(ledgers) && !Array.isArray(vouchers)) {
+  if (!unreported.length && !Array.isArray(ledgers) && !Array.isArray(vouchers) && !Array.isArray(bills)) {
     if (pushed) log("All " + pushed + " result(s) already saved to the cloud.");
     else log("Nothing to report to the cloud this round.");
     return;
@@ -590,8 +702,9 @@ async function cycle(cfg) {
     const body = { results: unreported };
     if (Array.isArray(ledgers)) body.ledgers = ledgers;
     if (Array.isArray(vouchers)) body.vouchers = vouchers;
+    if (Array.isArray(bills)) body.bills = bills;
     const resp = await cloudPostResults(cfg, body);
-    log("Saved to cloud: " + (resp.saved || 0) + " sync result(s), " + (resp.ledgers || 0) + " balance(s), " + (resp.vouchers || 0) + " voucher line(s)");
+    log("Saved to cloud: " + (resp.saved || 0) + " sync result(s), " + (resp.ledgers || 0) + " balance(s), " + (resp.vouchers || 0) + " voucher line(s), " + (resp.bills || 0) + " open bill(s)");
   } catch (e) {
     err("could not save results to the cloud - " + e.message + " (the same quotes may be retried next round)");
   }
