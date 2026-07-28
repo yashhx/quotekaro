@@ -648,7 +648,7 @@ const seedData = () => {
   return {
     shopName: "Sharma Precision Works",
     settings: { overheadPct: 18, marginPct: 25, labourRate: 80, validityDays: 7, gstPct: 18, lang: "hi-en" },
-    machines: [{ id: "m1", name: "VMC 850", rate: 366, count: 1 }],
+    machines: [{ id: "m1", name: "VMC 850", rate: 366, count: 2 }],
     jobs: [],
     trucks: [],
     trips: [],

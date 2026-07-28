@@ -1,0 +1,1027 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TrackRakho — Track your machine shop end to end</title>
+<meta name="description" content="Quotes, machine floor, true costing and payments — complete operational visibility for CNC job-shops and machine shops, on every phone. No new hardware.">
+<link rel="canonical" href="https://trackrakho.com/site/machining/">
+<meta property="og:title" content="TrackRakho — Track your machine shop end to end">
+<meta property="og:description" content="Quotes, machines, costing and payments — tracking your factory can be this easy.">
+<meta property="og:url" content="https://trackrakho.com/site/machining/">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 3C15.4 3 3 14.2 3 28.4c0 8.1 4.4 15.2 11.5 19.7-.6 3.4-2.2 7.6-5 10.6 5.4-.5 10.4-2.5 13.9-4.7 2.8.6 5.7.9 8.6.9 16.6 0 29-11.3 29-25.5S48.6 3 32 3z' fill='%23228B22'/%3E%3Cpath d='M20 29.5l8.4 8.5L45 21.5' stroke='%23fff' stroke-width='6.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FFFFFF; --soft:#F4F8F5; --panel:#FFFFFF;
+  --line:#E3EBE4; --line2:#CFE0D1;
+  --grn:#228B22; --grn-d:#155E18; --grn-x:#3FAE45; --grn-100:#E8F4E9;
+  --ink:#16201A; --dim:#4E5E53; --faint:#8CA093;
+  --red:#C0392B; --red-bg:#FBEDEB; --redline:#F0CCC6;
+  --amber:#B07818; --amber-bg:#FBF3E2;
+  --disp:'Space Grotesk',sans-serif; --sans:'Inter',sans-serif; --mono:'IBM Plex Mono',monospace;
+  --sh:0 1px 2px rgba(22,32,26,.04),0 8px 24px -12px rgba(22,32,26,.10);
+  --sh-l:0 2px 4px rgba(22,32,26,.05),0 24px 60px -24px rgba(22,32,26,.18);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;overflow-x:hidden}
+::selection{background:rgba(34,139,34,.16)}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+.mono{font-family:var(--mono)}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.22em;color:var(--grn);text-transform:uppercase;font-weight:600}
+h1,h2,h3{font-family:var(--disp);font-weight:700;line-height:1.1;letter-spacing:-.015em}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;border-radius:999px;font-weight:700;font-size:15px;cursor:pointer;border:none;font-family:var(--sans);transition:transform .16s,box-shadow .16s;white-space:nowrap}
+.btn:hover{transform:translateY(-1px)}
+.btn-grn{background:linear-gradient(135deg,#2E9E33,#1B7A20);color:#fff;box-shadow:0 10px 26px -10px rgba(34,139,34,.5)}
+.btn-ghost{background:#fff;color:var(--grn-d);border:1.5px solid var(--line2)}
+
+/* header */
+header{position:fixed;top:0;left:0;right:0;z-index:50;background:rgba(255,255,255,.85);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;gap:20px;height:66px}
+.logo{font-family:var(--disp);font-weight:700;font-size:19px}
+.logo b{color:var(--grn)}
+.logo small{display:block;font-family:var(--mono);font-size:8.5px;letter-spacing:.22em;color:var(--faint);margin-top:-2px}
+.nav .sp{flex:1}
+.nav a.lnk{font-size:14px;color:var(--dim);font-weight:600;padding:8px 10px}
+.nav a.lnk:hover{color:var(--ink)}
+.cta-sm{padding:10px 20px;font-size:13.5px}
+@media(max-width:820px){.nav a.lnk{display:none}}
+@media(max-width:520px){.logo small{display:none}.cta-sm{padding:9px 16px;font-size:12.5px}}
+
+/* hero */
+.hero{padding:150px 0 60px;text-align:center;position:relative}
+.hero:before{content:"";position:absolute;inset:0;background:radial-gradient(700px 340px at 50% 0%,rgba(34,139,34,.07),transparent 70%);pointer-events:none}
+.hero h1{font-size:clamp(38px,5.4vw,62px);max-width:860px;margin:0 auto}
+.hero h1 .g{color:var(--grn)}
+.hero p.sub{font-size:18px;color:var(--dim);max-width:660px;margin:22px auto 0}
+.hero .ctas{display:flex;gap:12px;justify-content:center;margin-top:32px;flex-wrap:wrap}
+.hero .meta{display:flex;gap:30px;justify-content:center;margin-top:36px;flex-wrap:wrap}
+.hero .meta .m{font-family:var(--mono);font-size:12px;color:var(--faint)}
+.hero .meta .m b{color:var(--ink);font-size:14px;display:block;font-weight:600}
+
+/* sections */
+section.blk{padding:96px 0}
+.sechead{max-width:740px;margin-bottom:48px}
+.sechead.center{text-align:center;margin-left:auto;margin-right:auto}
+.sechead h2{font-size:clamp(28px,3.8vw,42px);margin-top:12px}
+.sechead p{color:var(--dim);font-size:16.5px;margin-top:14px}
+
+/* full explanatory feature sections */
+.fsec{display:grid;grid-template-columns:1.05fr .95fr;gap:60px;align-items:center;padding:64px 0;border-top:1px solid var(--line);scroll-margin-top:80px}
+.sechead + .fsec{border-top:none;padding-top:10px}
+.fsec.rev .fmockcol{order:-1}
+@media(max-width:900px){.fsec{grid-template-columns:1fr;gap:28px;padding:44px 0}.fsec.rev .fmockcol{order:0}}
+.fnum{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--grn);font-weight:600}
+.fsec h3{font-size:clamp(24px,3vw,33px);margin:12px 0 12px}
+.flead{color:var(--dim);font-size:15.5px}
+.blist{list-style:none;margin-top:16px}
+.blist li{display:flex;gap:12px;padding:8px 0;font-size:14.5px;color:var(--ink)}
+.blist li b{color:var(--grn-d)}
+.blist li:before{content:"";width:16px;height:16px;flex-shrink:0;margin-top:5px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#5FCB66,#1B7A20)}
+.fnote{margin-top:16px;font-size:13.5px;color:var(--grn-d);font-weight:600;background:var(--grn-100);border-radius:12px;padding:11px 15px;display:inline-block}
+.mockl{background:#fff;border:1px solid var(--line2);border-radius:22px;padding:22px;box-shadow:var(--sh-l)}
+.mh2{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--disp);font-weight:700;font-size:16px;margin-bottom:12px}
+.mh2 span{font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--grn-d);background:var(--grn-100);padding:4px 10px;border-radius:999px;white-space:nowrap}
+.mrow2{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 15px;border:1px solid var(--line);border-radius:14px;margin-top:9px;background:#FAFCFA}
+.mrow2 .l{min-width:0}
+.mrow2 .l b{display:block;font-size:14px}
+.mrow2 .l span{font-size:11.5px;color:var(--faint);font-family:var(--mono)}
+.mrow2 .v{font-family:var(--mono);font-weight:600;font-size:16px;color:var(--grn-d);white-space:nowrap;flex-shrink:0}
+.mrow2.warn .v{color:var(--amber)}
+.mrow2.alert{background:var(--red-bg);border-color:var(--redline)}
+.mrow2.alert .v{color:var(--red)}
+.mrow2 .bar{height:6px;border-radius:5px;background:var(--line);margin-top:6px;overflow:hidden}
+.mrow2 .bar i{display:block;height:100%;background:linear-gradient(90deg,#3FAE45,#228B22);border-radius:5px}
+.chiprow{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.chip{font-family:var(--mono);font-size:10.5px;font-weight:600;padding:5px 11px;border-radius:999px;background:var(--amber-bg);color:var(--amber);border:1px solid #EBDBB6}
+.chip.red{background:var(--red-bg);color:var(--red);border-color:var(--redline)}
+.chip.grn{background:var(--grn-100);color:var(--grn-d);border-color:var(--line2)}
+.cap{font-size:12.5px;color:var(--dim);margin-top:12px;line-height:1.55;padding-left:4px}
+.cap b{color:var(--ink)}
+/* costing sum table */
+.sumt{width:100%;border-collapse:collapse;margin-top:6px}
+.sumt td{padding:9px 4px;font-size:13.5px;border-bottom:1px dashed var(--line);color:var(--dim)}
+.sumt td:last-child{text-align:right;font-family:var(--mono);font-weight:600;color:var(--ink)}
+.sumt tr.tot td{border-bottom:none;border-top:2px solid var(--line2);color:var(--ink);font-weight:700;font-size:15px}
+.sumt tr.tot td:last-child{color:var(--grn-d);font-size:18px}
+/* aging bar mock */
+.agebar{display:flex;height:14px;border-radius:999px;overflow:hidden;border:1px solid var(--line);background:var(--soft);margin-top:12px}
+.agebar i{display:block;height:100%}
+.agelegend{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:10px}
+.agelegend span{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+.agelegend i{width:9px;height:9px;border-radius:50%}
+
+/* ---------- walkthrough (sticky live demo) ---------- */
+.walkwrap{background:linear-gradient(180deg,var(--soft),#fff);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.walk{display:grid;grid-template-columns:1fr 400px;gap:64px;align-items:start}
+@media(max-width:940px){.walk{grid-template-columns:1fr}}
+.wsteps .wstep{min-height:66vh;display:flex;align-items:center}
+@media(max-width:940px){.wsteps .wstep{min-height:auto;padding:26px 0}}
+.wcard{background:#fff;border:1px solid var(--line);border-radius:22px;padding:30px;box-shadow:var(--sh);max-width:480px;transition:border-color .3s,box-shadow .3s}
+.wstep.on .wcard{border-color:var(--line2);box-shadow:var(--sh-l)}
+.wnum{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--grn);font-weight:600}
+.wcard h3{font-size:21px;margin:10px 0 8px}
+.wcard p{font-size:14.5px;color:var(--dim)}
+.wphone-hold{position:sticky;top:90px;height:calc(100vh - 120px);min-height:560px;display:flex;align-items:center;justify-content:center}
+@media(max-width:940px){.wphone-hold{position:sticky;top:74px;height:auto;min-height:0;z-index:5;padding:10px 0;background:linear-gradient(180deg,var(--soft) 82%,transparent);order:-1}}
+.wphone{width:300px;height:600px;background:#101B12;border-radius:40px;padding:12px;box-shadow:0 30px 70px -25px rgba(22,32,26,.35);position:relative}
+@media(max-width:940px){.wphone{width:250px;height:500px}}
+.wphone .notch{width:90px;height:20px;border-radius:11px;background:#060A07;margin:2px auto 8px}
+.wscr{position:relative;background:#F7FAF7;border-radius:28px;height:calc(100% - 34px);overflow:hidden}
+.screen{position:absolute;inset:0;padding:16px 13px;opacity:0;transform:translateY(14px);transition:opacity .45s ease,transform .45s ease;pointer-events:none}
+.screen.on{opacity:1;transform:none}
+.aphead{font-family:var(--disp);font-weight:700;font-size:16px;color:var(--ink)}
+.aphead small{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.16em;color:var(--faint);margin-bottom:2px}
+.apkpis{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:11px}
+.apk{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px}
+.apk b{font-family:var(--mono);font-size:13px;color:var(--grn-d);display:block}
+.apk.warn b{color:var(--amber)}
+.apk span{font-size:7.5px;font-family:var(--mono);letter-spacing:.08em;color:var(--faint)}
+.aprow{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px;margin-top:7px}
+.aprow.hl{border-color:var(--grn-x);box-shadow:0 0 0 2px rgba(63,174,69,.15)}
+.aprow.warn{background:var(--red-bg);border-color:var(--redline)}
+.aprow .ic{width:28px;height:28px;border-radius:8px;background:var(--grn-100);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.aprow .tx{flex:1;min-width:0}
+.aprow .tx b{display:block;font-size:10.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aprow .tx span{font-size:8.5px;color:var(--faint);font-family:var(--mono)}
+.aprow .amt{font-family:var(--mono);font-size:10.5px;color:var(--grn-d);font-weight:600;flex-shrink:0}
+.aprow .amt.red{color:var(--red)}
+.apbar{height:6px;border-radius:5px;background:var(--line);margin-top:5px;overflow:hidden}
+.apbar i{display:block;height:100%;background:linear-gradient(90deg,#3FAE45,#228B22);border-radius:5px}
+.apbtn{background:linear-gradient(135deg,#2E9E33,#1B7A20);color:#fff;border-radius:11px;text-align:center;font-weight:700;font-size:11px;padding:9px;margin-top:9px}
+.apmsg{background:#E9F7EA;border:1px solid var(--line2);border-radius:12px 12px 12px 4px;padding:9px;margin-top:9px;font-size:9.5px;color:var(--ink);line-height:1.5}
+.apmsg small{display:block;font-family:var(--mono);font-size:7.5px;color:var(--faint);margin-bottom:3px;letter-spacing:.08em}
+.aptag{display:inline-block;font-family:var(--mono);font-size:8px;letter-spacing:.1em;font-weight:600;padding:3px 8px;border-radius:999px;margin-top:8px}
+.aptag.g{background:var(--grn-100);color:var(--grn-d)}
+.wdots{position:absolute;right:-26px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px}
+@media(max-width:940px){.wdots{display:none}}
+.wdots i{width:7px;height:7px;border-radius:50%;background:var(--line2);transition:background .3s,height .3s}
+.wdots i.on{background:var(--grn);height:20px;border-radius:5px}
+
+/* assurance band */
+.band{padding:52px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--soft)}
+.bgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;text-align:center}
+@media(max-width:760px){.bgrid{grid-template-columns:1fr 1fr}}
+.bstat b{font-family:var(--disp);font-size:clamp(24px,3.4vw,36px);color:var(--grn-d);display:block}
+.bstat span{font-size:13px;color:var(--dim)}
+
+/* pricing */
+.price{max-width:520px;margin:0 auto;background:#fff;border:1.5px solid var(--line2);border-radius:28px;padding:44px;text-align:center;box-shadow:var(--sh-l)}
+.price .amt{font-family:var(--disp);font-size:60px;font-weight:700;color:var(--grn-d)}
+.price .amt small{font-size:17px;color:var(--dim);font-weight:500}
+.price ul{list-style:none;margin:24px 0 30px;text-align:left}
+.price li{padding:8px 0;font-size:14.5px;color:var(--dim);display:flex;gap:10px}
+.price li:before{content:"\2713";color:var(--grn);font-weight:700}
+.pnote{font-size:12.5px;color:var(--faint);margin-top:16px}
+
+/* faq */
+.faq{max-width:760px;margin:0 auto}
+.faq details{border:1px solid var(--line);border-radius:16px;padding:18px 22px;margin-bottom:12px;background:#fff;box-shadow:var(--sh)}
+.faq summary{cursor:pointer;font-weight:700;font-size:15px;font-family:var(--disp)}
+.faq details p{color:var(--dim);font-size:14px;margin-top:10px}
+
+footer{border-top:1px solid var(--line);padding:44px 0;text-align:center;color:var(--faint);font-size:13px;background:var(--soft)}
+
+.rv{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.rv.in{opacity:1;transform:none}
+
+/* ---- scene illustration: the machine (VMC) ---- */
+.machstage{perspective:1000px;margin-bottom:16px}
+.mach{transform:rotateX(7deg);transform-origin:50% 90%;transition:transform .2s;will-change:transform}
+.mach svg{width:100%;height:auto;display:block}
+.mach-cap{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--faint);text-align:center;padding:8px 0 2px}
+
+/* finale: every corner of the shop connects into one phone */
+.finale{position:relative;height:340vh;background:linear-gradient(180deg,#fff,var(--soft) 30%,var(--soft) 70%,#fff)}
+.fin-sticky{position:sticky;top:0;height:100vh;overflow:hidden;display:flex;align-items:flex-end;justify-content:center}
+.fin-inner{position:relative;width:min(760px,94vw);height:min(700px,92vh)}
+.fin-scene{position:absolute;left:50%;bottom:4%;transform:translateX(-50%);width:min(880px,96vw,calc((100vh - 360px)*1.38))}
+.fin-scene svg{width:100%;height:auto;display:block}
+.cline{will-change:stroke-dashoffset}
+.fin-text{position:absolute;left:0;right:0;top:clamp(80px,10vh,96px);text-align:center;opacity:0;pointer-events:none;will-change:opacity,transform;z-index:3}
+.fin-text h2{font-size:clamp(28px,4vw,46px)}
+.fin-text p{color:var(--dim);font-size:16px;margin-top:10px}
+.fin-cta{margin-top:22px}
+.fin-hint{position:absolute;left:0;right:0;bottom:18px;text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;color:var(--faint);z-index:3}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .screen{transition:none}
+  .wdots i{transition:none}
+  .fin-text{pointer-events:auto}
+  .finale{height:auto}
+  .fin-sticky{position:static;height:auto;padding:80px 0}
+  .cline{stroke-dashoffset:0!important}
+  .cdot{opacity:1!important}
+  #row1,#row2,#row3,#row4{opacity:1!important}
+  #pill1,#pill2,#pill3{opacity:1!important}
+  .fin-text{position:static;opacity:1;margin-bottom:30px;transform:none!important}
+  .fin-hint{display:none}
+  .mach{transform:none}
+  .rv{opacity:1;transform:none;transition:none}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="logo" href="#top">Track<b>Rakho</b><small>FOR MACHINE SHOPS</small></a>
+    <span class="sp"></span>
+    <a class="lnk" href="#pipeline">Quotes</a>
+    <a class="lnk" href="#floor">Machine floor</a>
+    <a class="lnk" href="#costing">Costing</a>
+    <a class="lnk" href="#tally">Tally</a>
+    <a class="lnk" href="#walkthrough">See it in action</a>
+    <a class="lnk" href="#pricing">Pricing</a>
+    <a class="btn btn-grn cta-sm" href="https://wa.me/919910605207?text=TrackRakho%20-%20machine%20shop%20demo">Get a demo</a>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- ============================== HERO ============================== -->
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow rv in">FOR CNC JOB-SHOPS &amp; MACHINE SHOPS</div>
+    <h1 style="margin-top:18px">Tracking your factory<br>can be <span class="g">this easy.</span></h1>
+    <p class="sub">Quotes, machines, costing and payments — one app keeps the whole
+    job-shop in view, from the first WhatsApp enquiry to the money arriving.
+    No new hardware. No change to how you already work.</p>
+    <div class="ctas">
+      <a class="btn btn-grn" href="#walkthrough">See a day in the shop</a>
+      <a class="btn btn-ghost" href="https://wa.me/919910605207?text=TrackRakho%20-%20machine%20shop%20demo">Talk on WhatsApp</a>
+    </div>
+    <div class="meta">
+      <div class="m"><b>30 seconds</b>to log a quote</div>
+      <div class="m"><b>0</b>new hardware needed</div>
+      <div class="m"><b>24 x 7</b>visible from anywhere</div>
+      <div class="m"><b>&#8377;999/mo</b>everything included</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== FEATURES ============================== -->
+<section class="blk" id="features" style="padding-top:60px">
+  <div class="wrap">
+    <div class="sechead center rv">
+      <div class="eyebrow">One app, the whole shop</div>
+      <h2>Every part of the business, tracked in one place.</h2>
+      <p>Each capability below is built from real visits to job-shops in Faridabad —
+      and each one works on the phone you already carry.</p>
+    </div>
+
+    <!-- 1. PIPELINE -->
+    <div class="fsec rv" id="pipeline">
+      <div>
+        <div class="fnum">01 — QUOTE TRACKING</div>
+        <h3>Every quote, remembered. Nothing slips.</h3>
+        <p class="flead">Most shops quote well and then lose track — who is pending,
+        who needs a reminder, which order quietly went to a competitor. TrackRakho
+        keeps every quote on one board with its status, and tells you whom to
+        follow up today.</p>
+        <ul class="blist">
+          <li><span><b>Pending / Won / Lost</b> on every quote — your hit-rate stops being a guess.</span></li>
+          <li><span><b>Follow-up dates with due-today reminders</b>, and a one-tap "chase on WhatsApp" that opens a ready message.</span></li>
+          <li><span><b>Part, spec and photo on each card</b> — "Bush &#216;42 &#183; EN8" is scannable at a glance.</span></li>
+        </ul>
+        <div class="fnote">Logging a quote takes under 30 seconds — even for quotes you made in Excel.</div>
+      </div>
+      <div class="fmockcol">
+        <div class="mockl">
+          <div class="mh2">Pipeline <span>ALL QUOTES &#183; 9</span></div>
+          <div class="mrow2 warn">
+            <div class="l"><b>Krishna Pumps</b><span>Bush &#216;42 &#183; EN8 &#183; 500 pcs</span></div>
+            <div class="v">&#8377;30,600</div>
+          </div>
+          <div class="chiprow" style="margin-top:6px"><span class="chip">FOLLOW UP IN 2 DAYS</span><span class="chip grn">PENDING</span></div>
+          <div class="mrow2 alert">
+            <div class="l"><b>Bharat Traders</b><span>MS Hex Bar lot &#183; EN1A &#183; 1.2 T</span></div>
+            <div class="v">&#8377;1,28,000</div>
+          </div>
+          <div class="chiprow" style="margin-top:6px"><span class="chip red">OVERDUE — CHASE ON WHATSAPP</span></div>
+          <div class="mrow2">
+            <div class="l"><b>Apex Hydraulics</b><span>Gland Nut - 60mm &#183; 200 pcs</span></div>
+            <div class="v">&#8377;34,878</div>
+          </div>
+          <div class="chiprow" style="margin-top:6px"><span class="chip grn">WON &#127881;</span></div>
+          <div class="cap"><b>What you're seeing:</b> the pipeline, filtered to all quotes.
+          Amber means a follow-up is coming, red means it is overdue — with the
+          WhatsApp chase one tap away.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. MACHINE FLOOR -->
+    <div class="fsec rev rv" id="floor">
+      <div>
+        <div class="fnum">02 — MACHINE FLOOR</div>
+        <h3>Which machine finishes when — without walking the floor.</h3>
+        <p class="flead">Log a job once: part, quantity, cycle time per piece, and which
+        machines run it. From then on the board shows live progress — percent done,
+        pieces completed, time left and a realistic finish time — computed from plain
+        clock time, on any phone, anywhere.</p>
+        <ul class="blist">
+          <li><span><b>Split one job across machines</b> — 200 pieces over two VMCs, each with its own clock.</span></li>
+          <li><span><b>Pause and transfer</b> — a breakdown at 40%? Move the remaining pieces to a free machine; every estimate recomputes.</span></li>
+          <li><span><b>Honest ETAs</b> — every estimate carries an 8% buffer for tool changes and small breakdowns, disclosed right on the card.</span></li>
+          <li><span><b>Handling time counted</b> — loading, deburring, checking between pieces is part of the math, because 1 minute per piece moves a big batch's finish time by hours.</span></li>
+        </ul>
+      </div>
+      <div class="fmockcol">
+        <div class="machstage">
+          <div class="mach" id="mach">
+            <svg viewBox="0 0 560 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A CNC vertical machining center with its status light on and the control screen showing progress">
+              <!-- floor line -->
+              <line x1="10" y1="272" x2="550" y2="272" stroke="#B9CDBD" stroke-width="2.5"/>
+              <line x1="10" y1="272" x2="550" y2="272" stroke="#8CA093" stroke-width="1" stroke-dasharray="8 10" opacity=".5"/>
+              <!-- machine body -->
+              <rect x="70" y="62" width="300" height="210" rx="10" fill="#D7E4D9" stroke="#8FA894" stroke-width="2"/>
+              <path d="M70 96 h300" stroke="#8FA894" stroke-width="1.5"/>
+              <rect x="70" y="62" width="300" height="34" rx="10" fill="#C4D6C8"/>
+              <text x="96" y="84" font-family="IBM Plex Mono,monospace" font-size="13" font-weight="600" fill="#3F4E44">VMC 850 #1</text>
+              <!-- status light tower -->
+              <rect x="330" y="26" width="10" height="40" rx="3" fill="#9FB5A4"/>
+              <rect x="326" y="12" width="18" height="18" rx="5" fill="#3FAE45"/>
+              <circle cx="335" cy="21" r="4" fill="#E8F4E9"/>
+              <!-- viewing window with spindle + workpiece -->
+              <rect x="92" y="112" width="180" height="132" rx="8" fill="#213028" stroke="#8FA894" stroke-width="2"/>
+              <rect x="100" y="120" width="164" height="116" rx="5" fill="#2C4033"/>
+              <rect x="172" y="120" width="18" height="52" fill="#9FB5A4"/>
+              <rect x="166" y="168" width="30" height="16" rx="3" fill="#C4D6C8"/>
+              <rect x="176" y="184" width="10" height="12" fill="#E3EBE4"/>
+              <rect x="140" y="206" width="84" height="14" rx="3" fill="#55655B"/>
+              <rect x="162" y="196" width="40" height="12" rx="2" fill="#C9DACC"/>
+              <path d="M118 226 l10 -8 M132 228 l8 -10 M226 224 l8 -8" stroke="#7CE383" stroke-width="2" stroke-linecap="round" opacity=".55"/>
+              <!-- door handle -->
+              <rect x="282" y="164" width="8" height="34" rx="4" fill="#8FA894"/>
+              <!-- control pendant -->
+              <rect x="296" y="112" width="62" height="86" rx="7" fill="#16201A"/>
+              <rect x="302" y="120" width="50" height="34" rx="3" fill="#0C130D"/>
+              <text x="327" y="134" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9" font-weight="600" fill="#7CE383">60%</text>
+              <rect x="306" y="140" width="42" height="5" rx="2.5" fill="#1E3323"/>
+              <rect x="306" y="140" width="25" height="5" rx="2.5" fill="#3FAE45"/>
+              <circle cx="311" cy="166" r="4" fill="#3F4E44"/><circle cx="327" cy="166" r="4" fill="#3F4E44"/><circle cx="343" cy="166" r="4" fill="#3F4E44"/>
+              <circle cx="311" cy="180" r="4" fill="#3F4E44"/><circle cx="327" cy="180" r="4" fill="#3F4E44"/><circle cx="343" cy="180" r="4" fill="#C0392B"/>
+              <!-- chip conveyor / base -->
+              <rect x="86" y="252" width="268" height="20" rx="5" fill="#9FB5A4"/>
+              <rect x="376" y="200" width="70" height="72" rx="7" fill="#C9DACC" stroke="#8FA894" stroke-width="1.5"/>
+              <path d="M388 214 h46 M388 228 h46 M388 242 h30" stroke="#8FA894" stroke-width="2.5" stroke-linecap="round" opacity=".6"/>
+              <!-- floating live card -->
+              <rect x="404" y="64" width="140" height="96" rx="12" fill="#fff" stroke="#CFE0D1" stroke-width="2"/>
+              <text x="418" y="88" font-family="IBM Plex Mono,monospace" font-size="9.5" letter-spacing="1" fill="#8CA093">GLAND NUT - 60MM</text>
+              <text x="418" y="110" font-family="IBM Plex Mono,monospace" font-size="15" font-weight="600" fill="#155E18">~120 / 200 pcs</text>
+              <rect x="418" y="122" width="112" height="7" rx="3.5" fill="#E3EBE4"/>
+              <rect x="418" y="122" width="67" height="7" rx="3.5" fill="#3FAE45"/>
+              <text x="418" y="148" font-family="IBM Plex Mono,monospace" font-size="9.5" fill="#4E5E53">60% &#183; finishes tomorrow</text>
+              <path d="M404 140 C 382 150, 372 170, 368 196" stroke="#3FAE45" stroke-width="2" stroke-dasharray="5 6" fill="none"/>
+            </svg>
+          </div>
+          <div class="mach-cap">THE BOARD SEES WHAT THE FLOOR SEES</div>
+        </div>
+        <div class="mockl">
+          <div class="mh2">Machine floor <span>LIVE &#183; 1 JOB</span></div>
+          <div class="mrow2">
+            <div class="l" style="flex:1"><b>VMC 850 #1 — Gland Nut - 60mm</b><span>Apex Hydraulics &#183; 4.5 min cycle + 0.5 min handling</span>
+              <div class="bar"><i style="width:60%"></i></div>
+            </div>
+            <div class="v">60%</div>
+          </div>
+          <div class="mrow2">
+            <div class="l"><b>~120 of 200 pcs done</b><span>time left ~7 hr 12 min &#183; incl. 8% buffer</span></div>
+            <div class="v" style="font-size:13px">ETA kal 4:30 pm</div>
+          </div>
+          <div class="chiprow"><span class="chip grn">VMC 850 #2 — FREE</span></div>
+          <div class="cap"><b>What you're seeing:</b> the live floor board. Progress and the
+          finish time are pure clock math from the cycle time you entered — the app
+          never guesses machining time, and says so.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. COSTING -->
+    <div class="fsec rv" id="costing">
+      <div>
+        <div class="fnum">03 — TRUE COSTING</div>
+        <h3>Price from your real numbers, not gut feel.</h3>
+        <p class="flead">Underquoting loses money; overquoting loses the order. The
+        costing wizard builds a price the way an estimator would — material, machine
+        time, hand work, tooling — then adds your overhead and margin openly, so you
+        can defend every rupee in front of a purchase manager.</p>
+        <ul class="blist">
+          <li><span><b>A true hourly-rate calculator</b> for each machine: depreciation, power, operator and maintenance. Most owners find their real rate is far higher than they assumed — the seeded VMC 850 example works out to <b>&#8377;366/hr</b>.</span></li>
+          <li><span><b>Built on the loaded-rate rule</b> from a real shop visit: one operator running several machines? Enter his split salary per machine — hands-on minutes still cost the full labour rate.</span></li>
+          <li><span><b>Setup cost spreads over quantity</b> — so small batches price higher per piece, the way they should.</span></li>
+          <li><span><b>A clean PDF quotation</b> and a ready WhatsApp message, in under a minute.</span></li>
+        </ul>
+        <div class="fnote">You know your cycle times. TrackRakho never guesses them — it does the money math.</div>
+      </div>
+      <div class="fmockcol">
+        <div class="mockl">
+          <div class="mh2">Gland Nut - 60mm <span>200 PCS &#183; EN8</span></div>
+          <table class="sumt">
+            <tr><td>Material (0.6 kg &#215; &#8377;85/kg MS EN8)</td><td>&#8377;51.00</td></tr>
+            <tr><td>Machine (VMC true rate &#8377;366/hr + setup share)</td><td>&#8377;54.90</td></tr>
+            <tr><td>Hand work (deburr &#183; check)</td><td>&#8377;12.33</td></tr>
+            <tr><td>Overhead +18%</td><td>&#8377;139.51</td></tr>
+            <tr><td>Margin +25%</td><td>&#8377;174.39</td></tr>
+            <tr class="tot"><td>Price &#215; 200 pcs</td><td>&#8377;34,878</td></tr>
+          </table>
+          <div class="cap"><b>What you're seeing:</b> the finished cost sheet for a real
+          sample part. Every line is editable, and the PDF your customer receives
+          shows the professional summary — not your margins.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. WON -> FLOOR -->
+    <div class="fsec rev rv" id="flow">
+      <div>
+        <div class="fnum">04 — QUOTE TO MACHINE, ONE TAP</div>
+        <h3>A won order reaches the machines in one tap.</h3>
+        <p class="flead">The moment a customer says yes, the work order should not need
+        retyping. Mark the quote <b>Won</b>, tap <b>Send to floor</b>, pick the machines —
+        part, customer and quantity carry over, and the live clock starts.</p>
+        <ul class="blist">
+          <li><span><b>No transcription errors</b> — the same Gland Nut, the same 200 pieces, straight from the quote.</span></li>
+          <li><span><b>Machines picked in seconds</b> — free machines are shown as tappable chips; quantity splits automatically.</span></li>
+          <li><span><b>The customer's promise date and the machine's finish date finally live in the same place.</b></span></li>
+        </ul>
+      </div>
+      <div class="fmockcol">
+        <div class="mockl">
+          <div class="mh2">Quote won <span>SEND TO FLOOR</span></div>
+          <div class="mrow2">
+            <div class="l"><b>Apex Hydraulics — Gland Nut - 60mm</b><span>200 pcs &#183; &#8377;174.39/pc</span></div>
+            <div class="v">&#8377;34,878</div>
+          </div>
+          <div class="chiprow"><span class="chip grn">&#128296; Send to floor</span></div>
+          <div class="mrow2" style="margin-top:12px">
+            <div class="l"><b>Pick machines</b><span>part &#183; customer &#183; qty prefilled</span></div>
+          </div>
+          <div class="chiprow"><span class="chip grn">VMC 850 #1 &#10003;</span><span class="chip">VMC 850 #2</span></div>
+          <div class="mrow2">
+            <div class="l"><b>Job starts now</b><span>200 pcs &#183; 4.5 + 0.5 min/pc &#183; 8% buffer</span></div>
+            <div class="v" style="font-size:13px">~18 hr</div>
+          </div>
+          <div class="cap"><b>What you're seeing:</b> the handover moment. One tap on a won
+          quote opens the floor form with everything filled in — you only choose the
+          machines.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. TALLY -->
+    <div class="fsec rv" id="tally">
+      <div>
+        <div class="fnum">05 — TALLY &amp; PAYMENTS <span class="chip" style="margin-left:8px">BETA</span></div>
+        <h3>Know who owes what — without opening Tally.</h3>
+        <p class="flead">Your accountant keeps Tally. You should not need to call him to
+        know who owes money. A small connector on the Tally PC keeps a window open both
+        ways: won orders flow <b>in</b> as Sales Orders, balances and bills flow <b>out</b>
+        to your phone.</p>
+        <ul class="blist">
+          <li><span><b>Won quotes land in Tally as Sales Orders</b> — party, item and amount created automatically. No retyping, no duplicates.</span></li>
+          <li><span><b>Customer outstanding on every quote card</b> — an amber "Tally baki" chip warns you before you quote someone who has not paid.</span></li>
+          <li><span><b>Bill-by-bill aging</b> — every open bill with its reference number, due date and days late, in four colour bands. Chasing "bill no 148, 8 days late" gets paid faster than asking for a lump sum.</span></li>
+        </ul>
+        <div class="fnote">It is a window, not a door — your accountant's Tally stays exactly as it is.</div>
+      </div>
+      <div class="fmockcol">
+        <div class="mockl">
+          <div class="mh2">Money stuck, by age <span>FROM YOUR TALLY</span></div>
+          <div class="mrow2 alert">
+            <div class="l"><b>Running late</b><span>4 of 7 open bills</span></div>
+            <div class="v">&#8377;3,96,700</div>
+          </div>
+          <div class="agebar">
+            <i style="flex-grow:312;background:#2E9E33"></i>
+            <i style="flex-grow:249.5;background:#D97706"></i>
+            <i style="flex-grow:105.2;background:#EA580C"></i>
+            <i style="flex-grow:42;background:#DC2626"></i>
+          </div>
+          <div class="agelegend">
+            <span><i style="background:#2E9E33"></i>On time</span>
+            <span><i style="background:#D97706"></i>1-30 days</span>
+            <span><i style="background:#EA580C"></i>31-60 days</span>
+            <span><i style="background:#DC2626"></i>60+ days</span>
+          </div>
+          <div class="mrow2 alert" style="margin-top:12px">
+            <div class="l"><b>#APX/PO-112 &#183; 8 days late</b><span>billed 6,60,000 &#183; received 4,10,500</span></div>
+            <div class="v">&#8377;2,49,500</div>
+          </div>
+          <div class="mrow2">
+            <div class="l"><b>Sales Order created in Tally</b><span>Gland Nut - 60mm &#183; Apex Hydraulics</span></div>
+            <div class="v">&#8377;34,878</div>
+          </div>
+          <div class="cap"><b>What you're seeing:</b> the receivables picture the app builds
+          from Tally — total running late, the age of every rupee, and each bill's
+          own story: billed, received, remaining.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. FORMATS -->
+    <div class="fsec rev rv" id="formats">
+      <div>
+        <div class="fnum">06 — WHATSAPP, EXCEL &amp; PDF</div>
+        <h3>Work in the formats your customers demand.</h3>
+        <p class="flead">Enquiries arrive on WhatsApp. Purchase departments demand Excel.
+        Quotations go out as PDF. TrackRakho does not fight any of that — it meets each
+        format where it already lives.</p>
+        <ul class="blist">
+          <li><span><b>Paste a WhatsApp enquiry</b> — customer, part, quantity and rate fill themselves from the message text. Once your WhatsApp is connected, inbound enquiries land in the pipeline on their own; optional AI reading (off by default) handles photos and handwritten lists too.</span></li>
+          <li><span><b>Excel in, Excel out</b> — import your existing quote sheet (.xlsx or CSV), export the pipeline any time. Your data is never locked in.</span></li>
+          <li><span><b>Branded PDF quotations</b> — a clean, professional document with your shop's name, ready to send or print.</span></li>
+        </ul>
+      </div>
+      <div class="fmockcol">
+        <div class="mockl">
+          <div class="mh2">New enquiry <span>PASTED FROM WHATSAPP</span></div>
+          <div class="apmsg" style="font-size:12px;padding:12px"><small>KRISHNA PUMPS &#183; 10:42 AM</small>
+          Krishna Pumps se bol raha hu. 500 pcs Bush &#216;42 chahiye, EN8. Rate 61.20/pc final. 15 August tak.</div>
+          <div class="mrow2">
+            <div class="l"><b>Krishna Pumps</b><span>read from the message</span></div>
+            <div class="v" style="font-size:12px">&#10003;</div>
+          </div>
+          <div class="mrow2">
+            <div class="l"><b>Bush &#216;42 &#183; 500 pcs &#183; &#8377;61.20/pc</b><span>follow-up set: 15 Aug</span></div>
+            <div class="v">&#8377;30,600</div>
+          </div>
+          <div class="cap"><b>What you're seeing:</b> the paste box. One long-press to paste
+          the customer's message, and the quote form fills itself — you just tap
+          Save.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================== WALKTHROUGH ============================== -->
+<div class="walkwrap" id="walkthrough">
+<section class="blk">
+  <div class="wrap">
+    <div class="sechead center rv">
+      <div class="eyebrow">See it in action</div>
+      <h2>A day in the shop, as you scroll.</h2>
+      <p>This is the actual interface — follow one working day from the morning
+      overview to the evening money picture.</p>
+    </div>
+
+    <div class="walk">
+      <div class="wsteps" id="wsteps">
+        <div class="wstep" data-step="0">
+          <div class="wcard">
+            <div class="wnum">STEP 01 — 9:00 AM</div>
+            <h3>Open the day with the full picture</h3>
+            <p>Pending quote value, orders won this month, what is running on which
+            machine, and who needs a call today — before the shop even opens. No
+            registers to check; it is simply there.</p>
+          </div>
+        </div>
+        <div class="wstep" data-step="1">
+          <div class="wcard">
+            <div class="wnum">STEP 02 — 10:42 AM</div>
+            <h3>An enquiry arrives on WhatsApp</h3>
+            <p>Paste the customer's message. Customer, part, quantity and rate read
+            themselves out of the text, the follow-up date is set from "15 August
+            tak" — and the quote is logged in under 30 seconds.</p>
+          </div>
+        </div>
+        <div class="wstep" data-step="2">
+          <div class="wcard">
+            <div class="wnum">STEP 03 — 11:15 AM</div>
+            <h3>A repeat part is priced in a minute</h3>
+            <p>Material, machine time at the machine's true hourly rate, hand work,
+            then overhead and margin added openly. The customer receives a clean
+            PDF; you keep the full breakdown.</p>
+          </div>
+        </div>
+        <div class="wstep" data-step="3">
+          <div class="wcard">
+            <div class="wnum">STEP 04 — 2:00 PM</div>
+            <h3>Won — and on the machines in one tap</h3>
+            <p>Mark the quote Won, tap Send to floor, pick VMC 850 #1. Part,
+            customer and quantity carry over; the live clock starts and the finish
+            time — with its honest 8% buffer — appears on the board.</p>
+          </div>
+        </div>
+        <div class="wstep" data-step="4">
+          <div class="wcard">
+            <div class="wnum">STEP 05 — EVENING</div>
+            <h3>The money picture, straight from Tally</h3>
+            <p>The won order has already landed in Tally as a Sales Order — no
+            retyping. Outstanding balances and every open bill's age flow back the
+            other way, so you know exactly whom to chase tomorrow.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="wphone-hold">
+        <div class="wphone" aria-hidden="true">
+          <div class="notch"></div>
+          <div class="wscr" id="wscr">
+
+            <div class="screen on" data-screen="0">
+              <div class="aphead"><small>TUESDAY, 28 JUL</small>Good morning</div>
+              <div class="apkpis">
+                <div class="apk warn"><b>&#8377;2,93,100</b><span>PENDING VALUE</span></div>
+                <div class="apk"><b>&#8377;99,378</b><span>WON THIS MONTH</span></div>
+              </div>
+              <div class="aprow"><div class="ic">&#128736;</div><div class="tx"><b>Machine floor — 1 job running</b><span>VMC 850 #1 &#183; Gland Nut &#183; 60%</span></div></div>
+              <div class="aprow"><div class="ic">&#128229;</div><div class="tx"><b>RFQs — 4 pending</b><span>&#8377;2,93,100 waiting on customers</span></div></div>
+              <div class="aprow warn"><div class="ic">&#128276;</div><div class="tx"><b>2 follow-ups due</b><span>Verma Enterprises &#183; Bharat Traders</span></div></div>
+              <div class="aprow"><div class="ic">&#128210;</div><div class="tx"><b>Tally — to collect</b><span>&#8377;7,08,700 outstanding</span></div></div>
+            </div>
+
+            <div class="screen" data-screen="1">
+              <div class="aphead"><small>LOG A QUOTE</small>Paste an enquiry</div>
+              <div class="apmsg"><small>WHATSAPP &#183; 10:42 AM</small>Krishna Pumps se bol raha hu. 500 pcs Bush &#216;42 chahiye, EN8. Rate 61.20/pc final. 15 August tak.</div>
+              <div class="aprow hl"><div class="ic">&#128100;</div><div class="tx"><b>Krishna Pumps</b><span>read from the message</span></div></div>
+              <div class="aprow"><div class="ic">&#9881;&#65039;</div><div class="tx"><b>Bush &#216;42 &#183; 500 pcs</b><span>&#8377;61.20/pc &#183; follow-up 15 Aug</span></div><div class="amt">&#8377;30,600</div></div>
+              <div class="apbtn">Save quote</div>
+              <div style="text-align:center"><span class="aptag g">LOGGED IN 30 SECONDS</span></div>
+            </div>
+
+            <div class="screen" data-screen="2">
+              <div class="aphead"><small>FULL COSTING</small>Gland Nut - 60mm</div>
+              <div class="aprow"><div class="ic">&#129521;</div><div class="tx"><b>Material</b><span>0.6 kg &#215; &#8377;85/kg MS EN8</span></div><div class="amt">&#8377;51.00</div></div>
+              <div class="aprow"><div class="ic">&#9881;&#65039;</div><div class="tx"><b>Machine</b><span>VMC true rate &#8377;366/hr</span></div><div class="amt">&#8377;54.90</div></div>
+              <div class="aprow"><div class="ic">&#9997;&#65039;</div><div class="tx"><b>Hand work</b><span>deburr &#183; check</span></div><div class="amt">&#8377;12.33</div></div>
+              <div class="aprow"><div class="ic">&#128200;</div><div class="tx"><b>+18% overhead &#183; +25% margin</b><span>added openly</span></div><div class="amt">&#8377;174.39/pc</div></div>
+              <div class="aprow hl"><div class="ic">&#128181;</div><div class="tx"><b>200 pcs total</b><span>Apex Hydraulics</span></div><div class="amt">&#8377;34,878</div></div>
+              <div style="text-align:center"><span class="aptag g">PDF READY TO SEND</span></div>
+            </div>
+
+            <div class="screen" data-screen="3">
+              <div class="aphead"><small>QUOTE WON</small>Send to floor</div>
+              <div class="aprow hl"><div class="ic">&#127881;</div><div class="tx"><b>Gland Nut - 60mm &#183; 200 pcs</b><span>Apex Hydraulics &#183; &#8377;34,878</span></div></div>
+              <div class="aprow"><div class="ic">&#128736;</div><div class="tx"><b>VMC 850 #1 — selected</b><span>VMC 850 #2 free &#183; qty splits if both picked</span></div></div>
+              <div class="aprow"><div class="ic">&#9201;</div><div class="tx"><b>4.5 + 0.5 min per piece</b><span>incl. 8% breakdown buffer</span><div class="apbar"><i style="width:4%"></i></div></div><div class="amt">~18 hr</div></div>
+              <div class="apbtn">Start job</div>
+              <div style="text-align:center"><span class="aptag g">LIVE ON THE BOARD &#183; FINISH TIME SHOWN</span></div>
+            </div>
+
+            <div class="screen" data-screen="4">
+              <div class="aphead"><small>TALLY &#183; SEEDHA HISAAB</small>The money picture</div>
+              <div class="aprow"><div class="ic">&#128203;</div><div class="tx"><b>Sales Order created in Tally</b><span>Gland Nut - 60mm &#183; automatic</span></div><div class="amt">&#8377;34,878</div></div>
+              <div class="apkpis">
+                <div class="apk"><b>&#8377;7,08,700</b><span>TO COLLECT</span></div>
+                <div class="apk warn"><b>&#8377;3,96,700</b><span>RUNNING LATE</span></div>
+              </div>
+              <div style="display:flex;height:9px;border-radius:5px;overflow:hidden;margin-top:8px;border:1px solid var(--line)">
+                <i style="flex-grow:312;background:#2E9E33"></i><i style="flex-grow:249.5;background:#D97706"></i><i style="flex-grow:105.2;background:#EA580C"></i><i style="flex-grow:42;background:#DC2626"></i>
+              </div>
+              <div class="aprow warn" style="margin-top:9px"><div class="ic">&#9203;</div><div class="tx"><b>#APX/PO-112 — 8 days late</b><span>chase with the bill number</span></div><div class="amt red">&#8377;2,49,500</div></div>
+              <div style="text-align:center"><span class="aptag g">NO RETYPING &#183; NO CALLS TO THE ACCOUNTANT</span></div>
+            </div>
+
+          </div>
+          <div class="wdots" id="wdots"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+
+<!-- ============================== BAND ============================== -->
+<section class="band">
+  <div class="wrap bgrid rv">
+    <div class="bstat"><b>30 sec</b><span>to log a quote, even from Excel</span></div>
+    <div class="bstat"><b>0</b><span>sensors, wiring or new hardware</span></div>
+    <div class="bstat"><b>+8%</b><span>honest buffer on every machine ETA</span></div>
+    <div class="bstat"><b>24 x 7</b><span>your shop, visible from anywhere</span></div>
+  </div>
+</section>
+
+<!-- ============================== FINALE ============================== -->
+<section class="finale" id="finale" aria-label="Machines, quotes, accounts and enquiries all connecting into one phone">
+  <div class="fin-sticky">
+    <div class="fin-text" id="finText">
+      <h2>Your factory, tracked.<br><span style="color:var(--grn)">From anywhere.</span></h2>
+      <p>Whatever happens in the shop appears on your phone, the moment it happens.</p>
+      <div class="fin-cta"><a class="btn btn-grn" href="https://wa.me/919910605207?text=TrackRakho%20-%20machine%20shop%20demo">Request a demo</a></div>
+    </div>
+    <div class="fin-inner">
+
+      <div class="fin-scene" id="finScene">
+        <svg viewBox="0 0 1000 720" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A CNC machine, a quotation, Tally accounts and a WhatsApp enquiry all connecting into one phone">
+
+          <!-- connection lines (draw on scroll) -->
+          <path class="cline" id="ln1" d="M262 128 C 352 128, 380 250, 436 316" stroke="#3FAE45" stroke-width="2.5" stroke-dasharray="1" stroke-dashoffset="1" pathLength="1" fill="none"/>
+          <path class="cline" id="ln2" d="M738 128 C 648 128, 620 250, 564 316" stroke="#3FAE45" stroke-width="2.5" stroke-dasharray="1" stroke-dashoffset="1" pathLength="1" fill="none"/>
+          <path class="cline" id="ln3" d="M262 600 C 352 600, 380 500, 436 452" stroke="#3FAE45" stroke-width="2.5" stroke-dasharray="1" stroke-dashoffset="1" pathLength="1" fill="none"/>
+          <path class="cline" id="ln4" d="M738 600 C 648 600, 620 500, 564 452" stroke="#3FAE45" stroke-width="2.5" stroke-dasharray="1" stroke-dashoffset="1" pathLength="1" fill="none"/>
+          <circle class="cdot" id="dt1" cx="436" cy="316" r="5" fill="#3FAE45" opacity="0"/>
+          <circle class="cdot" id="dt2" cx="564" cy="316" r="5" fill="#3FAE45" opacity="0"/>
+          <circle class="cdot" id="dt3" cx="436" cy="452" r="5" fill="#3FAE45" opacity="0"/>
+          <circle class="cdot" id="dt4" cx="564" cy="452" r="5" fill="#3FAE45" opacity="0"/>
+
+          <!-- C1: CNC machine (top-left) -->
+          <g id="vg1">
+            <rect x="28" y="34" width="234" height="160" rx="18" fill="#fff" stroke="#CFE0D1" stroke-width="2"/>
+            <g transform="translate(52 58)">
+              <line x1="-8" y1="104" x2="196" y2="104" stroke="#B9CDBD" stroke-width="2"/>
+              <rect x="8" y="10" width="128" height="94" rx="6" fill="#D7E4D9" stroke="#8FA894" stroke-width="1.5"/>
+              <rect x="8" y="10" width="128" height="18" rx="6" fill="#C4D6C8"/>
+              <rect x="18" y="38" width="70" height="56" rx="4" fill="#213028"/>
+              <rect x="45" y="42" width="10" height="24" fill="#9FB5A4"/>
+              <rect x="41" y="64" width="18" height="9" rx="2" fill="#C4D6C8"/>
+              <rect x="30" y="82" width="46" height="7" rx="2" fill="#55655B"/>
+              <rect x="96" y="38" width="32" height="42" rx="4" fill="#16201A"/>
+              <text x="112" y="55" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9" font-weight="600" fill="#7CE383">60%</text>
+              <rect x="101" y="62" width="22" height="4" rx="2" fill="#1E3323"/>
+              <rect x="101" y="62" width="13" height="4" rx="2" fill="#3FAE45"/>
+              <rect x="118" y="-8" width="8" height="18" rx="2" fill="#9FB5A4"/>
+              <rect x="115" y="-18" width="14" height="14" rx="4" fill="#3FAE45"/>
+              <rect x="146" y="58" width="48" height="46" rx="5" fill="#C9DACC" stroke="#8FA894" stroke-width="1.5"/>
+              <path d="M154 70 h32 M154 82 h32 M154 94 h20" stroke="#8FA894" stroke-width="2.5" stroke-linecap="round" opacity=".6"/>
+            </g>
+            <text x="145" y="180" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" letter-spacing="1.5" fill="#4E5E53" font-weight="600">MACHINE FLOOR &#183; VMC 850 #1</text>
+          </g>
+
+          <!-- C2: quotation (top-right) -->
+          <g id="vg2">
+            <rect x="738" y="34" width="234" height="160" rx="18" fill="#fff" stroke="#CFE0D1" stroke-width="2"/>
+            <g transform="translate(795 52)">
+              <rect x="0" y="0" width="86" height="112" rx="6" fill="#F4F8F5" stroke="#CFE0D1" stroke-width="1.5"/>
+              <rect x="10" y="12" width="38" height="9" rx="2" fill="#155E18"/>
+              <path d="M10 34 h66 M10 46 h66 M10 58 h66 M10 70 h48" stroke="#CFE0D1" stroke-width="4" stroke-linecap="round"/>
+              <path d="M52 34 h24 M52 46 h24 M52 58 h24" stroke="#3FAE45" stroke-width="4" stroke-linecap="round" opacity=".8"/>
+              <rect x="10" y="86" width="66" height="14" rx="4" fill="#E8F4E9"/>
+              <text x="43" y="96.5" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="8.5" font-weight="600" fill="#155E18">Rs 174.39/pc</text>
+              <path d="M96 22 l14 0 M96 34 l14 0 M96 46 l8 0" stroke="#A6BCAA" stroke-width="2.5" stroke-linecap="round" opacity=".7"/>
+            </g>
+            <text x="855" y="180" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" letter-spacing="1.5" fill="#4E5E53" font-weight="600">QUOTATION &#183; PDF SENT</text>
+          </g>
+
+          <!-- C3: Tally computer (bottom-left) -->
+          <g id="vg3">
+            <rect x="28" y="526" width="234" height="160" rx="18" fill="#fff" stroke="#CFE0D1" stroke-width="2"/>
+            <g transform="translate(76 550)">
+              <rect x="0" y="0" width="138" height="86" rx="8" fill="#16201A"/>
+              <rect x="7" y="7" width="124" height="72" rx="4" fill="#F4F8F5"/>
+              <rect x="14" y="14" width="52" height="10" rx="2" fill="#155E18"/>
+              <path d="M14 34 h110 M14 46 h110 M14 58 h110 M14 70 h86" stroke="#CFE0D1" stroke-width="4" stroke-linecap="round"/>
+              <path d="M84 34 h40 M84 46 h40 M84 58 h40" stroke="#3FAE45" stroke-width="4" stroke-linecap="round" opacity=".8"/>
+              <rect x="56" y="86" width="26" height="14" fill="#C9DACC"/>
+              <rect x="36" y="100" width="66" height="7" rx="3" fill="#9FB5A4"/>
+            </g>
+            <text x="145" y="672" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" letter-spacing="1.5" fill="#4E5E53" font-weight="600">ACCOUNTS &#183; TALLY</text>
+          </g>
+
+          <!-- C4: WhatsApp enquiry (bottom-right) -->
+          <g id="vg4">
+            <rect x="738" y="526" width="234" height="160" rx="18" fill="#fff" stroke="#CFE0D1" stroke-width="2"/>
+            <g transform="translate(766 552)">
+              <rect x="10" y="8" width="150" height="44" rx="12" fill="#E9F7EA" stroke="#CFE0D1" stroke-width="1.5"/>
+              <path d="M22 52 l-8 12 l20 -12 Z" fill="#E9F7EA"/>
+              <path d="M24 22 h122 M24 34 h96" stroke="#9FB5A4" stroke-width="4" stroke-linecap="round"/>
+              <rect x="30" y="70" width="150" height="34" rx="10" fill="#fff" stroke="#CFE0D1" stroke-width="1.5"/>
+              <text x="42" y="91" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="#155E18">Bush &#216;42 &#183; 500 pcs</text>
+            </g>
+            <text x="855" y="672" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10.5" letter-spacing="1.5" fill="#4E5E53" font-weight="600">ENQUIRY &#183; WHATSAPP</text>
+          </g>
+
+          <!-- PHONE (centre) -->
+          <g id="gPhone2">
+            <rect x="430" y="238" width="140" height="292" rx="28" fill="#16201A"/>
+            <rect x="440" y="252" width="120" height="264" rx="16" fill="#F7FAF7"/>
+            <rect x="478" y="243" width="44" height="7" rx="3.5" fill="#060A07"/>
+            <text x="500" y="276" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="13" font-weight="700" fill="#16201A">Track<tspan fill="#228B22">Rakho</tspan></text>
+            <g id="row1" opacity=".22">
+              <rect x="448" y="288" width="104" height="48" rx="10" fill="#fff" stroke="#CFE0D1" stroke-width="1.5"/>
+              <text x="456" y="308" font-family="IBM Plex Mono,monospace" font-size="10" font-weight="600" fill="#16201A">FLOOR</text>
+              <text x="456" y="326" font-family="IBM Plex Mono,monospace" font-size="11.5" font-weight="600" fill="#155E18">VMC #1 &#183; 60%</text>
+            </g>
+            <g id="row2" opacity=".22">
+              <rect x="448" y="344" width="104" height="48" rx="10" fill="#fff" stroke="#CFE0D1" stroke-width="1.5"/>
+              <text x="456" y="364" font-family="IBM Plex Mono,monospace" font-size="10" font-weight="600" fill="#16201A">QUOTE SENT</text>
+              <text x="456" y="382" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" fill="#155E18">Rs 174.39/pc</text>
+            </g>
+            <g id="row3" opacity=".22">
+              <rect x="448" y="400" width="104" height="48" rx="10" fill="#fff" stroke="#CFE0D1" stroke-width="1.5"/>
+              <text x="456" y="420" font-family="IBM Plex Mono,monospace" font-size="10" font-weight="600" fill="#16201A">TO COLLECT</text>
+              <text x="456" y="438" font-family="IBM Plex Mono,monospace" font-size="11.5" font-weight="600" fill="#155E18">&#8377;7,08,700</text>
+            </g>
+            <g id="row4" opacity=".22">
+              <rect x="448" y="456" width="104" height="48" rx="10" fill="#FBF3E2" stroke="#EBDBB6" stroke-width="1.5"/>
+              <text x="456" y="476" font-family="IBM Plex Mono,monospace" font-size="10" font-weight="600" fill="#B07818">NEW ENQUIRY</text>
+              <text x="456" y="494" font-family="IBM Plex Mono,monospace" font-size="10.5" font-weight="600" fill="#B07818">Bush &#216;42 &#183; 500</text>
+            </g>
+          </g>
+
+          <!-- anywhere pills -->
+          <g id="pill1" opacity="0">
+            <rect x="288" y="560" width="132" height="34" rx="17" fill="#fff" stroke="#CFE0D1" stroke-width="1.5"/>
+            <text x="354" y="582" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" fill="#4E5E53">AT THE SHOP</text>
+          </g>
+          <g id="pill2" opacity="0">
+            <rect x="436" y="560" width="128" height="34" rx="17" fill="#E8F4E9" stroke="#CFE0D1" stroke-width="1.5"/>
+            <text x="500" y="582" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" fill="#155E18">AT HOME</text>
+          </g>
+          <g id="pill3" opacity="0">
+            <rect x="580" y="560" width="146" height="34" rx="17" fill="#fff" stroke="#CFE0D1" stroke-width="1.5"/>
+            <text x="653" y="582" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" fill="#4E5E53">AT A CUSTOMER</text>
+          </g>
+        </svg>
+      </div>
+      <div class="fin-hint" id="finHint">KEEP SCROLLING</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== PRICING ============================== -->
+<section class="blk" id="pricing">
+  <div class="wrap">
+    <div class="sechead center rv">
+      <div class="eyebrow">Pricing</div>
+      <h2>One plan. Everything included.</h2>
+    </div>
+    <div class="price rv">
+      <div class="eyebrow">EARLY ACCESS</div>
+      <div class="amt" style="margin-top:10px">&#8377;999<small>/month</small></div>
+      <ul>
+        <li>Unlimited quotes, pipeline and follow-ups</li>
+        <li>Machine floor board with live ETAs</li>
+        <li>True costing wizard + branded PDF quotations</li>
+        <li>WhatsApp paste-to-fill; automatic enquiry capture once connected</li>
+        <li>Excel / CSV import and export — your data is never locked in</li>
+        <li>Tally connector (BETA): Sales Orders in, balances and bills out</li>
+        <li>Main screens in English, Hinglish and Hindi</li>
+      </ul>
+      <a class="btn btn-grn" href="https://wa.me/919910605207?text=TrackRakho%20-%20machine%20shop%20-%20I%20want%20to%20start">Start on WhatsApp</a>
+      <div class="pnote">Early access — payment is arranged on WhatsApp after your demo.
+      No automated checkout, no card details on this site.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== FAQ ============================== -->
+<section class="blk" id="faq" style="padding-top:20px">
+  <div class="wrap">
+    <div class="sechead center rv">
+      <div class="eyebrow">Straight answers</div>
+      <h2>Questions owners actually ask.</h2>
+    </div>
+    <div class="faq rv">
+      <details>
+        <summary>Does it calculate my cycle time?</summary>
+        <p>No — and be careful of anything that claims it can. You know your machines
+        and your cycle times better than any software. TrackRakho takes the cycle time
+        you enter and does everything after that: the money math, the machine ETAs,
+        the tracking.</p>
+      </details>
+      <details>
+        <summary>Do I need sensors or new hardware on my machines?</summary>
+        <p>Nothing. The floor board works from plain clock time: you tell it when a job
+        started and how long one piece takes, and it computes progress and finish
+        times from there — with an honest 8% buffer for tool changes and small
+        stoppages. Your machines stay untouched.</p>
+      </details>
+      <details>
+        <summary>Will my accountant have to change how he works in Tally?</summary>
+        <p>No. A small connector runs on the Tally PC. Won orders arrive as normal
+        Sales Order vouchers he can see and edit; balances and open bills flow to
+        your phone read-only. It is a window into Tally, not a replacement for it.</p>
+      </details>
+      <details>
+        <summary>My customers demand quotes in Excel. Does that break this?</summary>
+        <p>Not at all — that is exactly why the tracker exists. Keep quoting in
+        whatever format your customer wants; logging that quote in TrackRakho takes
+        under 30 seconds. You can also import your existing Excel sheet in one go,
+        and export the whole pipeline back to Excel any time.</p>
+      </details>
+      <details>
+        <summary>Is my data safe? Can I take it out?</summary>
+        <p>Your rates, customers and quotes belong to you. Every shop's data is kept
+        separate, it is never shown to any other shop, and the Excel/CSV export means
+        you can take everything out whenever you want.</p>
+      </details>
+      <details>
+        <summary>Which phones does it work on?</summary>
+        <p>Any phone with a browser — Android or iPhone. It installs from the browser
+        like an app (no app store needed) and the main screens are available in English,
+        Hinglish and Hindi.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div style="font-family:var(--disp);font-weight:700;font-size:17px;color:var(--ink);margin-bottom:8px">Track<b style="color:var(--grn)">Rakho</b></div>
+  <div>Built in Faridabad for India's job-shops · <a href="https://trackrakho.com/site/" style="color:var(--grn-d);font-weight:600">All industries</a> · <a href="https://wa.me/919910605207" style="color:var(--grn-d);font-weight:600">WhatsApp</a></div>
+  <div class="mono" style="margin-top:10px;font-size:11px">TRACKRAKHO · EARLY ACCESS</div>
+</footer>
+
+<script>
+(function(){
+  /* reveals */
+  var io = new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, {threshold: 0.12});
+  document.querySelectorAll('.rv').forEach(function(el){ io.observe(el); });
+
+  /* walkthrough: step in view -> matching screen on */
+  var steps = [].slice.call(document.querySelectorAll('.wstep'));
+  var screens = [].slice.call(document.querySelectorAll('.screen'));
+  var dots = [].slice.call(document.querySelectorAll('#wdots i'));
+  function activate(i){
+    screens.forEach(function(s, j){ s.classList.toggle('on', j === i); });
+    dots.forEach(function(d, j){ d.classList.toggle('on', j === i); });
+    steps.forEach(function(st, j){ st.classList.toggle('on', j === i); });
+  }
+  /* deterministic: activate the step whose card centre is nearest the
+     viewport centre - immune to observer batching order */
+  var ticking = false;
+  function nearestStep(){
+    var mid = window.innerHeight / 2, best = 0, bd = Infinity;
+    steps.forEach(function(st, i){
+      var r = st.getBoundingClientRect();
+      var d = Math.abs((r.top + r.bottom) / 2 - mid);
+      if(d < bd){ bd = d; best = i; }
+    });
+    activate(best);
+  }
+  function onScroll(){
+    if(ticking) return; ticking = true;
+    requestAnimationFrame(function(){ nearestStep(); ticking = false; });
+  }
+  addEventListener('scroll', onScroll, {passive:true});
+  addEventListener('resize', onScroll);
+  nearestStep();
+
+  var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!reduced){
+    /* generic 0..1 progress as an element crosses the viewport */
+    function crossProg(el){
+      var r = el.getBoundingClientRect(), vh = window.innerHeight;
+      return Math.min(1, Math.max(0, (vh - r.top) / (r.height + vh)));
+    }
+    var mach = document.getElementById('mach');
+    var fin = document.getElementById('finale');
+    var finText = document.getElementById('finText');
+    var finHint = document.getElementById('finHint');
+    var lns = [1,2,3,4].map(function(i){ return document.getElementById('ln' + i); });
+    var dts = [1,2,3,4].map(function(i){ return document.getElementById('dt' + i); });
+    var rows = [1,2,3,4].map(function(i){ return document.getElementById('row' + i); });
+    var pills = [1,2,3].map(function(i){ return document.getElementById('pill' + i); });
+    var lnStarts = [0.06, 0.24, 0.42, 0.60];
+    var ease = function(t){ return t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2; };
+
+    var ticking2 = false;
+    function scenes(){
+      if(ticking2) return; ticking2 = true;
+      requestAnimationFrame(function(){
+        /* machine: gentle 3D settle as it scrolls through */
+        if(mach){
+          var pm = crossProg(mach);
+          mach.style.transform = 'rotateX(' + (10 - pm * 6) + 'deg) translateY(' + ((0.5 - pm) * 14) + 'px)';
+        }
+        /* finale: each corner of the shop connects into the phone, in turn */
+        if(fin){
+          var r = fin.getBoundingClientRect();
+          var total = r.height - window.innerHeight;
+          var pf = Math.min(1, Math.max(0, -r.top / (total || 1)));
+
+          lns.forEach(function(ln, i){
+            var e = ease(Math.min(1, Math.max(0, (pf - lnStarts[i]) / 0.15)));
+            if(ln) ln.style.strokeDashoffset = String(1 - e);
+            if(dts[i]) dts[i].style.opacity = e > 0.96 ? 1 : 0;
+            if(rows[i]) rows[i].style.opacity = String(0.22 + 0.78 * ease(Math.min(1, Math.max(0, (pf - lnStarts[i] - 0.10) / 0.10))));
+          });
+
+          pills.forEach(function(pl, i){
+            var e2 = ease(Math.min(1, Math.max(0, (pf - 0.76 - i * 0.04) / 0.10)));
+            if(pl){ pl.style.opacity = String(e2); pl.setAttribute('transform', 'translate(0 ' + ((1 - e2) * 14) + ')'); }
+          });
+
+          var d = ease(Math.min(1, Math.max(0, (pf - 0.86) / 0.12)));
+          if(finText){
+            finText.style.opacity = d;
+            finText.style.transform = 'translateY(' + ((1 - d) * 18) + 'px)';
+            finText.style.pointerEvents = d > 0.5 ? 'auto' : 'none';
+          }
+          if(finHint) finHint.style.opacity = pf > 0.03 && pf < 0.72 ? 1 : 0;
+        }
+        ticking2 = false;
+      });
+    }
+    addEventListener('scroll', scenes, {passive:true});
+    addEventListener('resize', scenes);
+    scenes();
+  }
+})();
+</script>
+</body>
+</html>
