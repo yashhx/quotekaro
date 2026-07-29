@@ -2821,6 +2821,7 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
   const [demo, setDemo] = useState(!sb);  // sample mode (no cloud / nothing synced)
   const [view, setView] = useState(null); // null overview | "recv" | "pay" | "sent" | "bills" drill-down
   const [knowHow, setKnowHow] = useState(false); // planner "how it works" panel
+  const [plannerOpen, setPlannerOpen] = useState(false); // dispatch planner collapsed by default (first-look clutter)
   const [openBill, setOpenBill] = useState(null); // expanded bill key in the bills drill-down
   const [billFilter, setBillFilter] = useState("all"); // aging-bucket filter in the bills drill-down
 
@@ -2971,7 +2972,7 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
   const asOf = !demo && led && led.length ? led[0].as_of : null;
   const chipStyle = (c) => ({
     display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 600, fontFamily: "var(--mono)",
-    padding: "3px 9px", borderRadius: 999, marginRight: 6, marginTop: 6, whiteSpace: "nowrap",
+    padding: "3px 9px", borderRadius: 12, marginRight: 6, marginTop: 6, lineHeight: 1.45, maxWidth: "100%",
     background: c === "red" ? "var(--red-bg)" : c === "amber" ? "var(--amber-bg)" : "var(--grn-100)",
     color: c === "red" ? "var(--red)" : c === "amber" ? "var(--amber)" : "var(--grn-d)",
   });
@@ -3038,19 +3039,26 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
 
         {groups.length === 0 && <div className="card-tint" style={{ padding: 24, textAlign: "center", color: "var(--dim)", fontSize: 14 }}>{tx("Nothing sent yet this month.", "Is mahine abhi kuch nahi gaya.", "इस महीने अभी कुछ नहीं गया।")}</div>}
         {groups.map((g, gi) => (
-          <div key={g.name} className={"card anim-in st" + Math.min(6, gi + 1)} style={{ padding: "14px 15px", marginBottom: 10 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-              <div style={{ fontWeight: 700, fontSize: 15, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{g.name}</div>
-              <b className="mono" style={{ flexShrink: 0, fontSize: 14.5, color: "var(--grn-d)" }}>{g.qty > 0 ? fmtQty(g.qty) + " " + (g.rows[0].unit || "") + " · " : ""}{inr(g.amt)}</b>
+          <div key={g.name} className={"card anim-in st" + Math.min(6, gi + 1)} style={{ padding: "15px 15px", marginBottom: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+              <div style={{ fontWeight: 700, fontSize: 15.5, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{g.name}</div>
+              <div style={{ flexShrink: 0, textAlign: "right" }}>
+                <b className="mono" style={{ display: "block", fontSize: 15, color: "var(--grn-d)" }}>{inr(g.amt)}</b>
+                {g.qty > 0 && <span className="mono" style={{ fontSize: 11.5, color: "var(--dim)" }}>{fmtQty(g.qty)} {g.rows[0].unit || ""} {tx("total", "total", "कुल")}</span>}
+              </div>
             </div>
-            <div style={{ borderTop: "1px solid var(--line)", marginTop: 9, paddingTop: 3 }}>
+            <div style={{ borderTop: "1px solid var(--line)", marginTop: 10, paddingTop: 2 }}>
               {g.rows.map((x, ri) => (
-                <div key={ri} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: ri < g.rows.length - 1 ? "1px dashed var(--line)" : "none" }}>
-                  <span style={{ minWidth: 0 }}>
-                    <span className="mono" style={{ display: "block", fontSize: 12.5, fontWeight: 600 }}>{fdateShort(x.vdate)}{x.qty > 0 ? " · " + fmtQty(x.qty) + " " + (x.unit || "") : ""}</span>
-                    <span style={{ display: "block", fontSize: 11.5, color: "var(--faint)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{x.item || tx("sale", "sale", "बिक्री")}{(x.vno || x.ref) ? " · #" + (x.ref || x.vno) : ""}</span>
+                <div key={ri} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: ri < g.rows.length - 1 ? "1px dashed var(--line)" : "none" }}>
+                  <span className="mono" style={{ flexShrink: 0, width: 46, fontSize: 12.5, fontWeight: 700 }}>{fdateShort(x.vdate)}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                      {x.qty > 0 && <span className="mono" style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: "var(--grn-d)", background: "var(--grn-100)", borderRadius: 7, padding: "1px 8px" }}>{fmtQty(x.qty)} {x.unit || ""}</span>}
+                      <span style={{ fontSize: 12.5, color: "var(--dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{x.item || tx("sale", "sale", "बिक्री")}</span>
+                    </span>
+                    {(x.vno || x.ref) && <span className="mono" style={{ display: "block", fontSize: 10.5, color: "var(--faint)", marginTop: 2 }}>#{x.ref || x.vno}</span>}
                   </span>
-                  <b className="mono" style={{ flexShrink: 0, fontSize: 13 }}>{inr(x.amount)}</b>
+                  <b className="mono" style={{ flexShrink: 0, fontSize: 13.5 }}>{inr(x.amount)}</b>
                 </div>
               ))}
             </div>
@@ -3258,15 +3266,17 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
 
       {/* money in / money out - tap for the full party-wise story */}
       <div className="anim-in st1" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <button className="card press" onClick={() => setView("recv")} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", padding: "16px 15px", borderRadius: 22, border: "1px solid #CFE9D1", background: "#F3FBF4", boxShadow: "var(--sh-s)" }}>
-          <div className="microlbl" style={{ color: "var(--grn-d)" }}>AANE WALE (customers owe you)</div>
-          <div className="h-disp mono" style={{ fontSize: 27, fontWeight: 700, color: "var(--grn-d)", marginTop: 5 }}>{inr(recvTotal)}</div>
-          <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 3, display: "flex", alignItems: "center", gap: 3 }}>{receivable.length} customer{receivable.length === 1 ? "" : "s"} <I.chev style={{ width: 13 }} /></div>
+        <button className="card press" onClick={() => setView("recv")} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", minWidth: 0, padding: "18px 15px", borderRadius: 22, border: "1px solid #CFE9D1", background: "#F3FBF4", boxShadow: "var(--sh-s)" }}>
+          <div className="h-disp" style={{ fontSize: 16.5, fontWeight: 700, color: "var(--grn-d)" }}>{tx("Aane wale paise", "Aane wale paise", "आने वाले पैसे")}</div>
+          <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 1 }}>{tx("(customers owe you)", "(customers owe you)", "(ग्राहक आपको देंगे)")}</div>
+          <div className="h-disp mono" style={{ fontSize: 25, fontWeight: 700, color: "var(--grn-d)", marginTop: 8, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{inr(recvTotal)}</div>
+          <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 5, display: "flex", alignItems: "center", gap: 3 }}>{receivable.length} customer{receivable.length === 1 ? "" : "s"} <I.chev style={{ width: 13 }} /></div>
         </button>
-        <button className="card press" onClick={() => setView("pay")} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", padding: "16px 15px", borderRadius: 22, border: "1px solid #F0DCB8", background: "#FFFBF2", boxShadow: "var(--sh-s)" }}>
-          <div className="microlbl" style={{ color: "var(--amber)" }}>DENE WALE (you owe suppliers)</div>
-          <div className="h-disp mono" style={{ fontSize: 27, fontWeight: 700, color: "var(--amber)", marginTop: 5 }}>{inr(payTotal)}</div>
-          <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 3, display: "flex", alignItems: "center", gap: 3 }}>{payable.length} supplier{payable.length === 1 ? "" : "s"} <I.chev style={{ width: 13 }} /></div>
+        <button className="card press" onClick={() => setView("pay")} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", minWidth: 0, padding: "18px 15px", borderRadius: 22, border: "1px solid #F0DCB8", background: "#FFFBF2", boxShadow: "var(--sh-s)" }}>
+          <div className="h-disp" style={{ fontSize: 16.5, fontWeight: 700, color: "var(--amber)" }}>{tx("Dene wale paise", "Dene wale paise", "देने वाले पैसे")}</div>
+          <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 1 }}>{tx("(you owe suppliers)", "(you owe suppliers)", "(आपको सप्लायर को देने हैं)")}</div>
+          <div className="h-disp mono" style={{ fontSize: 25, fontWeight: 700, color: "var(--amber)", marginTop: 8, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{inr(payTotal)}</div>
+          <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 5, display: "flex", alignItems: "center", gap: 3 }}>{payable.length} supplier{payable.length === 1 ? "" : "s"} <I.chev style={{ width: 13 }} /></div>
         </button>
       </div>
 
@@ -3309,10 +3319,22 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
         </button>
       )}
 
-      {/* dispatch planner - kise pehle bhejein */}
-      {planned.length > 0 && (<>
-        <div className="anim-in st3" style={{ margin: "22px 0 10px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          <span className="eyebrow">{tx("Whom to dispatch next?", "Agla dispatch kise bhejein?", "अगला डिस्पैच किसे भेजें?")}</span>
+      {/* dispatch planner - kise pehle bhejein. Collapsed by default: the
+          overview must not overwhelm a first-time viewer */}
+      {planned.length > 0 && (
+      <div className="card anim-in st4" style={{ padding: 0, marginTop: 12, overflow: "hidden" }}>
+        <button className="press" onClick={() => setPlannerOpen(!plannerOpen)} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "16px 16px" }}>
+          <span style={{ fontSize: 20, flexShrink: 0 }}>&#128666;</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="h-disp" style={{ fontWeight: 700, fontSize: 16 }}>{tx("Whom to dispatch next?", "Agla dispatch kise bhejein?", "अगला डिस्पैच किसे भेजें?")}</div>
+            <div style={{ fontSize: 12.5, color: "var(--faint)", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {planned.length} {tx("open orders", "order baki", "ऑर्डर बाकी")} &#183; {tx("first: ", "pehla: ", "पहला: ")}{planned[0].customer}
+            </div>
+          </div>
+          <I.chev style={{ width: 15, flexShrink: 0, color: "var(--faint)", transform: plannerOpen ? "rotate(90deg)" : "none", transition: "transform .2s" }} />
+        </button>
+        {plannerOpen && (<div style={{ padding: "0 14px 14px" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
           <button className="press" onClick={() => setKnowHow(!knowHow)} style={{ all: "unset", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 3, fontSize: 12, fontWeight: 600, color: "var(--grn-d)", fontFamily: "var(--mono)", padding: "3px 10px", borderRadius: 999, background: "var(--grn-100)", flexShrink: 0 }}>
             {tx("Know how", "Know how", "कैसे बनता है")} <I.chev style={{ width: 12, transform: knowHow ? "rotate(90deg)" : "none", transition: "transform .2s" }} />
           </button>
@@ -3369,7 +3391,9 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
             </div>
           );
         })}
-      </>)}
+        </div>)}
+      </div>
+      )}
 
       <div className="card-tint anim-in st5" style={{ padding: "14px 16px", display: "flex", gap: 10, alignItems: "flex-start", marginTop: 14, marginBottom: 8 }}>
         <span style={{ color: "var(--grn)", flexShrink: 0, marginTop: 1 }}><I.bolt /></span>
