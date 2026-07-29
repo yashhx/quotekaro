@@ -2997,7 +2997,7 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
           {demo && <span className="demo-ribbon">SAMPLE</span>}
         </div>
         <div className="card anim-in st1" style={{ padding: "16px 16px", margin: "12px 0 16px", background: "#F3FBF4", borderColor: "#CFE9D1", display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--dim)" }}>{monthSales.length} dispatch{monthSales.length === 1 ? "" : "es"} · {inr(monthValue)}</span>
+          <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--dim)" }}>{monthSales.length} dispatch{monthSales.length === 1 ? "" : "es"} · {inr(monthValue)}</span>
           <b className="h-disp mono" style={{ fontSize: 24, color: "var(--grn-d)" }}>{monthQty > 0 ? fmtQty(monthQty) + " " + mainUnit : "-"}</b>
         </div>
 
@@ -3019,7 +3019,7 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
               <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8, height: 110 }}>
                 {bars.map((b3, i) => (
                   <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, height: "100%", justifyContent: "flex-end" }}>
-                    <div className="mono" style={{ fontSize: 9.5, color: b3.value ? "var(--grn-d)" : "transparent", fontWeight: 600, whiteSpace: "nowrap" }}>
+                    <div className="mono" style={{ fontSize: 10.5, color: b3.value ? "var(--grn-d)" : "transparent", fontWeight: 600, whiteSpace: "nowrap" }}>
                       {b3.value >= 100000 ? "₹" + (b3.value / 100000).toFixed(1) + "L" : b3.value >= 1000 ? "₹" + (b3.value / 1000).toFixed(0) + "k" : b3.value ? "₹" + b3.value : "0"}
                     </div>
                     <div style={{ width: "100%", maxWidth: 34, flex: 1, display: "flex", alignItems: "flex-end" }}>
@@ -3028,7 +3028,7 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
                         boxShadow: b3.value ? "0 4px 12px -4px rgba(34,139,34,.4)" : "none",
                         animation: "growBar .6s cubic-bezier(.2,.7,.3,1) both", animationDelay: (i * .05) + "s" }} />
                     </div>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: "var(--ink)", whiteSpace: "nowrap" }}>{b3.label}</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ink)", whiteSpace: "nowrap" }}>{b3.label}</div>
                   </div>
                 ))}
               </div>
@@ -3041,24 +3041,24 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
         {groups.map((g, gi) => (
           <div key={g.name} className={"card anim-in st" + Math.min(6, gi + 1)} style={{ padding: "15px 15px", marginBottom: 10 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-              <div style={{ fontWeight: 700, fontSize: 15.5, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{g.name}</div>
+              <div className="h-disp" style={{ fontWeight: 700, fontSize: 17, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{g.name}</div>
               <div style={{ flexShrink: 0, textAlign: "right" }}>
-                <b className="mono" style={{ display: "block", fontSize: 15, color: "var(--grn-d)" }}>{inr(g.amt)}</b>
-                {g.qty > 0 && <span className="mono" style={{ fontSize: 11.5, color: "var(--dim)" }}>{fmtQty(g.qty)} {g.rows[0].unit || ""} {tx("total", "total", "कुल")}</span>}
+                <b className="mono" style={{ display: "block", fontSize: 16, color: "var(--grn-d)" }}>{inr(g.amt)}</b>
+                {g.qty > 0 && <span className="mono" style={{ fontSize: 12.5, color: "var(--dim)" }}>{fmtQty(g.qty)} {g.rows[0].unit || ""} {tx("total", "total", "कुल")}</span>}
               </div>
             </div>
             <div style={{ borderTop: "1px solid var(--line)", marginTop: 10, paddingTop: 2 }}>
               {g.rows.map((x, ri) => (
-                <div key={ri} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: ri < g.rows.length - 1 ? "1px dashed var(--line)" : "none" }}>
-                  <span className="mono" style={{ flexShrink: 0, width: 46, fontSize: 12.5, fontWeight: 700 }}>{fdateShort(x.vdate)}</span>
+                <div key={ri} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 0", borderBottom: ri < g.rows.length - 1 ? "1px dashed var(--line)" : "none" }}>
+                  <span className="mono" style={{ flexShrink: 0, width: 52, fontSize: 13.5, fontWeight: 700 }}>{fdateShort(x.vdate)}</span>
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                      {x.qty > 0 && <span className="mono" style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 700, color: "var(--grn-d)", background: "var(--grn-100)", borderRadius: 7, padding: "1px 8px" }}>{fmtQty(x.qty)} {x.unit || ""}</span>}
-                      <span style={{ fontSize: 12.5, color: "var(--dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{x.item || tx("sale", "sale", "बिक्री")}</span>
+                      {x.qty > 0 && <span className="mono" style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: "var(--grn-d)", background: "var(--grn-100)", borderRadius: 8, padding: "2px 9px" }}>{fmtQty(x.qty)} {x.unit || ""}</span>}
+                      <span style={{ fontSize: 14, color: "var(--dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{x.item || tx("sale", "sale", "बिक्री")}</span>
                     </span>
-                    {(x.vno || x.ref) && <span className="mono" style={{ display: "block", fontSize: 10.5, color: "var(--faint)", marginTop: 2 }}>#{x.ref || x.vno}</span>}
+                    {(x.vno || x.ref) && <span className="mono" style={{ display: "block", fontSize: 11.5, color: "var(--faint)", marginTop: 3 }}>#{x.ref || x.vno}</span>}
                   </span>
-                  <b className="mono" style={{ flexShrink: 0, fontSize: 13.5 }}>{inr(x.amount)}</b>
+                  <b className="mono" style={{ flexShrink: 0, fontSize: 15 }}>{inr(x.amount)}</b>
                 </div>
               ))}
             </div>
@@ -3282,7 +3282,8 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
 
       {/* shipped this month - tap for the dealer-wise story */}
       <div className="hero-card anim-in st2 press" onClick={() => setView("sent")} style={{ padding: "20px 20px", marginTop: 12, cursor: "pointer" }} role="button" tabIndex={0}>
-        <div className="mono" style={{ fontSize: 10, letterSpacing: ".16em", color: "rgba(255,255,255,.82)", position: "relative", zIndex: 1 }}>{tx("SENT THIS MONTH (sales)", "MAAL GAYA IS MAHINE (sales)", "इस महीने गया माल (सेल्स)")}</div>
+        <div className="h-disp" style={{ fontSize: 16.5, fontWeight: 700, color: "#fff", position: "relative", zIndex: 1 }}>{tx("Maal sent this month", "Maal gaya is mahine", "इस महीने गया माल")}</div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,.85)", position: "relative", zIndex: 1 }}>{tx("(sales from Tally)", "(Tally ki sales)", "(Tally की सेल्स)")}</div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, position: "relative", zIndex: 1 }}>
           <span className="h-disp mono" style={{ fontSize: 40, fontWeight: 700 }}>{monthQty > 0 ? fmtQty(monthQty) : monthSales.length}</span>
           <span className="h-disp" style={{ fontSize: 19, fontWeight: 700, color: "rgba(255,255,255,.9)" }}>{monthQty > 0 ? mainUnit : "dispatches"}</span>
@@ -3295,26 +3296,27 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
 
       {/* bill-wise aging - paisa kahan atka hai (needs bill data; never faked from balances) */}
       {B.length > 0 && (
-        <button className="card press anim-in st3" onClick={() => setView("bills")} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "block", width: "100%", padding: "16px 16px", borderRadius: 22, border: "1px solid var(--line)", background: "#fff", boxShadow: "var(--sh-s)", marginTop: 12 }}>
-          <div className="microlbl">{tx("MONEY STUCK, BY AGE (bill-wise)", "PAISA KAHAN ATKA HAI (bill-wise)", "पैसा कहां अटका है (बिल-वाइज़)")}</div>
+        <button className="card press anim-in st3" onClick={() => setView("bills")} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "block", width: "100%", padding: "18px 16px", borderRadius: 22, border: "1px solid var(--line)", background: "#fff", boxShadow: "var(--sh-s)", marginTop: 12 }}>
+          <div className="h-disp" style={{ fontSize: 16.5, fontWeight: 700 }}>{tx("Money stuck, by age", "Paisa kahan atka hai", "पैसा कहां अटका है")}</div>
+          <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 1 }}>{tx("(bill-wise, from your Tally)", "(bill-wise, Tally se)", "(बिल-वाइज़, Tally से)")}</div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginTop: 5 }}>
             {overdueTotal > 0 ? (
               <span className="h-disp mono" style={{ fontSize: 25, fontWeight: 700, color: "#DC2626" }}>{inr(overdueTotal)} <span style={{ display: "inline-block", fontSize: 13.5, fontFamily: "var(--sans)", fontWeight: 600, color: "var(--dim)" }}>{tx("running late", "late chal raha", "लेट चल रहा")}</span></span>
             ) : (
               <span className="h-disp" style={{ fontSize: 20, fontWeight: 700, color: "var(--grn-d)" }}>{tx("Everything on time", "Sab time pe hai", "सब समय पर है")} 🎉</span>
             )}
-            <span className="mono" style={{ flexShrink: 0, fontSize: 11.5, color: "var(--faint)" }}>{overdueCount > 0 ? overdueCount + " / " : ""}{B.length} bill{B.length === 1 ? "" : "s"}</span>
+            <span className="mono" style={{ flexShrink: 0, fontSize: 12.5, color: "var(--dim)" }}>{overdueCount > 0 ? overdueCount + " / " : ""}{B.length} bill{B.length === 1 ? "" : "s"}</span>
           </div>
           <div style={{ marginTop: 10 }}><AgeBar /></div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 9 }}>
             <span style={{ display: "flex", flexWrap: "wrap", gap: "3px 10px" }}>
               {AGE_BUCKETS.filter((bk) => ageSum[bk.key] > 0).map((bk) => (
-                <span key={bk.key} className="mono" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, color: "var(--dim)" }}>
+                <span key={bk.key} className="mono" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--dim)" }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: bk.c }} />{bk.label}
                 </span>
               ))}
             </span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 12, fontWeight: 600, color: "var(--grn-d)", flexShrink: 0 }}>{tx("Bill by bill", "Har bill", "हर बिल")} <I.chev style={{ width: 13 }} /></span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 13.5, fontWeight: 700, color: "var(--grn-d)", flexShrink: 0 }}>{tx("Bill by bill", "Har bill", "हर बिल")} <I.chev style={{ width: 14 }} /></span>
           </div>
         </button>
       )}
@@ -3326,8 +3328,8 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
         <button className="press" onClick={() => setPlannerOpen(!plannerOpen)} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "16px 16px" }}>
           <span style={{ fontSize: 20, flexShrink: 0 }}>&#128666;</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="h-disp" style={{ fontWeight: 700, fontSize: 16 }}>{tx("Whom to dispatch next?", "Agla dispatch kise bhejein?", "अगला डिस्पैच किसे भेजें?")}</div>
-            <div style={{ fontSize: 12.5, color: "var(--faint)", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            <div className="h-disp" style={{ fontWeight: 700, fontSize: 16.5 }}>{tx("Whom to dispatch next?", "Agla dispatch kise bhejein?", "अगला डिस्पैच किसे भेजें?")}</div>
+            <div style={{ fontSize: 13, color: "var(--dim)", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {planned.length} {tx("open orders", "order baki", "ऑर्डर बाकी")} &#183; {tx("first: ", "pehla: ", "पहला: ")}{planned[0].customer}
             </div>
           </div>
