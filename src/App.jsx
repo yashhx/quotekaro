@@ -1325,27 +1325,23 @@ const TUTS = {
   walog: {
     name: ["Quote from WhatsApp - automatic", "WhatsApp se quote - apne aap", "\u0935\u094D\u0939\u093E\u091F\u094D\u0938\u090F\u092A \u0938\u0947 \u0915\u094B\u091F\u0947\u0936\u0928 - \u0905\u092A\u0928\u0947 \u0906\u092A"],
     steps: [
-      { t: ["Quote from WhatsApp - automatic", "WhatsApp se quote - apne aap", "\u0935\u094D\u0939\u093E\u091F\u094D\u0938\u090F\u092A \u0938\u0947 \u0915\u094B\u091F\u0947\u0936\u0928"],
-        b: ["Copy any customer enquiry message. To practice, send YOURSELF a WhatsApp like: '500 pcs Bush 42mm EN8, rate 61.20, 15 August tak' - then copy it and come back.",
-            "Customer ka koi bhi enquiry message copy karo. Practice ke liye KHUD KO WhatsApp bhejo: '500 pcs Bush 42mm EN8, rate 61.20, 15 August tak' - phir copy karke wapas aao.",
-            "\u0917\u094D\u0930\u093E\u0939\u0915 \u0915\u093E \u0915\u094B\u0908 \u092D\u0940 \u092E\u0948\u0938\u0947\u091C \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902\u0964 \u0905\u092D\u094D\u092F\u093E\u0938 \u0915\u0947 \u0932\u093F\u090F \u0916\u0941\u0926 \u0915\u094B \u092D\u0947\u091C\u0947\u0902: '500 pcs Bush 42mm EN8, rate 61.20' - \u092B\u093F\u0930 \u0915\u0949\u092A\u0940 \u0915\u0930\u0915\u0947 \u0935\u093E\u092A\u0938 \u0906\u090F\u0902\u0964"] },
-      { target: ["fab-log", "fab"], adv: "tab:log",
-        t: ["Tap the green + button", "Ye hara + dabao", "\u092F\u0939 \u0939\u0930\u093E + \u0926\u092C\u093E\u090F\u0902"],
-        b: ["If it asks, choose 'Log a quote'.", "Agar pooche to 'Log a quote' chuno.", "\u0905\u0917\u0930 \u092A\u0942\u091B\u0947 \u0924\u094B 'Log a quote' \u091A\u0941\u0928\u0947\u0902\u0964"] },
-      { target: "paste-btn",
-        t: ["Tap Paste, drop the message in", "Paste dabao, message daalo", "\u092A\u0947\u0938\u094D\u091F \u0926\u092C\u093E\u090F\u0902, \u092E\u0948\u0938\u0947\u091C \u0921\u093E\u0932\u0947\u0902"],
-        b: ["Press this Paste button, drop the copied message in the box and tap 'Fill the form'. Customer, part, qty, rate and date fill themselves. Turn on Smart reading (AI) in Setup and it reads photos too.",
-            "Ye Paste button dabao, copied message box mein daalo, phir 'Fill the form'. Customer, part, qty, rate, date - sab khud bhar jayega. Setup mein Smart reading (AI) on karo to photo bhi padh leta hai.",
-            "\u092F\u0939 \u092A\u0947\u0938\u094D\u091F \u092C\u091F\u0928 \u0926\u092C\u093E\u090F\u0902, \u092E\u0948\u0938\u0947\u091C \u092C\u0949\u0915\u094D\u0938 \u092E\u0947\u0902 \u0921\u093E\u0932\u0947\u0902, \u092B\u093F\u0930 'Fill the form' - \u0938\u092C \u0916\u0941\u0926 \u092D\u0930 \u091C\u093E\u090F\u0917\u093E\u0964"] },
-      { target: "ql-save",
-        t: ["Check and save", "Check karke save karo", "\u091C\u093E\u0902\u091A \u0915\u0930 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902"],
-        b: ["Look over the fields once, then save. The quote lands in your pipeline with a follow-up reminder.",
-            "Fields ek baar dekh lo, phir save. Quote pipeline mein aa jayega - follow-up reminder ke saath.",
-            "\u092B\u0940\u0932\u094D\u0921 \u090F\u0915 \u092C\u093E\u0930 \u0926\u0947\u0916\u0947\u0902, \u092B\u093F\u0930 \u0938\u0947\u0935\u0964 \u0915\u094B\u091F\u0947\u0936\u0928 \u092A\u093E\u0907\u092A\u0932\u093E\u0907\u0928 \u092E\u0947\u0902 \u0906 \u091C\u093E\u090F\u0917\u093E\u0964"] },
-      { t: ["That's it!", "Bas itna hi!", "\u092C\u0938 \u0907\u0924\u0928\u093E \u0939\u0940!"],
-        b: ["Under 30 seconds per quote. Every quote you log is one less order forgotten.",
-            "Har quote 30 second se kam. Jo quote likha, wo order bhoolega nahi.",
-            "\u0939\u0930 \u0915\u094B\u091F\u0947\u0936\u0928 30 \u0938\u0947\u0915\u0902\u0921 \u0938\u0947 \u0915\u092E\u0964 \u091C\u094B \u0932\u093F\u0916\u093E, \u0935\u0939 \u0911\u0930\u094D\u0921\u0930 \u092D\u0942\u0932\u0947\u0917\u093E \u0928\u0939\u0940\u0902\u0964"] },
+      { go: "quotes", target: "enq-card",
+        t: ["A customer message just arrived", "Customer ka message aaya hai", "\u0917\u094D\u0930\u093E\u0939\u0915 \u0915\u093E \u092E\u0948\u0938\u0947\u091C \u0906\u092F\u093E \u0939\u0948"],
+        b: ["This is a demo WhatsApp enquiry - real ones will appear exactly here once your WhatsApp is connected. Read it once, then Next.",
+            "Ye demo WhatsApp enquiry hai - WhatsApp connect hone par asli enquiries bilkul aise hi yahan aayengi. Ek baar padho, phir Next.",
+            "\u092F\u0939 \u0921\u0947\u092E\u094B \u0935\u094D\u0939\u093E\u091F\u094D\u0938\u090F\u092A \u092E\u0948\u0938\u0947\u091C \u0939\u0948 - \u0905\u0938\u0932\u0940 \u092D\u0940 \u0910\u0938\u0947 \u0939\u0940 \u092F\u0939\u093E\u0902 \u0906\u090F\u0902\u0917\u0940\u0964"] },
+      { target: "enq-log", adv: "quote+",
+        t: ["Now tap 'Log as quote'", "Ab 'Log as quote' dabao", "\u0905\u092C 'Log as quote' \u0926\u092C\u093E\u090F\u0902"],
+        b: ["Watch what happens.", "Aur dekhte raho - jaadu hota hai.", "\u0914\u0930 \u0926\u0947\u0916\u0924\u0947 \u0930\u0939\u0947\u0902\u0964"] },
+      { target: ["pipe-first", "pipe-list"],
+        t: ["Look - everything filled itself", "Dekho - sab apne aap bhar gaya", "\u0926\u0947\u0916\u094B - \u0938\u092C \u0905\u092A\u0928\u0947 \u0906\u092A \u092D\u0930 \u0917\u092F\u093E"],
+        b: ["Customer, part, 500 pcs, rate 61.20, total Rs 30,600 - even the 15 August follow-up. All read from the message. Open the new card and check.",
+            "Customer, part, 500 pcs, rate 61.20, total Rs 30,600 - 15 August ka follow-up bhi. Sab message se khud bhar gaya. Naya card khol kar dekho.",
+            "\u0915\u0938\u094D\u091F\u092E\u0930, \u092A\u093E\u0930\u094D\u091F, 500 pcs, \u0930\u0947\u091F 61.20 - \u0938\u092C \u092E\u0948\u0938\u0947\u091C \u0938\u0947 \u0916\u0941\u0926 \u092D\u0930 \u0917\u092F\u093E\u0964"] },
+      { t: ["Do this with any message", "Ab kisi bhi message ke saath", "\u0915\u093F\u0938\u0940 \u092D\u0940 \u092E\u0948\u0938\u0947\u091C \u0915\u0947 \u0938\u093E\u0925"],
+        b: ["Copy any customer message, tap +, use the Paste box - same magic. This demo quote stays for practice; open its card and delete it anytime.",
+            "Koi bhi customer message copy karo, + dabao, Paste box mein daalo - wahi jaadu. Ye demo quote practice ke liye hai - card khol kar kabhi bhi delete kar do.",
+            "\u0915\u094B\u0908 \u092D\u0940 \u092E\u0948\u0938\u0947\u091C \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902, + \u0926\u092C\u093E\u090F\u0902, \u092A\u0947\u0938\u094D\u091F \u092C\u0949\u0915\u094D\u0938 \u092E\u0947\u0902 \u0921\u093E\u0932\u0947\u0902 - \u0935\u0939\u0940 \u091C\u093E\u0926\u0942\u0964"] },
     ],
   },
   pipeline: {
@@ -1361,7 +1357,7 @@ const TUTS = {
         b: ["Pending shows whose answer is due. Follow-ups shows whom to chase TODAY - start your morning here.",
             "Pending mein jinka jawab aana hai. Follow-ups mein AAJ kisko chase karna hai - subah yahin se shuru karo.",
             "\u092A\u0947\u0902\u0921\u093F\u0902\u0917 \u092E\u0947\u0902 \u091C\u093F\u0928\u0915\u093E \u091C\u0935\u093E\u092C \u0906\u0928\u093E \u0939\u0948\u0964 \u092B\u0949\u0932\u094B-\u0905\u092A \u092E\u0947\u0902 \u0906\u091C \u0915\u093F\u0938\u0947 \u092B\u094B\u0928 \u0915\u0930\u0928\u093E \u0939\u0948\u0964"] },
-      { target: "pipe-list",
+      { target: ["pipe-first", "pipe-list"],
         t: ["Open any quote card", "Koi bhi quote kholo", "\u0915\u094B\u0908 \u092D\u0940 \u0915\u094B\u091F\u0947\u0936\u0928 \u0916\u094B\u0932\u0947\u0902"],
         b: ["Tap a card below: Mark Won / Lost, set the follow-up date, add a photo, or chase on WhatsApp - one tap each.",
             "Neeche kisi card par tap karo: Mark Won/Lost, follow-up date, photo, ya WhatsApp par chase - sab ek tap.",
@@ -1376,21 +1372,10 @@ const TUTS = {
     name: ["Send a full quotation", "Poora quotation bhejna", "\u092A\u0942\u0930\u093E \u0915\u094B\u091F\u0947\u0936\u0928 \u092D\u0947\u091C\u0928\u093E"],
     mach: true,
     steps: [
-      { t: ["Full quotation with real costing", "Poora quotation - sahi costing se", "\u0938\u0939\u0940 \u0915\u0949\u0938\u094D\u091F\u093F\u0902\u0917 \u0938\u0947 \u0915\u094B\u091F\u0947\u0936\u0928"],
-        b: ["Material + machine time + labour + overhead + margin: a price you can defend. YOU enter the cycle time; the app does the money math.",
-            "Material + machine time + labour + overhead + margin: aisa rate jo aap defend kar sako. Cycle time aap daalte ho; hisaab app karta hai.",
-            "\u092E\u091F\u0947\u0930\u093F\u092F\u0932 + \u092E\u0936\u0940\u0928 + \u0932\u0947\u092C\u0930 + \u0913\u0935\u0930\u0939\u0947\u0921 + \u092E\u093E\u0930\u094D\u091C\u093F\u0928 - \u0939\u093F\u0938\u093E\u092C \u0910\u092A \u0915\u0930\u0924\u093E \u0939\u0948\u0964"] },
-      { target: ["fab-new", "fab"], adv: "tab:new",
-        t: ["Tap + and choose 'New quotation'", "+ dabao, 'New quotation' chuno", "+ \u0926\u092C\u093E\u090F\u0902, 'New quotation' \u091A\u0941\u0928\u0947\u0902"],
-        b: ["The 4-step wizard opens.", "4-step wizard khulega.", "4-\u0938\u094D\u091F\u0947\u092A \u0935\u093F\u095B\u093E\u0930\u094D\u0921 \u0916\u0941\u0932\u0947\u0917\u093E\u0964"] },
-      { t: ["Four small steps", "Chaar chhote steps", "\u091A\u093E\u0930 \u091B\u094B\u091F\u0947 \u0938\u094D\u091F\u0947\u092A"],
-        b: ["Customer > Part > Costing > Review. The tricky fields carry plain hints underneath - raw weight, cycle time, handling time.",
-            "Customer > Part > Costing > Review. Zaroori fields ke neeche aasan hint likha hai - raw weight, cycle time, handling.",
-            "\u0915\u0938\u094D\u091F\u092E\u0930 > \u092A\u093E\u0930\u094D\u091F > \u0915\u0949\u0938\u094D\u091F\u093F\u0902\u0917 > \u0930\u093F\u0935\u094D\u092F\u0942\u0964 \u091C\u093C\u0930\u0942\u0930\u0940 \u092B\u0940\u0932\u094D\u0921 \u0915\u0947 \u0928\u0940\u091A\u0947 \u0939\u093F\u0902\u091F \u0939\u0948\u0964"] },
-      { t: ["PDF and WhatsApp, ready", "PDF aur WhatsApp, taiyaar", "PDF \u0914\u0930 \u0935\u094D\u0939\u093E\u091F\u094D\u0938\u090F\u092A \u0924\u0948\u092F\u093E\u0930"],
-        b: ["At Review you get a branded PDF and a ready WhatsApp message. Try the seeded sample: Gland Nut, Rs 174.39/pc.",
-            "Review par branded PDF aur ready WhatsApp message milta hai. Sample try karo: Gland Nut, Rs 174.39/pc.",
-            "\u0930\u093F\u0935\u094D\u092F\u0942 \u092A\u0930 PDF \u0914\u0930 \u0924\u0948\u092F\u093E\u0930 \u092E\u0948\u0938\u0947\u091C \u092E\u093F\u0932\u0924\u093E \u0939\u0948\u0964"] },
+      { t: ["A ready sample - watch the money math", "Sample taiyaar hai - paisa banta dekho", "\u0938\u0948\u0902\u092A\u0932 \u0924\u0948\u092F\u093E\u0930 \u0939\u0948"],
+        b: ["We filled a real job for you: Gland Nut, 200 pcs, Apex Hydraulics. Tap Next through each screen and watch Costing - material + machine time + labour + overhead + margin = Rs 174.39/pc. At Review you get the PDF and a ready WhatsApp message. It's a demo - save it or leave it.",
+            "Ek asli job bhar di hai: Gland Nut, 200 pcs, Apex Hydraulics. Har screen par Next dabate jao aur Costing dekho - material + machine + labour + overhead + margin = Rs 174.39/pc. Review par PDF aur ready WhatsApp message milega. Demo hai - save karo ya chhod do.",
+            "\u090F\u0915 \u0905\u0938\u0932\u0940 \u091C\u0949\u092C \u092D\u0930 \u0926\u0940 \u0939\u0948: Gland Nut, 200 pcs\u0964 \u0939\u0930 \u0938\u094D\u0915\u094D\u0930\u0940\u0928 \u092A\u0930 Next \u0926\u092C\u093E\u0924\u0947 \u091C\u093E\u090F\u0902 - Rs 174.39/pc \u092C\u0928\u0924\u093E \u0926\u0947\u0916\u0947\u0902\u0964"] },
     ],
   },
 };
@@ -1460,21 +1445,44 @@ export default function App() {
   const [floorDraft, setFloorDraft] = useState(null); /* quote -> machine floor prefill */
   const sendToFloor = (q) => { setFloorDraft({ part: q.part, customer: q.customer, qty: q.qty }); setTab("floor"); ping(tx("Quote sent to the Machine floor - pick machines", "Quote Machine floor par gaya - machines chuno", "कोटेशन मशीन फ्लोर पर गया - मशीनें चुनें")); };
   const [tut, setTut] = useState(null); /* guided tutorial: {flow, step} */
-  const startTut = (flow, step = 0) => { const f = TUTS[flow]; if (!f) return; const st = f.steps[step]; if (st && st.go) setTab(st.go); setFabOpen(false); setTut({ flow, step }); };
-  const tutNext = () => { if (!tut) return; const n = tut.step + 1; if (n >= TUTS[tut.flow].steps.length) { setTut(null); return; } const st = TUTS[tut.flow].steps[n]; if (st.go) setTab(st.go); setTut({ flow: tut.flow, step: n }); };
+  const startTut = (flow, step = 0) => {
+    const f = TUTS[flow]; if (!f) return;
+    if (flow === "walog") {
+      /* stage a demo enquiry so the user performs the REAL log-as-quote flow */
+      const demoId = "demo_tut_enq";
+      setEnquiries((list) => (list.some((x) => x.id === demoId) ? list : [{
+        id: demoId, at: Date.now(), from: "9876501234", name: "Krishna Pumps", type: "text", demo: true,
+        text: "Krishna Pumps se bol raha hu. 500 pcs Bush 42mm chahiye, EN8 material. Rate 61.20/pc final hai. 15 August tak delivery chahiye.",
+      }, ...list]));
+    }
+    if (flow === "fullquote") {
+      /* prefill the wizard with the settled Gland Nut sample (sums to Rs 174.39/pc) */
+      setDraft({ customer: "Apex Hydraulics", phone: "", part: "Gland Nut - 60mm (demo)", qty: "200",
+        materialId: (data.materials && data.materials[0] && data.materials[0].id) || "", rawKg: "0.6",
+        machineId: (data.machines && data.machines[0] && data.machines[0].id) || "",
+        cycleMin: "9", manualMin: "9.25", setupMin: "", toolingPc: 0,
+        overheadPct: data.settings.overheadPct, marginPct: data.settings.marginPct });
+      setStep(1); setDoneQuote(null); setTab("new");
+    }
+    const st = f.steps[step]; if (st && st.go) setTab(st.go); setFabOpen(false);
+    setTut({ flow, step, qn: (data.quotes || []).length });
+  };
+  const tutClose = () => { setEnquiries((list) => list.filter((x) => !x.demo)); setTut(null); };
+  const tutNext = () => { if (!tut) return; const n = tut.step + 1; if (n >= TUTS[tut.flow].steps.length) { tutClose(); return; } const st = TUTS[tut.flow].steps[n]; if (st.go) setTab(st.go); setTut({ flow: tut.flow, step: n, qn: (data.quotes || []).length }); };
   const tutBack = () => { if (tut && tut.step > 0) setTut({ flow: tut.flow, step: tut.step - 1 }); };
   /* steps auto-advance when the user actually does the thing (Rules of Hooks:
      this sits above every early return) */
   useEffect(() => {
-    if (!tut) return;
+    if (!tut || !data) return;
     const st = TUTS[tut.flow].steps[tut.step];
     if (!st || !st.adv) return;
-    if (st.adv === "tab:" + tab) {
+    const done = st.adv === "tab:" + tab || (st.adv === "quote+" && (data.quotes || []).length > (tut.qn || 0));
+    if (done) {
       const n = tut.step + 1;
-      if (n >= TUTS[tut.flow].steps.length) setTut(null);
-      else setTut({ flow: tut.flow, step: n });
+      if (n >= TUTS[tut.flow].steps.length) { setEnquiries((list) => list.filter((x) => !x.demo)); setTut(null); }
+      else setTut({ flow: tut.flow, step: n, qn: (data.quotes || []).length });
     }
-  }, [tab, tut]);
+  }, [tab, tut, data]);
   const [enquiries, setEnquiries] = useState([]); // inbound WhatsApp messages (backend only)
   const [waOn, setWaOn] = useState(false); // true once the WhatsApp backend has answered
   const [sync, setSync] = useState(sb ? "synced" : "local"); // cloud sync state: local|synced|saving|offline
@@ -1821,7 +1829,7 @@ export default function App() {
     <div className="qk-root"><style>{CSS}</style>
       <div className="app">
         {toast && <div className="toast">{toast}</div>}
-        {tut && <TutOverlay flow={tut.flow} step={tut.step} tick={fabOpen ? 1 : 0} onNext={tutNext} onBack={tutBack} onClose={() => setTut(null)} />}
+        {tut && <TutOverlay flow={tut.flow} step={tut.step} tick={fabOpen ? 1 : 0} onNext={tutNext} onBack={tutBack} onClose={tutClose} />}
 
         {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} openTally={() => setTab("tally")} openFloor={() => setTab("floor")} openTrucks={() => setTab("trucks")} openStock={() => setTab("stock")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} startTut={startTut} dismissTut={() => setData({ ...data, settings: { ...data.settings, tutHomeDone: true } })} />}
         {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} cat={quotesCat} setCat={setQuotesCat} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} tallyBal={tallyBal} sendToFloor={sendToFloor} startTut={startTut} />}
@@ -2550,7 +2558,7 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
             </div>
           )}
           {enquiries.map((e) => (
-            <div key={e.id} className="card" style={{ padding: "14px 15px", marginTop: 10, border: "1px solid #CBEAD2", background: "#F3FBF4" }}>
+            <div key={e.id} data-tut={e.demo ? "enq-card" : undefined} className="card" style={{ padding: "14px 15px", marginTop: 10, border: "1px solid #CBEAD2", background: "#F3FBF4" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                 <div style={{ fontWeight: 600, fontSize: 15, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.name || (e.source === "gmail" ? e.from : "+" + e.from)}</div>
                 <span style={{ display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
@@ -2577,7 +2585,7 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
                 </div>
               )}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button className="btn btn-sm btn-soft press" onClick={() => logEnquiry(e)}><I.bolt /> Log as quote</button>
+                <button className="btn btn-sm btn-soft press" data-tut={e.demo ? "enq-log" : undefined} onClick={() => logEnquiry(e)}><I.bolt /> Log as quote</button>
                 {e.source === "gmail"
                   ? <a className="btn btn-sm btn-ghost press" style={{ textDecoration: "none" }} href={"mailto:" + e.from} target="_blank" rel="noreferrer">✉️ Reply</a>
                   : <a className="btn btn-sm btn-ghost press" style={{ textDecoration: "none" }} href={waLink(e.from, "")} target="_blank" rel="noreferrer"><I.wa /> Reply</a>}
@@ -2630,7 +2638,7 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
         /* outstanding balance from Tally (via the opt-in connector), matched by customer name */
         const tBal = tallyBal && q.customer ? tallyBal[String(q.customer).trim().toLowerCase()] : null;
         return (
-          <div key={q.id} className={"card anim-in st" + Math.min(8, i + 2)} style={{ padding: "16px 16px", marginBottom: 10, borderColor: fs === "overdue" ? "#F0DCB8" : undefined }}>
+          <div key={q.id} data-tut={i === 0 ? "pipe-first" : undefined} className={"card anim-in st" + Math.min(8, i + 2)} style={{ padding: "16px 16px", marginBottom: 10, borderColor: fs === "overdue" ? "#F0DCB8" : undefined }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setOpen(open === q.id ? null : q.id)}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
               {q.image ? (
