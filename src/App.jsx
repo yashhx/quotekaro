@@ -1149,6 +1149,10 @@ function Auth({ onAuthed, authError }) {
           </button>
           {(authError || authErr) && <div style={{ marginTop: 14, padding: "11px 13px", borderRadius: 12, background: "var(--red-bg)", color: "var(--red)", fontSize: 13, lineHeight: 1.5 }}>Login error: {authError || authErr}</div>}
           <div className="auth-note">One tap, no password to remember. We only receive your name and email - nothing else from your Google account.</div>
+          <div style={{ marginTop: 12, display: "flex", gap: 9, alignItems: "flex-start", fontSize: 12.5, color: "var(--dim)", lineHeight: 1.55, background: "var(--grn-100)", borderRadius: 12, padding: "10px 12px" }}>
+            <span aria-hidden="true">&#128274;</span>
+            <span>{tx("Data safety is our top priority. Your quotes, rates and customers stay inside your shop's own account - no other shop can ever see them, and Excel export means you can take everything out anytime.", "Data safety hamari pehli priority hai. Aapke quotes, rate aur customer sirf aapki shop ke account mein rehte hain - kisi aur shop ko kabhi nahi dikhte, aur Excel export se pura data kabhi bhi le sakte ho.", "\u0921\u0947\u091F\u093E \u0915\u0940 \u0938\u0941\u0930\u0915\u094D\u0937\u093E \u0939\u092E\u093E\u0930\u0940 \u092A\u0939\u0932\u0940 \u092A\u094D\u0930\u093E\u0925\u092E\u093F\u0915\u0924\u093E \u0939\u0948\u0964 \u0906\u092A\u0915\u0947 \u0915\u094B\u091F\u0947\u0936\u0928, \u0930\u0947\u091F \u0914\u0930 \u0917\u094D\u0930\u093E\u0939\u0915 \u0938\u093F\u0930\u094D\u092B \u0906\u092A\u0915\u0940 \u0926\u0941\u0915\u093E\u0928 \u0915\u0947 \u0905\u0915\u093E\u0909\u0902\u091F \u092E\u0947\u0902 \u0930\u0939\u0924\u0947 \u0939\u0948\u0902 - \u0915\u093F\u0938\u0940 \u0914\u0930 \u0926\u0941\u0915\u093E\u0928 \u0915\u094B \u0915\u092D\u0940 \u0928\u0939\u0940\u0902 \u0926\u093F\u0916\u0924\u0947\u0964")}</span>
+          </div>
         </div>
       </div>
     );
@@ -1203,6 +1207,10 @@ function Auth({ onAuthed, authError }) {
             {err && <div style={{ color: "var(--red)", fontSize: 13, marginTop: 10 }}>{err}</div>}
             <button className="btn btn-grn press" style={{ width: "100%", marginTop: 18 }} onClick={sendOtp}><I.phone2 /> Send OTP</button>
             <div className="demo-hint">Demo: enter any 10-digit number, then any 4-digit code.</div>
+            <div style={{ marginTop: 12, display: "flex", gap: 9, alignItems: "flex-start", fontSize: 12.5, color: "var(--dim)", lineHeight: 1.55, background: "var(--grn-100)", borderRadius: 12, padding: "10px 12px" }}>
+              <span aria-hidden="true">&#128274;</span>
+              <span>{tx("Data safety is our top priority. In this version everything stays on this phone - your quotes and rates never leave your device.", "Data safety hamari pehli priority hai. Is version mein sab kuch isi phone par rehta hai - aapke quotes aur rate device se bahar nahi jaate.", "\u0921\u0947\u091F\u093E \u0915\u0940 \u0938\u0941\u0930\u0915\u094D\u0937\u093E \u0939\u092E\u093E\u0930\u0940 \u092A\u0939\u0932\u0940 \u092A\u094D\u0930\u093E\u0925\u092E\u093F\u0915\u0924\u093E \u0939\u0948\u0964 \u0938\u092C \u0915\u0941\u091B \u0907\u0938\u0940 \u092B\u093C\u094B\u0928 \u092A\u0930 \u0930\u0939\u0924\u093E \u0939\u0948\u0964")}</span>
+            </div>
           </div>
         )}
 
@@ -1308,6 +1316,137 @@ function IndustryPicker({ onPick }) {
   );
 }
 
+/* ================= GUIDED TUTORIALS ================= */
+/* Pipedrive-style coach marks: a dark card anchored to a [data-tut] element
+   with a spotlight cutout around it. Steps may auto-advance when the user
+   actually performs the action (adv: "tab:x", watched in App). Strings are
+   [en, hinglish, hindi] triplets rendered through tx() at display time. */
+const TUTS = {
+  walog: {
+    name: ["Quote from WhatsApp - automatic", "WhatsApp se quote - apne aap", "\u0935\u094D\u0939\u093E\u091F\u094D\u0938\u090F\u092A \u0938\u0947 \u0915\u094B\u091F\u0947\u0936\u0928 - \u0905\u092A\u0928\u0947 \u0906\u092A"],
+    steps: [
+      { t: ["Quote from WhatsApp - automatic", "WhatsApp se quote - apne aap", "\u0935\u094D\u0939\u093E\u091F\u094D\u0938\u090F\u092A \u0938\u0947 \u0915\u094B\u091F\u0947\u0936\u0928"],
+        b: ["Copy any customer enquiry message. To practice, send YOURSELF a WhatsApp like: '500 pcs Bush 42mm EN8, rate 61.20, 15 August tak' - then copy it and come back.",
+            "Customer ka koi bhi enquiry message copy karo. Practice ke liye KHUD KO WhatsApp bhejo: '500 pcs Bush 42mm EN8, rate 61.20, 15 August tak' - phir copy karke wapas aao.",
+            "\u0917\u094D\u0930\u093E\u0939\u0915 \u0915\u093E \u0915\u094B\u0908 \u092D\u0940 \u092E\u0948\u0938\u0947\u091C \u0915\u0949\u092A\u0940 \u0915\u0930\u0947\u0902\u0964 \u0905\u092D\u094D\u092F\u093E\u0938 \u0915\u0947 \u0932\u093F\u090F \u0916\u0941\u0926 \u0915\u094B \u092D\u0947\u091C\u0947\u0902: '500 pcs Bush 42mm EN8, rate 61.20' - \u092B\u093F\u0930 \u0915\u0949\u092A\u0940 \u0915\u0930\u0915\u0947 \u0935\u093E\u092A\u0938 \u0906\u090F\u0902\u0964"] },
+      { target: ["fab-log", "fab"], adv: "tab:log",
+        t: ["Tap the green + button", "Ye hara + dabao", "\u092F\u0939 \u0939\u0930\u093E + \u0926\u092C\u093E\u090F\u0902"],
+        b: ["If it asks, choose 'Log a quote'.", "Agar pooche to 'Log a quote' chuno.", "\u0905\u0917\u0930 \u092A\u0942\u091B\u0947 \u0924\u094B 'Log a quote' \u091A\u0941\u0928\u0947\u0902\u0964"] },
+      { target: "paste-btn",
+        t: ["Tap Paste, drop the message in", "Paste dabao, message daalo", "\u092A\u0947\u0938\u094D\u091F \u0926\u092C\u093E\u090F\u0902, \u092E\u0948\u0938\u0947\u091C \u0921\u093E\u0932\u0947\u0902"],
+        b: ["Press this Paste button, drop the copied message in the box and tap 'Fill the form'. Customer, part, qty, rate and date fill themselves. Turn on Smart reading (AI) in Setup and it reads photos too.",
+            "Ye Paste button dabao, copied message box mein daalo, phir 'Fill the form'. Customer, part, qty, rate, date - sab khud bhar jayega. Setup mein Smart reading (AI) on karo to photo bhi padh leta hai.",
+            "\u092F\u0939 \u092A\u0947\u0938\u094D\u091F \u092C\u091F\u0928 \u0926\u092C\u093E\u090F\u0902, \u092E\u0948\u0938\u0947\u091C \u092C\u0949\u0915\u094D\u0938 \u092E\u0947\u0902 \u0921\u093E\u0932\u0947\u0902, \u092B\u093F\u0930 'Fill the form' - \u0938\u092C \u0916\u0941\u0926 \u092D\u0930 \u091C\u093E\u090F\u0917\u093E\u0964"] },
+      { target: "ql-save",
+        t: ["Check and save", "Check karke save karo", "\u091C\u093E\u0902\u091A \u0915\u0930 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902"],
+        b: ["Look over the fields once, then save. The quote lands in your pipeline with a follow-up reminder.",
+            "Fields ek baar dekh lo, phir save. Quote pipeline mein aa jayega - follow-up reminder ke saath.",
+            "\u092B\u0940\u0932\u094D\u0921 \u090F\u0915 \u092C\u093E\u0930 \u0926\u0947\u0916\u0947\u0902, \u092B\u093F\u0930 \u0938\u0947\u0935\u0964 \u0915\u094B\u091F\u0947\u0936\u0928 \u092A\u093E\u0907\u092A\u0932\u093E\u0907\u0928 \u092E\u0947\u0902 \u0906 \u091C\u093E\u090F\u0917\u093E\u0964"] },
+      { t: ["That's it!", "Bas itna hi!", "\u092C\u0938 \u0907\u0924\u0928\u093E \u0939\u0940!"],
+        b: ["Under 30 seconds per quote. Every quote you log is one less order forgotten.",
+            "Har quote 30 second se kam. Jo quote likha, wo order bhoolega nahi.",
+            "\u0939\u0930 \u0915\u094B\u091F\u0947\u0936\u0928 30 \u0938\u0947\u0915\u0902\u0921 \u0938\u0947 \u0915\u092E\u0964 \u091C\u094B \u0932\u093F\u0916\u093E, \u0935\u0939 \u0911\u0930\u094D\u0921\u0930 \u092D\u0942\u0932\u0947\u0917\u093E \u0928\u0939\u0940\u0902\u0964"] },
+    ],
+  },
+  pipeline: {
+    name: ["Pipeline & follow-ups", "Pipeline aur follow-ups", "\u092A\u093E\u0907\u092A\u0932\u093E\u0907\u0928 \u0914\u0930 \u092B\u0949\u0932\u094B-\u0905\u092A"],
+    steps: [
+      { go: "quotes",
+        t: ["Your pipeline", "Aapki pipeline", "\u0906\u092A\u0915\u0940 \u092A\u093E\u0907\u092A\u0932\u093E\u0907\u0928"],
+        b: ["Every quote lives here with its status - pending, won or lost. This is where stuck money becomes visible.",
+            "Har quote yahan hai apne status ke saath - pending, won ya lost. Atka paisa yahin dikhta hai.",
+            "\u0939\u0930 \u0915\u094B\u091F\u0947\u0936\u0928 \u092F\u0939\u093E\u0902 \u0939\u0948 \u0905\u092A\u0928\u0947 \u0938\u094D\u091F\u0947\u091F\u0938 \u0915\u0947 \u0938\u093E\u0925\u0964"] },
+      { target: "pipe-filters",
+        t: ["Filter with one tap", "Ek tap mein filter", "\u090F\u0915 \u091F\u0948\u092A \u092E\u0947\u0902 \u092B\u093C\u093F\u0932\u094D\u091F\u0930"],
+        b: ["Pending shows whose answer is due. Follow-ups shows whom to chase TODAY - start your morning here.",
+            "Pending mein jinka jawab aana hai. Follow-ups mein AAJ kisko chase karna hai - subah yahin se shuru karo.",
+            "\u092A\u0947\u0902\u0921\u093F\u0902\u0917 \u092E\u0947\u0902 \u091C\u093F\u0928\u0915\u093E \u091C\u0935\u093E\u092C \u0906\u0928\u093E \u0939\u0948\u0964 \u092B\u0949\u0932\u094B-\u0905\u092A \u092E\u0947\u0902 \u0906\u091C \u0915\u093F\u0938\u0947 \u092B\u094B\u0928 \u0915\u0930\u0928\u093E \u0939\u0948\u0964"] },
+      { target: "pipe-list",
+        t: ["Open any quote card", "Koi bhi quote kholo", "\u0915\u094B\u0908 \u092D\u0940 \u0915\u094B\u091F\u0947\u0936\u0928 \u0916\u094B\u0932\u0947\u0902"],
+        b: ["Tap a card below: Mark Won / Lost, set the follow-up date, add a photo, or chase on WhatsApp - one tap each.",
+            "Neeche kisi card par tap karo: Mark Won/Lost, follow-up date, photo, ya WhatsApp par chase - sab ek tap.",
+            "\u0928\u0940\u091A\u0947 \u0915\u093F\u0938\u0940 \u0915\u093E\u0930\u094D\u0921 \u092A\u0930 \u091F\u0948\u092A \u0915\u0930\u0947\u0902 - \u0938\u092C \u090F\u0915 \u091F\u0948\u092A \u092E\u0947\u0902\u0964"] },
+      { t: ["The daily habit", "Roz ki aadat", "\u0930\u094B\u091C\u093C \u0915\u0940 \u0906\u0926\u0924"],
+        b: ["One minute every morning: open Follow-ups, chase whoever is due. A forgotten quote is a lost order.",
+            "Roz subah ek minute: Follow-ups kholo, jiska din hai usko chase karo. Bhoola quote = gaya order.",
+            "\u0930\u094B\u091C\u093C \u0938\u0941\u092C\u0939 \u090F\u0915 \u092E\u093F\u0928\u091F: \u092B\u0949\u0932\u094B-\u0905\u092A \u0916\u094B\u0932\u0947\u0902\u0964 \u092D\u0942\u0932\u093E \u0915\u094B\u091F\u0947\u0936\u0928 = \u0917\u092F\u093E \u0911\u0930\u094D\u0921\u0930\u0964"] },
+    ],
+  },
+  fullquote: {
+    name: ["Send a full quotation", "Poora quotation bhejna", "\u092A\u0942\u0930\u093E \u0915\u094B\u091F\u0947\u0936\u0928 \u092D\u0947\u091C\u0928\u093E"],
+    mach: true,
+    steps: [
+      { t: ["Full quotation with real costing", "Poora quotation - sahi costing se", "\u0938\u0939\u0940 \u0915\u0949\u0938\u094D\u091F\u093F\u0902\u0917 \u0938\u0947 \u0915\u094B\u091F\u0947\u0936\u0928"],
+        b: ["Material + machine time + labour + overhead + margin: a price you can defend. YOU enter the cycle time; the app does the money math.",
+            "Material + machine time + labour + overhead + margin: aisa rate jo aap defend kar sako. Cycle time aap daalte ho; hisaab app karta hai.",
+            "\u092E\u091F\u0947\u0930\u093F\u092F\u0932 + \u092E\u0936\u0940\u0928 + \u0932\u0947\u092C\u0930 + \u0913\u0935\u0930\u0939\u0947\u0921 + \u092E\u093E\u0930\u094D\u091C\u093F\u0928 - \u0939\u093F\u0938\u093E\u092C \u0910\u092A \u0915\u0930\u0924\u093E \u0939\u0948\u0964"] },
+      { target: ["fab-new", "fab"], adv: "tab:new",
+        t: ["Tap + and choose 'New quotation'", "+ dabao, 'New quotation' chuno", "+ \u0926\u092C\u093E\u090F\u0902, 'New quotation' \u091A\u0941\u0928\u0947\u0902"],
+        b: ["The 4-step wizard opens.", "4-step wizard khulega.", "4-\u0938\u094D\u091F\u0947\u092A \u0935\u093F\u095B\u093E\u0930\u094D\u0921 \u0916\u0941\u0932\u0947\u0917\u093E\u0964"] },
+      { t: ["Four small steps", "Chaar chhote steps", "\u091A\u093E\u0930 \u091B\u094B\u091F\u0947 \u0938\u094D\u091F\u0947\u092A"],
+        b: ["Customer > Part > Costing > Review. The tricky fields carry plain hints underneath - raw weight, cycle time, handling time.",
+            "Customer > Part > Costing > Review. Zaroori fields ke neeche aasan hint likha hai - raw weight, cycle time, handling.",
+            "\u0915\u0938\u094D\u091F\u092E\u0930 > \u092A\u093E\u0930\u094D\u091F > \u0915\u0949\u0938\u094D\u091F\u093F\u0902\u0917 > \u0930\u093F\u0935\u094D\u092F\u0942\u0964 \u091C\u093C\u0930\u0942\u0930\u0940 \u092B\u0940\u0932\u094D\u0921 \u0915\u0947 \u0928\u0940\u091A\u0947 \u0939\u093F\u0902\u091F \u0939\u0948\u0964"] },
+      { t: ["PDF and WhatsApp, ready", "PDF aur WhatsApp, taiyaar", "PDF \u0914\u0930 \u0935\u094D\u0939\u093E\u091F\u094D\u0938\u090F\u092A \u0924\u0948\u092F\u093E\u0930"],
+        b: ["At Review you get a branded PDF and a ready WhatsApp message. Try the seeded sample: Gland Nut, Rs 174.39/pc.",
+            "Review par branded PDF aur ready WhatsApp message milta hai. Sample try karo: Gland Nut, Rs 174.39/pc.",
+            "\u0930\u093F\u0935\u094D\u092F\u0942 \u092A\u0930 PDF \u0914\u0930 \u0924\u0948\u092F\u093E\u0930 \u092E\u0948\u0938\u0947\u091C \u092E\u093F\u0932\u0924\u093E \u0939\u0948\u0964"] },
+    ],
+  },
+};
+
+function TutOverlay({ flow, step, tick, onNext, onBack, onClose }) {
+  const st = TUTS[flow].steps[step];
+  const [rect, setRect] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    setRect(null);
+    if (!st || !st.target) return;
+    const targets = [].concat(st.target);
+    const findEl = () => { for (const k of targets) { const el = document.querySelector('[data-tut="' + k + '"]'); if (el) return el; } return null; };
+    const measure = () => {
+      const el = findEl();
+      if (el && alive) setRect(el.getBoundingClientRect());
+    };
+    const t0 = setTimeout(() => {
+      const el = findEl();
+      if (!el) return;
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      setTimeout(() => { if (alive) measure(); }, 380);
+    }, 80); /* let the target tab render first */
+    window.addEventListener("resize", measure);
+    return () => { alive = false; clearTimeout(t0); window.removeEventListener("resize", measure); };
+  }, [flow, step, tick]); /* eslint-disable-line */
+  if (!st) return null;
+  const total = TUTS[flow].steps.length;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const cardW = Math.min(340, vw - 32);
+  let cardStyle;
+  if (rect) {
+    const left = Math.max(16, Math.min(rect.left + rect.width / 2 - cardW / 2, vw - 16 - cardW));
+    cardStyle = rect.bottom < vh * 0.55 ? { top: rect.bottom + 14, left } : { bottom: vh - rect.top + 14, left };
+  } else {
+    cardStyle = { top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
+  }
+  return (
+    <>
+      {rect
+        ? <div key="tut-cut" style={{ position: "fixed", zIndex: 400, left: rect.left - 6, top: rect.top - 6, width: rect.width + 12, height: rect.height + 12, borderRadius: 18, boxShadow: "0 0 0 9999px rgba(10,16,11,.55)", pointerEvents: "none", transition: "left .25s, top .25s, width .25s, height .25s" }} />
+        : <div key="tut-dim" style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(10,16,11,.55)", pointerEvents: "none" }} />}
+      <div style={{ position: "fixed", zIndex: 401, width: cardW, background: "#16201A", color: "#fff", borderRadius: 18, padding: "16px 16px 13px", boxShadow: "0 24px 60px -20px rgba(0,0,0,.55)", ...cardStyle }}>
+        <button className="press" onClick={onClose} aria-label="Close tutorial" style={{ all: "unset", cursor: "pointer", position: "absolute", top: 10, right: 14, color: "rgba(255,255,255,.6)", fontSize: 19, lineHeight: 1, padding: 2 }}>&#215;</button>
+        <div className="h-disp" style={{ fontSize: 15.5, fontWeight: 700, paddingRight: 24 }}>{tx(st.t[0], st.t[1], st.t[2])}</div>
+        <div style={{ fontSize: 13.5, color: "rgba(255,255,255,.85)", lineHeight: 1.6, marginTop: 6 }}>{tx(st.b[0], st.b[1], st.b[2])}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 13 }}>
+          <span className="mono" style={{ fontSize: 10.5, color: "rgba(255,255,255,.55)", flex: 1 }}>{step + 1} / {total}</span>
+          {step > 0 && <button className="press" onClick={onBack} style={{ all: "unset", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,.75)", padding: "7px 10px" }}>{tx("Back", "Back", "\u092A\u0940\u091B\u0947")}</button>}
+          <button className="press" onClick={step + 1 >= total ? onClose : onNext} style={{ all: "unset", cursor: "pointer", fontSize: 13.5, fontWeight: 700, color: "#0F1A11", background: "#7CE383", borderRadius: 999, padding: "8px 18px" }}>{step + 1 >= total ? tx("Done", "Done", "\u0939\u094B \u0917\u092F\u093E") : tx("Next", "Next", "\u0906\u0917\u0947")}</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function App() {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState("home");
@@ -1320,6 +1459,22 @@ export default function App() {
   const [fabOpen, setFabOpen] = useState(false);
   const [floorDraft, setFloorDraft] = useState(null); /* quote -> machine floor prefill */
   const sendToFloor = (q) => { setFloorDraft({ part: q.part, customer: q.customer, qty: q.qty }); setTab("floor"); ping(tx("Quote sent to the Machine floor - pick machines", "Quote Machine floor par gaya - machines chuno", "कोटेशन मशीन फ्लोर पर गया - मशीनें चुनें")); };
+  const [tut, setTut] = useState(null); /* guided tutorial: {flow, step} */
+  const startTut = (flow, step = 0) => { const f = TUTS[flow]; if (!f) return; const st = f.steps[step]; if (st && st.go) setTab(st.go); setFabOpen(false); setTut({ flow, step }); };
+  const tutNext = () => { if (!tut) return; const n = tut.step + 1; if (n >= TUTS[tut.flow].steps.length) { setTut(null); return; } const st = TUTS[tut.flow].steps[n]; if (st.go) setTab(st.go); setTut({ flow: tut.flow, step: n }); };
+  const tutBack = () => { if (tut && tut.step > 0) setTut({ flow: tut.flow, step: tut.step - 1 }); };
+  /* steps auto-advance when the user actually does the thing (Rules of Hooks:
+     this sits above every early return) */
+  useEffect(() => {
+    if (!tut) return;
+    const st = TUTS[tut.flow].steps[tut.step];
+    if (!st || !st.adv) return;
+    if (st.adv === "tab:" + tab) {
+      const n = tut.step + 1;
+      if (n >= TUTS[tut.flow].steps.length) setTut(null);
+      else setTut({ flow: tut.flow, step: n });
+    }
+  }, [tab, tut]);
   const [enquiries, setEnquiries] = useState([]); // inbound WhatsApp messages (backend only)
   const [waOn, setWaOn] = useState(false); // true once the WhatsApp backend has answered
   const [sync, setSync] = useState(sb ? "synced" : "local"); // cloud sync state: local|synced|saving|offline
@@ -1666,12 +1821,13 @@ export default function App() {
     <div className="qk-root"><style>{CSS}</style>
       <div className="app">
         {toast && <div className="toast">{toast}</div>}
+        {tut && <TutOverlay flow={tut.flow} step={tut.step} tick={fabOpen ? 1 : 0} onNext={tutNext} onBack={tutBack} onClose={() => setTut(null)} />}
 
-        {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} openTally={() => setTab("tally")} openFloor={() => setTab("floor")} openTrucks={() => setTab("trucks")} openStock={() => setTab("stock")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} />}
-        {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} cat={quotesCat} setCat={setQuotesCat} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} tallyBal={tallyBal} sendToFloor={sendToFloor} />}
-        {tab === "log" && <QuickLog data={data} onSave={saveLogged} onExit={() => setTab("home")} ping={ping} />}
+        {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} openTally={() => setTab("tally")} openFloor={() => setTab("floor")} openTrucks={() => setTab("trucks")} openStock={() => setTab("stock")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} startTut={startTut} dismissTut={() => setData({ ...data, settings: { ...data.settings, tutHomeDone: true } })} />}
+        {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} cat={quotesCat} setCat={setQuotesCat} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} tallyBal={tallyBal} sendToFloor={sendToFloor} startTut={startTut} />}
+        {tab === "log" && <QuickLog data={data} onSave={saveLogged} onExit={() => setTab("home")} ping={ping} startTut={startTut} />}
         {tab === "setup" && <Setup data={data} setData={setData} ping={ping} account={accountView} sync={sync} goSubscribe={() => setTab("subscribe")} onLogout={logout} />}
-        {tab === "help" && <Help data={data} ping={ping} />}
+        {tab === "help" && <Help data={data} ping={ping} startTut={startTut} />}
         {tab === "analytics" && <Analytics data={data} onBack={() => setTab("home")} goQuotes={goQuotes} />}
         {tab === "tally" && <TallyInsights data={data} updateQuote={updateQuote} ping={ping} onBack={() => setTab("home")} />}
         {tab === "floor" && <MachineFloor data={data} setData={setData} ping={ping} onBack={() => setTab("home")} goSetup={() => setTab("setup")} draft={floorDraft} clearDraft={() => setFloorDraft(null)} />}
@@ -1689,12 +1845,12 @@ export default function App() {
               <div style={{ width: 40, height: 4, borderRadius: 3, background: "var(--line2)", margin: "0 auto 16px" }} />
               <div className="microlbl" style={{ marginLeft: 2 }}>{tx("ADD TO PIPELINE", "ADD TO PIPELINE", "पाइपलाइन में जोड़ें")}</div>
               <div className="h-disp" style={{ fontSize: 21, fontWeight: 700, margin: "3px 0 16px 2px" }}>{tx("How do you want to add it?", "How do you want to add it?", "कैसे जोड़ना चाहेंगे?")}</div>
-              <button className="press" onClick={startLog} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 18, background: "linear-gradient(135deg,#1B7A20,#2E9E33)", color: "#fff", marginBottom: 10, boxShadow: "var(--sh-m)" }}>
+              <button className="press" data-tut="fab-log" onClick={startLog} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 18, background: "linear-gradient(135deg,#1B7A20,#2E9E33)", color: "#fff", marginBottom: 10, boxShadow: "var(--sh-m)" }}>
                 <span style={{ width: 42, height: 42, borderRadius: 13, background: "rgba(255,255,255,.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><I.bolt /></span>
                 <span style={{ flex: 1 }}><span style={{ display: "block", fontWeight: 700, fontSize: 16 }}>{tx("Log a quote", "Log a quote", "कोटेशन लिखें")}</span><span style={{ fontSize: 12.5, color: "rgba(255,255,255,.85)" }}>{tx("Made it in Excel or on call? Add it in 30 seconds.", "Made it in Excel or on call? Add it in 30 seconds.", "Excel में या फोन पर बनाया? 30 सेकंड में जोड़ें।")}</span></span>
                 <I.chev />
               </button>
-              <button className="press" onClick={startQuote} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 18, background: "#fff", border: "1.5px solid var(--line2)", boxShadow: "var(--sh-s)" }}>
+              <button className="press" data-tut="fab-new" onClick={startQuote} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "16px", borderRadius: 18, background: "#fff", border: "1.5px solid var(--line2)", boxShadow: "var(--sh-s)" }}>
                 <span style={{ width: 42, height: 42, borderRadius: 13, background: "var(--grn-100)", color: "var(--grn-d)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><I.chart /></span>
                 <span style={{ flex: 1 }}><span style={{ display: "block", fontWeight: 700, fontSize: 16 }}>{tx("New quotation", "New quotation", "नया कोटेशन")}</span><span style={{ fontSize: 12.5, color: "var(--dim)" }}>{tx("Full costing wizard - material, machine, margin.", "Full costing wizard - material, machine, margin.", "पूरा कॉस्टिंग विज़ार्ड - मटीरियल, मशीन, मार्जिन।")}</span></span>
                 <I.chev style={{ color: "var(--faint)" }} />
@@ -1708,7 +1864,7 @@ export default function App() {
             <div className="nav-pill" style={pillStyle} />
             <button ref={setNavRef("home")} className={"nav-it " + (tab === "home" ? "on" : "")} onClick={() => setTab("home")}><I.home /><span>{tx("Home", "Home", "होम")}</span></button>
             <button ref={setNavRef("quotes")} className={"nav-it " + (tab === "quotes" ? "on" : "")} onClick={() => setTab("quotes")}><I.list /><span>{tx("Pipeline", "Pipeline", "पाइपलाइन")}</span></button>
-            <button className="fab press" onClick={() => (industryOf(data).key === "machining" ? setFabOpen(true) : startLog())} aria-label="Add a quote"><I.plus /></button>
+            <button className="fab press" data-tut="fab" onClick={() => (industryOf(data).key === "machining" ? setFabOpen(true) : startLog())} aria-label="Add a quote"><I.plus /></button>
             <button ref={setNavRef("setup")} className={"nav-it " + (tab === "setup" ? "on" : "")} onClick={() => setTab("setup")}><I.gear /><span>{tx("Setup", "Setup", "सेटअप")}</span></button>
             <button ref={setNavRef("help")} className={"nav-it " + (tab === "help" ? "on" : "")} onClick={() => setTab("help")}><I.help /><span>{tx("Help", "Help", "मदद")}</span></button>
           </nav>
@@ -1719,7 +1875,7 @@ export default function App() {
 }
 
 /* ================= HOME ================= */
-function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally, openFloor, openTrucks, openStock, goSetup, goSubscribe }) {
+function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally, openFloor, openTrucks, openStock, goSetup, goSubscribe, startTut, dismissTut }) {
   const ind = industryOf(data);
   const isMach = ind.key === "machining";
   const h = new Date().getHours();
@@ -1923,6 +2079,18 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
         </div>
       </>)}
 
+      {startTut && !data.settings.tutHomeDone && (
+        <div className="card anim-in st3" style={{ padding: "13px 15px", marginTop: 12, display: "flex", alignItems: "center", gap: 11, border: "1.5px solid #CFE9D1", background: "#F7FCF8" }}>
+          <span style={{ fontSize: 20, flexShrink: 0 }} aria-hidden="true">&#127891;</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 14.5 }}>{tx("New here? Learn in 2 minutes", "Naye ho? 2 minute mein seekho", "\u0928\u090F \u0939\u0948\u0902? 2 \u092E\u093F\u0928\u091F \u092E\u0947\u0902 \u0938\u0940\u0916\u0947\u0902")}</div>
+            <div style={{ fontSize: 12.5, color: "var(--dim)" }}>{tx("The app walks you through it, step by step.", "App khud aapko step-by-step sikhata hai.", "\u0910\u092A \u0916\u0941\u0926 \u0906\u092A\u0915\u094B \u0938\u094D\u091F\u0947\u092A-\u092C\u093E\u092F-\u0938\u094D\u091F\u0947\u092A \u0938\u093F\u0916\u093E\u0924\u093E \u0939\u0948\u0964")}</div>
+          </div>
+          <button className="btn btn-grn btn-sm press" onClick={() => startTut("walog")}>{tx("Start", "Seekho", "\u0938\u0940\u0916\u0947\u0902")}</button>
+          <button className="press" onClick={dismissTut} aria-label="Dismiss" style={{ all: "unset", cursor: "pointer", color: "var(--faint)", fontSize: 18, padding: 4 }}>&#215;</button>
+        </div>
+      )}
+
       <div className="anim-in st3" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "24px 0 10px" }}>
         <span className="eyebrow">{tx("Recent quotes", "Recent quotes", "हाल के कोटेशन")}</span>
         <button onClick={() => goQuotes("all")} style={{ background: "none", border: "none", color: "var(--grn-d)", fontWeight: 600, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center" }}>{tx("All", "All", "सभी")} <I.chev /></button>
@@ -1966,7 +2134,7 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
 }
 
 /* ================= QUICK LOG (tracker-first 30-second entry) ================= */
-function QuickLog({ data, onSave, onExit, ping }) {
+function QuickLog({ data, onSave, onExit, ping, startTut }) {
   const [f, setF] = useState({ customer: "", phone: "", part: "", spec: "", total: "", qty: "", status: "pending", followUp: "", note: "", image: "", category: "" });
   const [pasteOpen, setPasteOpen] = useState(false);
   const [paste, setPaste] = useState("");
@@ -2015,7 +2183,8 @@ function QuickLog({ data, onSave, onExit, ping }) {
             <div className="microlbl">QUICK ENTRY</div>
             <div className="h-disp" style={{ fontSize: 23, fontWeight: 700 }}>Log a quote</div>
           </div>
-          <button className="btn btn-sm btn-soft press" onClick={() => setPasteOpen(!pasteOpen)}><I.wa /> Paste</button>
+          <button className="btn btn-sm btn-soft press" data-tut="paste-btn" onClick={() => setPasteOpen(!pasteOpen)}><I.wa /> Paste</button>
+          {startTut && <button className="btn btn-sm btn-ghost press" aria-label="Learn this screen" style={{ fontWeight: 700, minWidth: 40 }} onClick={() => startTut("walog")}>?</button>}
         </div>
 
         {pasteOpen && (
@@ -2108,7 +2277,7 @@ function QuickLog({ data, onSave, onExit, ping }) {
       </div></div>
 
       <div className="runbar" style={{ background: "#fff", border: "1px solid var(--line)", padding: 10 }}>
-        <button className="btn btn-grn press" style={{ width: "100%" }} onClick={save} disabled={!ok}><I.check2 /> Save to pipeline</button>
+        <button className="btn btn-grn press" data-tut="ql-save" style={{ width: "100%" }} onClick={save} disabled={!ok}><I.check2 /> Save to pipeline</button>
       </div>
     </>
   );
@@ -2298,7 +2467,7 @@ function WaImage({ src }) {
   );
 }
 
-function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, filter, setFilter, cat = null, setCat, onLog, enquiries = [], logEnquiry, dismissEnquiry, waOn, refreshEnquiries, tallyBal = null, sendToFloor }) {
+function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, filter, setFilter, cat = null, setCat, onLog, enquiries = [], logEnquiry, dismissEnquiry, waOn, refreshEnquiries, tallyBal = null, sendToFloor, startTut }) {
   const ind = industryOf(data);
   const [open, setOpen] = useState(null);
   const [q, setQ] = useState("");
@@ -2354,9 +2523,12 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
       <input ref={photoForRef} type="file" accept="image/*" capture="environment" onChange={onAttachPhoto} style={{ display: "none" }} />
       <div className="anim-in" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
         <div><span className="eyebrow">Pipeline</span><div className="h-disp" style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>All quotes</div></div>
-        <button className="btn btn-sm btn-soft press" disabled={busy} onClick={() => setXlOpen(true)}>
-          <I.sheet style={{ width: 16, height: 16 }} /> Excel
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {startTut && <button className="btn btn-sm btn-ghost press" aria-label="Learn this screen" style={{ fontWeight: 700, minWidth: 40 }} onClick={() => startTut("pipeline")}>?</button>}
+          <button className="btn btn-sm btn-soft press" disabled={busy} onClick={() => setXlOpen(true)}>
+            <I.sheet style={{ width: 16, height: 16 }} /> Excel
+          </button>
+        </div>
       </div>
 
       {/* incoming WhatsApp enquiries (only present when the backend is deployed) */}
@@ -2423,7 +2595,7 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
       </div>
 
       {/* filters */}
-      <div className="anim-in st1" style={{ display: "flex", gap: 8, marginBottom: catsPresent.length ? 10 : 14, flexWrap: "wrap" }}>
+      <div className="anim-in st1" data-tut="pipe-filters" style={{ display: "flex", gap: 8, marginBottom: catsPresent.length ? 10 : 14, flexWrap: "wrap" }}>
         {["all", "pending", "won", "lost"].map((k) => (<button key={k} className={"fpill press " + (filter === k ? "on" : "")} onClick={() => setFilter(k)}>{k[0].toUpperCase() + k.slice(1)}</button>))}
         <button className={"fpill press " + (filter === "due" ? "on" : "")} style={dueCount && filter !== "due" ? { borderColor: "#F0DCB8", color: "var(--amber)" } : undefined} onClick={() => setFilter("due")}>Follow-ups{dueCount ? " · " + dueCount : ""}</button>
       </div>
@@ -2441,7 +2613,7 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
       )}
 
       {/* heading above the quote list */}
-      <div className="anim-in st2" style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "4px 0 10px" }}>
+      <div className="anim-in st2" data-tut="pipe-list" style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "4px 0 10px" }}>
         <span className="eyebrow">{filter === "all" ? tx("All quotes", "All quotes", "सभी कोटेशन") : filter === "pending" ? tx("Pending quotes", "Pending quotes", "पेंडिंग कोटेशन") : filter === "won" ? tx("Won orders", "Won orders", "जीते ऑर्डर") : filter === "lost" ? tx("Lost quotes", "Lost quotes", "गए कोटेशन") : tx("Follow-ups due", "Follow-ups due", "फॉलो-अप बाकी")}</span>
         <span className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>{list.length}</span>
       </div>
@@ -3428,7 +3600,8 @@ const FAQS = [
     hi: "सही नंबरों के साथ नया कोटेशन बना लीजिए - दोबारा वाले पार्ट के लिए एक मिनट से कम लगता है। आपका पुराना कोटेशन हिस्ट्री में रहता है ताकि आप तुलना कर सकें।" },
 ];
 
-function Help({ data, ping }) {
+function Help({ data, ping, startTut }) {
+  const isMach = industryOf(data).key === "machining";
   const [open, setOpen] = useState(0);
   const [speaking, setSpeaking] = useState(-1);
   const waNum = "919910605207"; // TODO: replace with real support number before launch
@@ -3454,6 +3627,21 @@ function Help({ data, ping }) {
 
   return (
     <div className="scr"><div className="pagepad">
+      {startTut && (
+        <div className="anim-in" style={{ marginBottom: 22 }}>
+          <span className="eyebrow">{tx("Learn the app", "App seekho", "\u0910\u092A \u0938\u0940\u0916\u0947\u0902")}</span>
+          <div className="card" style={{ marginTop: 10, padding: "4px 15px" }}>
+            {Object.keys(TUTS).filter((k) => !TUTS[k].mach || isMach).map((k, i, arr) => (
+              <div key={k} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--line)" : "none" }}>
+                <span style={{ flex: 1, fontSize: 14.5, fontWeight: 600, minWidth: 0 }}>{tx(TUTS[k].name[0], TUTS[k].name[1], TUTS[k].name[2])}</span>
+                <button className="btn btn-sm btn-soft press" onClick={() => startTut(k)}>{tx("Show me", "Seekho", "\u0938\u0940\u0916\u0947\u0902")}</button>
+              </div>
+            ))}
+          </div>
+          <div className="hint" style={{ marginTop: 8 }}>{tx("The app guides you on screen, step by step - nothing to read, just follow.", "App screen par step-by-step guide karta hai - padhna nahi, bas follow karo.", "\u0910\u092A \u0938\u094D\u0915\u094D\u0930\u0940\u0928 \u092A\u0930 \u0938\u094D\u091F\u0947\u092A-\u092C\u093E\u092F-\u0938\u094D\u091F\u0947\u092A \u0917\u093E\u0907\u0921 \u0915\u0930\u0924\u093E \u0939\u0948\u0964")}</div>
+        </div>
+      )}
+
       <div className="anim-in" style={{ marginBottom: 18 }}>
         <span className="eyebrow">We're here</span>
         <div className="h-disp" style={{ fontSize: 26, fontWeight: 700, marginTop: 4 }}>Help &amp; support</div>
@@ -4567,7 +4755,11 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
       </>)}
 
       {/* data */}
-      <div className="anim-in st6" style={{ margin: "26px 0 10px" }}><span className="eyebrow">Data</span></div>
+      <div className="card-tint anim-in st6" style={{ padding: "13px 15px", display: "flex", gap: 10, alignItems: "flex-start", marginTop: 26 }}>
+        <span aria-hidden="true">&#128274;</span>
+        <span style={{ fontSize: 13, color: "var(--dim)", lineHeight: 1.6 }}>{tx("Data safety is our top priority. Your quotes, rates and customers stay inside your shop's own account - no other shop can ever see them, and Excel export means you can take everything out anytime.", "Data safety hamari pehli priority hai. Aapke quotes, rate aur customer sirf aapki shop ke account mein rehte hain - kisi aur shop ko kabhi nahi dikhte, aur Excel export se pura data kabhi bhi le sakte ho.", "\u0921\u0947\u091F\u093E \u0915\u0940 \u0938\u0941\u0930\u0915\u094D\u0937\u093E \u0939\u092E\u093E\u0930\u0940 \u092A\u0939\u0932\u0940 \u092A\u094D\u0930\u093E\u0925\u092E\u093F\u0915\u0924\u093E \u0939\u0948\u0964 \u0906\u092A\u0915\u0947 \u0915\u094B\u091F\u0947\u0936\u0928, \u0930\u0947\u091F \u0914\u0930 \u0917\u094D\u0930\u093E\u0939\u0915 \u0938\u093F\u0930\u094D\u092B \u0906\u092A\u0915\u0940 \u0926\u0941\u0915\u093E\u0928 \u0915\u0947 \u0905\u0915\u093E\u0909\u0902\u091F \u092E\u0947\u0902 \u0930\u0939\u0924\u0947 \u0939\u0948\u0902 - \u0915\u093F\u0938\u0940 \u0914\u0930 \u0926\u0941\u0915\u093E\u0928 \u0915\u094B \u0915\u092D\u0940 \u0928\u0939\u0940\u0902 \u0926\u093F\u0916\u0924\u0947\u0964")}</span>
+      </div>
+      <div className="anim-in st6" style={{ margin: "18px 0 10px" }}><span className="eyebrow">Data</span></div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 8 }}>
         <button className="btn btn-ghost btn-sm press" onClick={() => { const base = seedData(); const sq = buildSampleQuotes(ind.key); setData({ ...base, industry: ind.key, quotes: sq || base.quotes }); ping("Sample data loaded"); }}>Load sample</button>
         <button className="btn btn-ghost btn-sm press" style={{ color: "var(--red)" }} onClick={() => {
