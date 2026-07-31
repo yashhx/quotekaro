@@ -95,6 +95,21 @@ the highest-leverage single human in our channel.
 - Product prerequisites before channel push: referral/partner code at signup
   (attribution), partner one-pager, WhatsApp demo kit.
 
+## Marketing ideas parked for later (do NOT start before ~50 paying customers)
+- **Truck-side ads on scrap-circuit rental trucks** (Yash's idea, 2026-07-31): trucks
+  serving yards are a self-selecting ad network - they drive to the exact customer's
+  gate daily and idle at the kanta in front of the owner. Creative hook: truck-art
+  style line "Ye gaadi kahan gayi, kitna maal le gayi - malik ko phone par sab pata
+  hai. TrackRakho" + huge WhatsApp number (no QR - doesn't scan off moving trucks).
+  Economics: ~Rs 3-8k vinyl/paint per truck + Rs 500-1,500/mo to owner; 20 trucks on
+  the Faridabad-Ballabgarh circuit ~ Rs 50k upfront + Rs 20k/mo. Attribution via
+  dedicated number or "truck dekh ke aaye" offer code.
+- **The bigger version - transporters AS the channel:** a scrap-circuit truck owner
+  enters 5-10 yards daily, knows every dealer, and is himself paid late by them.
+  Referral deal (Rs 500/introduced yard, or free TrackRakho for his own truck
+  business) can be negotiated in the same conversation as the paint deal. Likely
+  outperforms the vinyl.
+
 ## Why acquirers care even at the floor (exit context)
 IndiaMART paid ~34x trailing revenue for Livekeeping (Rs 96 Cr total for a Rs 2.5 Cr
 business) - the Tally-connector wedge into SME operations carries strategic value

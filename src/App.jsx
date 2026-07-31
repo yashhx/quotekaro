@@ -543,7 +543,7 @@ const parseEnquiry = (raw) => {
 /* Subscription plans - prices are demo; wire real Razorpay/UPI at the marked hook before charging. */
 const PLANS = [
   { id: "full", name: "TrackRakho", price: 999, tagline: "Ek plan - sab kuch included", popular: true,
-    features: ["Unlimited quotes & pipeline", "WhatsApp + Gmail enquiries in one inbox", "Follow-up reminders & analytics", "Excel import / export & PDF quotations", "Machine floor - live job tracking", "Tally connector", "Priority WhatsApp support"], accent: "#228B22" },
+    features: ["Unlimited quotes & pipeline", "All your companies in ONE plan - no per-firm charge", "WhatsApp + Gmail enquiries in one inbox", "Follow-up reminders & analytics", "Excel import / export & PDF quotations", "Machine floor - live job tracking", "Tally connector", "Priority WhatsApp support"], accent: "#228B22" },
 ];
 
 /* NCR material library (editable seed rates - owner corrects to real) */
@@ -1151,7 +1151,7 @@ function Auth({ onAuthed, authError }) {
           <div className="auth-note">One tap, no password to remember. We only receive your name and email - nothing else from your Google account.</div>
           <div style={{ marginTop: 12, display: "flex", gap: 9, alignItems: "flex-start", fontSize: 12.5, color: "var(--dim)", lineHeight: 1.55, background: "var(--grn-100)", borderRadius: 12, padding: "10px 12px" }}>
             <span aria-hidden="true">&#128274;</span>
-            <span>{tx("Data safety is our top priority. Your quotes, rates and customers stay inside your shop's own account - no other shop can ever see them, and Excel export means you can take everything out anytime.", "Data safety hamari pehli priority hai. Aapke quotes, rate aur customer sirf aapki shop ke account mein rehte hain - kisi aur shop ko kabhi nahi dikhte, aur Excel export se pura data kabhi bhi le sakte ho.", "\u0921\u0947\u091F\u093E \u0915\u0940 \u0938\u0941\u0930\u0915\u094D\u0937\u093E \u0939\u092E\u093E\u0930\u0940 \u092A\u0939\u0932\u0940 \u092A\u094D\u0930\u093E\u0925\u092E\u093F\u0915\u0924\u093E \u0939\u0948\u0964 \u0906\u092A\u0915\u0947 \u0915\u094B\u091F\u0947\u0936\u0928, \u0930\u0947\u091F \u0914\u0930 \u0917\u094D\u0930\u093E\u0939\u0915 \u0938\u093F\u0930\u094D\u092B \u0906\u092A\u0915\u0940 \u0926\u0941\u0915\u093E\u0928 \u0915\u0947 \u0905\u0915\u093E\u0909\u0902\u091F \u092E\u0947\u0902 \u0930\u0939\u0924\u0947 \u0939\u0948\u0902 - \u0915\u093F\u0938\u0940 \u0914\u0930 \u0926\u0941\u0915\u093E\u0928 \u0915\u094B \u0915\u092D\u0940 \u0928\u0939\u0940\u0902 \u0926\u093F\u0916\u0924\u0947\u0964")}</span>
+            <span>{tx("Data safety is our top priority. Your quotes, rates and customers stay inside your shop's own account - no other shop can ever see them.", "Data safety hamari pehli priority hai. Aapke quotes, rate aur customer sirf aapki shop ke account mein rehte hain - kisi aur shop ko kabhi nahi dikhte.", "\u0921\u0947\u091F\u093E \u0915\u0940 \u0938\u0941\u0930\u0915\u094D\u0937\u093E \u0939\u092E\u093E\u0930\u0940 \u092A\u0939\u0932\u0940 \u092A\u094D\u0930\u093E\u0925\u092E\u093F\u0915\u0924\u093E \u0939\u0948\u0964 \u0906\u092A\u0915\u0947 \u0915\u094B\u091F\u0947\u0936\u0928, \u0930\u0947\u091F \u0914\u0930 \u0917\u094D\u0930\u093E\u0939\u0915 \u0938\u093F\u0930\u094D\u092B \u0906\u092A\u0915\u0940 \u0926\u0941\u0915\u093E\u0928 \u0915\u0947 \u0905\u0915\u093E\u0909\u0902\u091F \u092E\u0947\u0902 \u0930\u0939\u0924\u0947 \u0939\u0948\u0902 - \u0915\u093F\u0938\u0940 \u0914\u0930 \u0926\u0941\u0915\u093E\u0928 \u0915\u094B \u0915\u092D\u0940 \u0928\u0939\u0940\u0902 \u0926\u093F\u0916\u0924\u0947\u0964")}</span>
           </div>
         </div>
       </div>
@@ -1470,6 +1470,45 @@ export default function App() {
   const tutClose = () => { setEnquiries((list) => list.filter((x) => !x.demo)); setTut(null); };
   const tutNext = () => { if (!tut) return; const n = tut.step + 1; if (n >= TUTS[tut.flow].steps.length) { tutClose(); return; } const st = TUTS[tut.flow].steps[n]; if (st.go) setTab(st.go); setTut({ flow: tut.flow, step: n, qn: (data.quotes || []).length }); };
   const tutBack = () => { if (tut && tut.step > 0) setTut({ flow: tut.flow, step: tut.step - 1 }); };
+  /* ---- multi-company: Instagram-style switcher. Parked companies live as
+     full blobs INSIDE the active v5 blob (additive - no schema bump, cloud
+     sync carries all companies, per-account isolation preserved) ---- */
+  const [coOpen, setCoOpen] = useState(false);
+  const pendingOf = (qs) => (qs || []).filter((q) => q.status === "pending").reduce((s, q) => s + (Number(q.total) || 0), 0);
+  const companyRows = () => {
+    const cur = { id: (data && data._coId) || "co1", name: (data && data.shopName) || "My Shop", ind: data ? industryOf(data).label : "", pend: pendingOf(data && data.quotes), active: true };
+    const parked = ((data && data._companies) || []).map((c) => ({
+      id: c.id, name: (c.blob && c.blob.shopName) || "Company",
+      ind: c.blob && c.blob.industry && INDUSTRIES[c.blob.industry] ? INDUSTRIES[c.blob.industry].label : "",
+      pend: pendingOf(c.blob && c.blob.quotes), active: false,
+    }));
+    return [cur, ...parked];
+  };
+  const switchCompany = (id) => {
+    const parked = (data._companies || []).find((c) => c.id === id);
+    if (!parked) { setCoOpen(false); return; }
+    const meBlob = { ...data }; delete meBlob._companies; delete meBlob._coId;
+    const others = (data._companies || []).filter((c) => c.id !== id);
+    const next = { ...parked.blob, _coId: id, _companies: [...others, { id: data._coId || "co1", blob: meBlob }] };
+    setCoOpen(false); setTut(null); setTab("home");
+    setData(next);
+    ping(tx("Switched: ", "Switch ho gaya: ", "बदल गया: ") + ((parked.blob && parked.blob.shopName) || ""));
+  };
+  const addCompany = () => {
+    if (companyRows().length >= 4) { ping(tx("Up to 4 companies for now", "Abhi 4 companies tak", "अभी 4 कंपनियों तक")); return; }
+    const meBlob = { ...data }; delete meBlob._companies; delete meBlob._coId;
+    /* new firm walks through the trade picker, but carries the owner's setup
+       (rates, machines, materials, categories, language) - Zoho's duplicate-org
+       lesson: re-entering config is the #1 friction of firm #2. Quotes/jobs/
+       trucks stay empty. */
+    const fresh = { ...seedData(), industry: null,
+      shopName: tx("Company ", "Company ", "कंपनी ") + (companyRows().length + 1) + "", /* rename in Setup - identical names cause wrong-firm entries */
+      settings: { ...data.settings }, machines: (data.machines || []).map((m) => ({ ...m })),
+      materials: (data.materials || []).map((m) => ({ ...m })), myCats: JSON.parse(JSON.stringify(data.myCats || {})) };
+    const next = { ...fresh, _coId: uid(), _companies: [...(data._companies || []), { id: data._coId || "co1", blob: meBlob }] };
+    setCoOpen(false); setTut(null); setTab("home");
+    setData(next);
+  };
   /* steps auto-advance when the user actually does the thing (Rules of Hooks:
      this sits above every early return) */
   useEffect(() => {
@@ -1831,7 +1870,7 @@ export default function App() {
         {toast && <div className="toast">{toast}</div>}
         {tut && <TutOverlay flow={tut.flow} step={tut.step} tick={fabOpen ? 1 : 0} onNext={tutNext} onBack={tutBack} onClose={tutClose} />}
 
-        {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} openTally={() => setTab("tally")} openFloor={() => setTab("floor")} openTrucks={() => setTab("trucks")} openStock={() => setTab("stock")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} startTut={startTut} dismissTut={() => setData({ ...data, settings: { ...data.settings, tutHomeDone: true } })} />}
+        {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} openTally={() => setTab("tally")} openFloor={() => setTab("floor")} openTrucks={() => setTab("trucks")} openStock={() => setTab("stock")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} openCo={() => setCoOpen(true)} startTut={startTut} dismissTut={() => setData({ ...data, settings: { ...data.settings, tutHomeDone: true } })} />}
         {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} cat={quotesCat} setCat={setQuotesCat} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} tallyBal={tallyBal} sendToFloor={sendToFloor} startTut={startTut} />}
         {tab === "log" && <QuickLog data={data} onSave={saveLogged} onExit={() => setTab("home")} ping={ping} startTut={startTut} />}
         {tab === "setup" && <Setup data={data} setData={setData} ping={ping} account={accountView} sync={sync} goSubscribe={() => setTab("subscribe")} onLogout={logout} />}
@@ -1847,6 +1886,28 @@ export default function App() {
           onFinish={() => { setTab("home"); setDoneQuote(null); }} />)}
 
         {/* FAB chooser - quick log (tracker-first) vs full costing quote */}
+        {coOpen && (
+          <div onClick={() => setCoOpen(false)} style={{ position: "absolute", inset: 0, zIndex: 60, background: "rgba(16,26,20,.42)", backdropFilter: "blur(3px)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+            <div className="anim-in" onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: "26px 26px 0 0", padding: "22px 18px calc(20px + env(safe-area-inset-bottom))", boxShadow: "0 -20px 50px -20px rgba(21,94,24,.4)" }}>
+              <div style={{ width: 40, height: 4, borderRadius: 3, background: "var(--line2)", margin: "0 auto 16px" }} />
+              <div className="microlbl" style={{ marginLeft: 2 }}>{tx("YOUR COMPANIES", "AAPKI COMPANIES", "आपकी कंपनियाँ")}</div>
+              <div className="h-disp" style={{ fontSize: 21, fontWeight: 700, margin: "3px 0 16px 2px" }}>{tx("Switch company", "Company badlo", "कंपनी बदलें")}</div>
+              {companyRows().map((c) => (
+                <button key={c.id} className="press" onClick={() => (c.active ? setCoOpen(false) : switchCompany(c.id))} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", gap: 13, padding: "13px 14px", borderRadius: 16, border: c.active ? "1.5px solid var(--grn-x)" : "1px solid var(--line)", background: c.active ? "#F3FBF4" : "#fff", marginBottom: 9 }}>
+                  <span style={{ width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#2E9E33,#155E18)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontWeight: 600, fontSize: 13, flexShrink: 0 }}>{c.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "block", fontWeight: 700, fontSize: 15.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</span>
+                    <span className="mono" style={{ fontSize: 12, color: "var(--faint)" }}>{c.ind}{c.pend > 0 ? " · " : ""}{c.pend > 0 && <span style={{ color: "var(--amber)", fontWeight: 600 }}>{inr(c.pend)} pending</span>}</span>
+                  </span>
+                  {c.active && <span className="mono" style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: "var(--grn-d)", background: "var(--grn-100)", borderRadius: 999, padding: "3px 9px" }}>ACTIVE</span>}
+                </button>
+              ))}
+              <button className="btn btn-ghost press" style={{ width: "100%", marginTop: 4 }} onClick={addCompany}>+ {tx("Add a company", "Nayi company jodo", "नई कंपनी जोड़ें")}</button>
+              <div className="hint" style={{ marginTop: 10, textAlign: "center" }}>{tx("Each company's quotes, Tally and settings stay fully separate.", "Har company ke quotes, Tally aur settings bilkul alag rehte hain.", "हर कंपनी का डेटा बिल्कुल अलग रहता है।")}</div>
+            </div>
+          </div>
+        )}
+
         {fabOpen && (
           <div onClick={() => setFabOpen(false)} style={{ position: "absolute", inset: 0, zIndex: 60, background: "rgba(16,26,20,.42)", backdropFilter: "blur(3px)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
             <div className="anim-in" onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: "26px 26px 0 0", padding: "22px 18px calc(20px + env(safe-area-inset-bottom))", boxShadow: "0 -20px 50px -20px rgba(21,94,24,.4)" }}>
@@ -1883,7 +1944,7 @@ export default function App() {
 }
 
 /* ================= HOME ================= */
-function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally, openFloor, openTrucks, openStock, goSetup, goSubscribe, startTut, dismissTut }) {
+function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally, openFloor, openTrucks, openStock, goSetup, goSubscribe, openCo, startTut, dismissTut }) {
   const ind = industryOf(data);
   const isMach = ind.key === "machining";
   const h = new Date().getHours();
@@ -1947,7 +2008,7 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
           <div className="h-disp" style={{ fontSize: 25, fontWeight: 700, marginTop: 3 }}>{greet}</div>
           <div style={{ fontSize: 14, color: "var(--dim)" }}>{data.shopName} · {ind.label}</div>
         </div>
-        <button onClick={goSetup} className="press" style={{ width: 46, height: 46, borderRadius: 15, background: "linear-gradient(135deg,#2E9E33,#155E18)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontWeight: 600, fontSize: 14, boxShadow: "var(--sh-s)", border: "none", cursor: "pointer" }}>
+        <button onClick={openCo || goSetup} aria-label="Switch company" className="press" style={{ width: 46, height: 46, borderRadius: 15, background: "linear-gradient(135deg,#2E9E33,#155E18)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontWeight: 600, fontSize: 14, boxShadow: "var(--sh-s)", border: "none", cursor: "pointer" }}>
           {data.shopName.split(" ").map((w) => w[0]).slice(0, 2).join("")}
         </button>
       </div>
@@ -2137,6 +2198,11 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
           <span style={{ fontSize: 13.5, color: "var(--dim)" }}>{tx("Your ", "Your ", "आपकी ")}{data.machines[0].name}{tx("'s true rate is ", "'s true rate is ", " की असली दर है ")}<b className="mono" style={{ color: "var(--grn-d)" }}>{inr(data.machines[0].rate || 0)}/hr</b>{tx(" - every quote uses it automatically.", " - every quote uses it automatically.", " - हर कोटेशन में अपने आप लगती है।")}</span>
         </div>
       )}
+
+      <div className="card-tint anim-in st7" style={{ padding: "15px 16px", display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}>
+        <span aria-hidden="true" style={{ flexShrink: 0 }}>&#128274;</span>
+        <span style={{ fontSize: 13.5, color: "var(--dim)", lineHeight: 1.55 }}>{tx("Your data belongs only to your shop - nobody else can see it, and it is never shared or sold.", "Aapka data sirf aapki shop ka hai - kisi aur ko nahi dikhta, kabhi share ya sell nahi hota.", "आपका डेटा सिर्फ आपकी दुकान का है - किसी और को नहीं दिखता, कभी शेयर या बेचा नहीं जाता।")}</span>
+      </div>
     </div></div>
   );
 }
@@ -3583,6 +3649,12 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
           Ye page aapke accountant ke Tally se apne aap banta hai - aapko Tally kholne ki zaroorat nahi. Setup mein "Tally (BETA)" se connect hota hai.
         </span>
       </div>
+      <div className="card-tint anim-in st5" style={{ padding: "14px 16px", display: "flex", gap: 10, alignItems: "flex-start", marginTop: 10, marginBottom: 8 }}>
+        <span aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }}>&#128274;</span>
+        <span style={{ fontSize: 13, color: "var(--dim)", lineHeight: 1.6 }}>
+          {tx("Your Tally numbers stay in your own account only. The connector just READS reports - your accountant's Tally is never changed, and your data is never shared or sold.", "Aapke Tally ke numbers sirf aapke account mein rehte hain. Connector sirf report PADHTA hai - accountant ka Tally kabhi badalta nahi, aur aapka data kabhi share ya sell nahi hota.", "आपके Tally के नंबर सिर्फ आपके अकाउंट में रहते हैं। कनेक्टर सिर्फ रिपोर्ट पढ़ता है - अकाउंटेंट का Tally कभी बदलता नहीं।")}
+        </span>
+      </div>
       </>)}
     </div></div>
   );
@@ -4765,7 +4837,7 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
       {/* data */}
       <div className="card-tint anim-in st6" style={{ padding: "13px 15px", display: "flex", gap: 10, alignItems: "flex-start", marginTop: 26 }}>
         <span aria-hidden="true">&#128274;</span>
-        <span style={{ fontSize: 13, color: "var(--dim)", lineHeight: 1.6 }}>{tx("Data safety is our top priority. Your quotes, rates and customers stay inside your shop's own account - no other shop can ever see them, and Excel export means you can take everything out anytime.", "Data safety hamari pehli priority hai. Aapke quotes, rate aur customer sirf aapki shop ke account mein rehte hain - kisi aur shop ko kabhi nahi dikhte, aur Excel export se pura data kabhi bhi le sakte ho.", "\u0921\u0947\u091F\u093E \u0915\u0940 \u0938\u0941\u0930\u0915\u094D\u0937\u093E \u0939\u092E\u093E\u0930\u0940 \u092A\u0939\u0932\u0940 \u092A\u094D\u0930\u093E\u0925\u092E\u093F\u0915\u0924\u093E \u0939\u0948\u0964 \u0906\u092A\u0915\u0947 \u0915\u094B\u091F\u0947\u0936\u0928, \u0930\u0947\u091F \u0914\u0930 \u0917\u094D\u0930\u093E\u0939\u0915 \u0938\u093F\u0930\u094D\u092B \u0906\u092A\u0915\u0940 \u0926\u0941\u0915\u093E\u0928 \u0915\u0947 \u0905\u0915\u093E\u0909\u0902\u091F \u092E\u0947\u0902 \u0930\u0939\u0924\u0947 \u0939\u0948\u0902 - \u0915\u093F\u0938\u0940 \u0914\u0930 \u0926\u0941\u0915\u093E\u0928 \u0915\u094B \u0915\u092D\u0940 \u0928\u0939\u0940\u0902 \u0926\u093F\u0916\u0924\u0947\u0964")}</span>
+        <span style={{ fontSize: 13, color: "var(--dim)", lineHeight: 1.6 }}>{tx("Data safety is our top priority. Your quotes, rates and customers stay inside your shop's own account - no other shop can ever see them, and Excel export means you can take everything out anytime.", "Data safety hamari pehli priority hai. Aapke quotes, rate aur customer sirf aapki shop ke account mein rehte hain - kisi aur shop ko kabhi nahi dikhte.", "\u0921\u0947\u091F\u093E \u0915\u0940 \u0938\u0941\u0930\u0915\u094D\u0937\u093E \u0939\u092E\u093E\u0930\u0940 \u092A\u0939\u0932\u0940 \u092A\u094D\u0930\u093E\u0925\u092E\u093F\u0915\u0924\u093E \u0939\u0948\u0964 \u0906\u092A\u0915\u0947 \u0915\u094B\u091F\u0947\u0936\u0928, \u0930\u0947\u091F \u0914\u0930 \u0917\u094D\u0930\u093E\u0939\u0915 \u0938\u093F\u0930\u094D\u092B \u0906\u092A\u0915\u0940 \u0926\u0941\u0915\u093E\u0928 \u0915\u0947 \u0905\u0915\u093E\u0909\u0902\u091F \u092E\u0947\u0902 \u0930\u0939\u0924\u0947 \u0939\u0948\u0902 - \u0915\u093F\u0938\u0940 \u0914\u0930 \u0926\u0941\u0915\u093E\u0928 \u0915\u094B \u0915\u092D\u0940 \u0928\u0939\u0940\u0902 \u0926\u093F\u0916\u0924\u0947\u0964")}</span>
       </div>
       <div className="anim-in st6" style={{ margin: "18px 0 10px" }}><span className="eyebrow">Data</span></div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 8 }}>
