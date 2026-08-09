@@ -1,7 +1,7 @@
 {
   "_help": "Copy this file to config.json (in this same folder), then fill in connectorKey. Lines starting with _help are just notes - the connector ignores them.",
 
-  "cloudUrl": "https://quotekaroo.netlify.app",
+  "cloudUrl": "https://trackrakho.com",
   "_help_cloudUrl": "The web address of your QuoteKaro app. Keep the default unless you run your own copy of the site.",
 
   "connectorKey": "tk_paste-your-key-here",

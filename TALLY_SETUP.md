@@ -71,7 +71,7 @@ In the connector folder:
 
 ```json
 {
-  "cloudUrl": "https://quotekaroo.netlify.app",
+  "cloudUrl": "https://trackrakho.com",
   "connectorKey": "tk_your40characterkeyhere...",
   "tallyUrl": "http://localhost:9000",
   "intervalSec": 60,
@@ -121,7 +121,7 @@ exits. When the output looks right, run the .bat normally.
 | `Node.js is not installed on this PC` | Node missing | Install the LTS from https://nodejs.org and run the .bat again. |
 | `Tally is not reachable` every round | TallyPrime closed, gateway off, or a different port | Open Tally with your company, then Step 1. Check `http://localhost:9000` in a browser. |
 | `the cloud rejected the connector key` | Key was regenerated in the app, or a typo | Copy the current key from Setup > Tally into config.json. Regenerating in the app kills the old key on purpose. |
-| `did not answer like QuoteKaro` | `cloudUrl` points somewhere wrong | Set `cloudUrl` back to your app address, e.g. `https://quotekaroo.netlify.app`. |
+| `did not answer like QuoteKaro` | `cloudUrl` points somewhere wrong | Set `cloudUrl` back to your app address, e.g. `https://trackrakho.com`. |
 | `Tally rejected: ... Voucher Type 'Sales Order' does not exist` (or similar) | Order vouchers not enabled in that company | Step 2 (F11 > enable sales order processing). Or set `voucherType` in config.json to a voucher type your company does have. |
 | `Tally rejected: ... already exists` on a LEDGER or STOCKITEM | Not a problem | The connector treats "already exists" as success and continues. If you see it as a rejection reason for the voucher itself, tell support. |
 | Orders land in the wrong company | Imports go into whichever company is open in Tally | Open the right company before starting the connector. |

@@ -126,6 +126,22 @@ const cleanName = (s, fallback) => {
   return t || fallback;
 };
 
+/* ORDER voucher lines must carry an order due date ("Due on") or real
+   TallyPrime parks the whole voucher in Import Exceptions with "Due Date of
+   Order is missing in Item Allocations" (found 2026-08-09 on Rel 7.x; import
+   reply shows EXCEPTIONS 1 with zero errors). We use the voucher date itself
+   as the due date. JD = days since 31-Dec-1899, verified against this
+   Tally's own bills export (1-May-2026 -> 46142). */
+const MONTHS3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const tallyJd = (ms) => {
+  const d = new Date(Number(ms) || Date.now());
+  return Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(1899, 11, 31)) / 86400000);
+};
+const tallyDateP = (ms) => {
+  const d = new Date(Number(ms) || Date.now());
+  return d.getDate() + "-" + MONTHS3[d.getMonth()] + "-" + String(d.getFullYear()).slice(2);
+};
+
 /* The widely-used Tally "Import Data" envelope. We deliberately OMIT
    SVCURRENTCOMPANY so everything lands in the company currently open in
    TallyPrime (that is what small shops expect). */
@@ -186,7 +202,9 @@ function voucherXml(q, voucherType, salesLedger, dateOverrideMs) {
     rate = total / qty;
   }
   const amount = money(total);
-  const date = tallyDate(dateOverrideMs != null ? dateOverrideMs : q.at);
+  const dateMs = dateOverrideMs != null ? dateOverrideMs : q.at;
+  const date = tallyDate(dateMs);
+  const orderDue = '<ORDERDUEDATE JD="' + tallyJd(dateMs) + '" P="' + tallyDateP(dateMs) + '">' + tallyDateP(dateMs) + "</ORDERDUEDATE>";
   const ref = xmlEsc("QK-" + String(q.id || "").slice(0, 8));
   /* REMOTEID gives the voucher a stable identity inside Tally, so an
      accidental second import of the same quote is recognizable */
@@ -210,6 +228,7 @@ function voucherXml(q, voucherType, salesLedger, dateOverrideMs) {
     "<ACTUALQTY>" + qty + " Nos</ACTUALQTY>" +
     "<BILLEDQTY>" + qty + " Nos</BILLEDQTY>" +
     "<AMOUNT>" + amount + "</AMOUNT>" +
+    orderDue +
     "<ACCOUNTINGALLOCATIONS.LIST>" +
     "<LEDGERNAME>" + sales + "</LEDGERNAME>" +
     "<ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>" +
@@ -268,12 +287,17 @@ function voucherExportXml(fromYmd, toYmd) {
     "</ENVELOPE>";
 }
 
-/* TDL Collection export: every OPEN bill under Sundry Debtors - Tally's
-   Bills Receivable, bill by bill (type "Bills" collection; the report-export
+/* TDL Collection export: every OPEN bill in the books - Tally's Bills
+   Receivable, bill by bill (type "Bills" collection; the report-export
    route is avoided on purpose: its EXPLODEFLAG is broken and its tag names
    shift between Tally releases). SVTODATE = the "as on" date for pending
    balances. Bill-wise rows only exist for parties whose ledger has
-   "Maintain balances bill-by-bill" = Yes - an empty reply is normal. */
+   "Maintain balances bill-by-bill" = Yes - an empty reply is normal.
+   VERIFIED ON REAL TallyPrime Rel 7.x (2026-08-09): CHILDOF on a Bills-type
+   collection silently matches NOTHING (both $$GroupSundryDebtors and the
+   literal group name) - the collection must be exported UNFILTERED and
+   restricted to Sundry Debtors CLIENT-SIDE against the ledger pull. The
+   pending > 0 sign guard in parseBills already drops creditor bills. */
 function billsExportXml(toYmd) {
   return XML_PROLOG + "<ENVELOPE>" +
     "<HEADER><VERSION>1</VERSION><TALLYREQUEST>Export</TALLYREQUEST><TYPE>Collection</TYPE><ID>QuoteKaro Bills</ID></HEADER>" +
@@ -283,8 +307,6 @@ function billsExportXml(toYmd) {
     "<TDL><TDLMESSAGE>" +
     '<COLLECTION NAME="QuoteKaro Bills" ISMODIFY="No" ISINITIALIZE="Yes">' +
     "<TYPE>Bills</TYPE>" +
-    "<CHILDOF>$$GroupSundryDebtors</CHILDOF>" +
-    "<BELONGSTO>Yes</BELONGSTO>" + /* include parties filed under sub-groups */
     "<NATIVEMETHOD>Name</NATIVEMETHOD>" +
     "<NATIVEMETHOD>Parent</NATIVEMETHOD>" +
     "<NATIVEMETHOD>BillDate</NATIVEMETHOD>" +
@@ -315,7 +337,7 @@ function parseImportReply(text) {
     const msg = xmlUnesc(m[1]).replace(/\s+/g, " ").trim();
     if (msg) lineErrors.push(msg);
   }
-  return { created: num("CREATED"), altered: num("ALTERED"), errors: num("ERRORS"), lineErrors };
+  return { created: num("CREATED"), altered: num("ALTERED"), errors: num("ERRORS"), exceptions: num("EXCEPTIONS"), lineErrors };
 }
 
 const isDuplicateErr = (s) => /already exists|duplicated?\b/i.test(String(s));
@@ -586,6 +608,9 @@ async function pushQuote(cfg, q) {
 
   const reason =
     vReply.lineErrors[0] ||
+    (vReply.exceptions > 0
+      ? "Tally parked the voucher in Import Exceptions - open O: Import > Import Exceptions in Tally to see why"
+      : "") ||
     (realMasterErrors[0] ? "master failed: " + realMasterErrors[0] : "") ||
     "Tally accepted the request but created nothing (check the voucher type in Tally)";
   log("Tally rejected: " + label + " - " + reason);
@@ -676,7 +701,16 @@ async function cycle(cfg) {
     try {
       const to = new Date();
       const ymd2 = "" + to.getFullYear() + pad(to.getMonth() + 1) + pad(to.getDate());
-      bills = parseBills(await tallyPost(cfg, billsExportXml(ymd2))).slice(0, 600);
+      bills = parseBills(await tallyPost(cfg, billsExportXml(ymd2)));
+      /* the collection arrives UNFILTERED (see billsExportXml) - keep only
+         Sundry Debtors' bills using the ledger pull above. Also protects
+         against advances PAID to suppliers (Dr on a creditor ledger), which
+         the sign guard alone would let through as fake receivables. */
+      if (Array.isArray(ledgers)) {
+        const debtorNames = new Set(ledgers.filter((l) => l.grp === "debtor").map((l) => String(l.name || "").toLowerCase()));
+        bills = bills.filter((b) => debtorNames.has(String(b.party || "").toLowerCase()));
+      }
+      bills = bills.slice(0, 600);
       log("Read " + bills.length + " open bill(s) from Tally (bill-wise outstanding)" +
         (bills.length ? "" : " - parties may not maintain balances bill-by-bill, that is fine"));
     } catch (e) {

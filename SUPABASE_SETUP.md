@@ -38,7 +38,7 @@ Supabase needs a Google OAuth client to offer "Continue with Google":
    customers' emails as test users).
 3. **APIs & Services → Credentials → Create credentials → OAuth client ID**:
    - Application type: **Web application**
-   - Authorized JavaScript origins: `https://quotekaroo.netlify.app`
+   - Authorized JavaScript origins: `https://trackrakho.com` AND `https://quotekaroo.netlify.app` (both serve the app)
    - Authorized redirect URIs: `https://YOUR-PROJECT-REF.supabase.co/auth/v1/callback`
      (shown verbatim in the next step's Supabase screen — copy from there)
    - Create → copy the **Client ID** and **Client secret**.
@@ -46,7 +46,8 @@ Supabase needs a Google OAuth client to offer "Continue with Google":
    Client ID + Client secret → Save. (This screen also shows the exact callback
    URL for step 3.)
 5. In Supabase **Authentication → URL Configuration**: set Site URL to
-   `https://quotekaroo.netlify.app`.
+   `https://trackrakho.com` and add BOTH `https://trackrakho.com/**` and
+   `https://quotekaroo.netlify.app/**` under Redirect URLs (login must work on both).
 
 ## 4. Netlify environment variables (3 min)
 

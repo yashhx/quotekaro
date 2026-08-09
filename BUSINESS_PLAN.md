@@ -9,9 +9,25 @@ NOT top-down market share. Research: workflows wf_231eb8e6 (money stuck), wf_e06
 | Segment | India | NCR |
 |---|---|---|
 | Machining core (ASI factories + CNC installed-base, 2 independent methods) | 50-70k | 5-8k |
-| Scrap traders w/ yard + vehicle + Tally flows (MRAI network / tonnage math / importer floor) | 15-40k, central ~25k | 1,000-2,500 |
-| Combined core | ~75-100k | ~6-10k |
+| Scrap traders w/ yard + vehicle + Tally flows (tonnage math + MRAI metal-only share, REVISED 2026-08-04, wf_967859aa) | 10-22k, central ~15k | 1,000-2,200, central ~1,500 |
+| Combined core | ~60-90k | ~6-10k |
 | Pitchable TODAY (quote-active, pain-visible, pays for software) | ~10-15k | ~1,500-3,000 |
+
+Scrap revision (2026-08-04, workflow wf_967859aa - 5 angles + adversarial check): the old
+central ~25k came from MRAI's "25,000 MSME network" - an all-materials (plastics/paper/
+e-waste incl.), self-reported lobby figure with no census. Metal-only share (~50-60%) and
+independent tonnage math (15-20 MT yard-intermediated ferrous / realistic yard throughput)
+BOTH converge at ~15k. Caveat that cuts deeper: scrap is DGGI's most GST-evasion-prone
+goods category (Rs 16,806 Cr evasion FY24) - a real slice of crore-scale dealers keeps
+kaccha books BY CHOICE, so software-addressable-today = ~9-15k. Whitespace verified TOTAL:
+zero India-native scrap-dealer SaaS found, zero scrap/weighbridge TDLs on TallyShop or
+tdlstore.in, nearest cloud comp Scraplytics $100/mo (~8x our price), AMCS/ReMatter have no
+India GTM. WTP proof at the yard: kanta software is a crowded Rs 8,500-50,000 one-time
+category, "Tally integration" as headline feature. Deck-citable: "15,000+ organized scrap
+traders, 2.5M workers, $20B recycling market by 2030 (Avendus/MRAI), imports +45% this
+fiscal" - do NOT use the unverifiable "$50B by 2030". FIELD TASK (worth more than desk
+research): ask 20-30 Mayapuri/Faridabad yards their MT/month - the national estimate
+swings 2x on the one published throughput anchor (150-200 MT/mo, single source).
 
 ## Calibration facts (audited, not PR)
 - Livekeeping: 9 years, Tally rail, Rs 96 Cr of IndiaMART money -> Rs 2.52 Cr revenue
@@ -94,6 +110,36 @@ the highest-leverage single human in our channel.
   Biz Analyst-style partner awards, partner dashboard.
 - Product prerequisites before channel push: referral/partner code at signup
   (attribution), partner one-pager, WhatsApp demo kit.
+
+## Machining temptation levers (2026-08-03, from the "would you buy it" stress test)
+Diagnosis: for machining owners the app asks for WORK before VALUE (log quotes -> weeks ->
+pipeline insight); scrap gets value passively (trucks/Tally/ghata). Fixes, in order:
+1. WhatsApp chat-export (.txt) IMPORT - reconstruct months of enquiries/rates from the
+   owner's own chats at the demo table (parseEnquiry reusable; also the photo-search
+   bootstrap). Kills the habit prerequisite. THE build.
+2. Reframe pipeline as PART RATE-CARD - search part -> every past quote/rate/customer
+   ("Gland Nut ka pichhli baar kya rate diya tha"). Mostly framing + search polish.
+3. Stale-rate alerts - material rate updated -> flag pending quotes made at old rate.
+   Small build, passive money-talk.
+4. MACHINING DEMO OPENER = rate-calculator shock ("aapki VMC ka asli rate?" -> Rs 366/hr
+   vs assumed Rs 250), NOT the aging bar. Different trade, different loss, different
+   opener. Scrap keeps "kitna paisa atka hai".
+Accept: pure approved-vendor subcontractors (~1/3 of segment) stay cold - segmentation,
+not failure.
+
+## Scrap 7->9 levers (2026-08-03, stress-test part 2). Not features - trust/adoption:
+1. KANTA-PARCHI PHOTO LOGGING - munshi snaps weighbridge slip -> aiReadMedia (shipped
+   infra) extracts truck/weight/material -> trip/stock entry prefilled. Staler-than-
+   reality board = instant trust death; this is the #1 retention lever. Even better:
+   munshi already WhatsApps slip photos - connected business number turns the existing
+   habit into the logging system.
+2. ACCOUNTANT-ALLY KIT - the accountant can silently kill the sale ("main hoon na").
+   Read-only-first connector mode + one-page Hindi note addressed to HIM (Tally kuch
+   nahi badalta, aapka kaam kam, credit aapka) + he does the install, stays gatekeeper.
+3. PAKKA/KACHCHA honesty - never claim the complete picture; position as private
+   operational diary (his account, reported nowhere, what goes in is his choice).
+4. REFERENCE-LED GTM - dealers buy on "aur kaun use karta hai": friend's yard =
+   reference #1, then mandi/association demo. Demos alone don't close this trade.
 
 ## Marketing ideas parked for later (do NOT start before ~50 paying customers)
 - **Truck-side ads on scrap-circuit rental trucks** (Yash's idea, 2026-07-31): trucks
