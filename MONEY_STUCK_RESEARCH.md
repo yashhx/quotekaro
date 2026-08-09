@@ -100,6 +100,20 @@ software-payers ~15-25% -> ~8-17k shops - consistent with the 7-10k derived from
 5-7%-of-all-MSMEs-pay filter. Faridabad alone has enough core shops (~2-3k) to prove
 the whole business without leaving NCR.
 
+## The Tally price objection ("Tally hi 750 ka hai, aap zyada kyun?")
+Reality: most shops OWN Tally (Rs 22,500 once + Rs 4,500/yr TSS = ~Rs 375/mo effective) -
+the anchor is even lower than Rs 750. Answer in three moves:
+1. Category shift: "Tally aapka muneem hai - hisaab likhta hai, jo ho gaya uska.
+   TrackRakho aapki vasooli aur yaaddasht hai - jo hone wala hai uska."
+2. Loss math: "Ek bhoola quotation Rs 30,000 ka hota hai - saal bhar ka TrackRakho
+   usse sasta hai."
+3. Anchor flip - ALWAYS quote annual vs Tally's sticker, never monthly vs TSS:
+   "Tally Rs 22,500 + har saal 4,500. TrackRakho Rs 9,999 saal - Tally se sasta."
+Context the owner already pays without blinking: IndiaMART Rs 60k+/yr, munim Rs 8-15k/mo,
+CA Rs 2-5k/mo, truck GPS Rs 500/gaadi/mo. Software is a grudge purchase; money-touching
+things price against the money. Floor: if 10 loss-framed pitches die at price, drop to
+Rs 5,999/yr - the 6-yr plan is built at Rs 6k realized and survives; zero customers doesn't.
+
 ## The one-line pitch numbers (field-safe)
 - "Desh mein 8 lakh crore MSME ka paisa atka hai - Economic Survey ka number hai."
 - "Aapke size ki shop mein kisi bhi din 25-30 lakh sirf receivables mein ghoomta hai."
