@@ -1503,7 +1503,9 @@ export default function App() {
        trucks stay empty. */
     const fresh = { ...seedData(), industry: null,
       shopName: tx("Company ", "Company ", "कंपनी ") + (companyRows().length + 1) + "", /* rename in Setup - identical names cause wrong-firm entries */
-      settings: { ...data.settings }, machines: (data.machines || []).map((m) => ({ ...m })),
+      /* udyam is a PER-LEGAL-ENTITY registration - a new firm must answer the
+         Udyam question itself, never inherit the flag (byaj gate leak) */
+      settings: { ...data.settings, udyam: false }, machines: (data.machines || []).map((m) => ({ ...m })),
       materials: (data.materials || []).map((m) => ({ ...m })), myCats: JSON.parse(JSON.stringify(data.myCats || {})) };
     const next = { ...fresh, _coId: uid(), _companies: [...(data._companies || []), { id: data._coId || "co1", blob: meBlob }] };
     setCoOpen(false); setTut(null); setTab("home");
@@ -3018,6 +3020,59 @@ function Analytics({ data, onBack, goQuotes }) {
    + tally_vouchers tables the desktop connector fills (RLS: own rows only).
    With nothing connected it shows a clearly-labelled SAMPLE so the page can
    be demoed before any Tally exists. */
+/* ---- MSMED s.16 "kanooni byaj" on late bills (MSMED_LEVERAGE.md, 2026-08-09).
+   3x RBI Bank Rate, compound with monthly rests, from the due date. s.15 caps
+   credit at 45 days even with a written agreement, so interest starts at
+   min(due, bill date + 45d) - and bill+45d when no due date exists. Both
+   choices UNDERSTATE (no-written-agreement law says 15 days; interest on the
+   CURRENT pending ignores that a bigger principal existed before part
+   payments) - an andaza that is never an overclaim. Gating is a legal
+   requirement, not a preference: TRADERS ARE EXCLUDED from the MSMED
+   delayed-payment chapter, so this renders only for machining + settings.udyam.
+   Rate table = RBI notified Bank Rate history; update when RBI moves. */
+const MSMED_RATES = [
+  /* full history back to the 2020 low: a carried-forward old bill must never
+     be billed at a rate higher than what RBI actually notified in that month.
+     Times before the first entry fall back to 4.25 - the historic low - so
+     pre-2020 accrual can only understate. */
+  [Date.UTC(2020, 4, 22), 4.25],
+  [Date.UTC(2022, 4, 4), 4.65],
+  [Date.UTC(2022, 5, 8), 5.15],
+  [Date.UTC(2022, 7, 5), 5.65],
+  [Date.UTC(2022, 8, 30), 6.15],
+  [Date.UTC(2022, 11, 7), 6.5],
+  [Date.UTC(2023, 1, 8), 6.75],
+  [Date.UTC(2025, 1, 7), 6.5],
+  [Date.UTC(2025, 3, 9), 6.25],
+  [Date.UTC(2025, 5, 6), 5.75],
+  [Date.UTC(2025, 9, 1), 5.5], /* held through the Feb-2026 RBI policy */
+];
+const bankRateAt = (ms) => { let r = MSMED_RATES[0][1]; for (const p of MSMED_RATES) { if (ms >= p[0]) r = p[1]; } return r; };
+const MSMED_MONTH = 30.4375 * 86400000;
+function msmedByaj(bill, nowMs) {
+  const pending = Number(bill.pending) || 0;
+  const bdate = Number(bill.bdate) || 0;
+  if (!(pending > 0) || !bdate) return 0;
+  const cap = bdate + 45 * 86400000;
+  /* +1 day: s.16 runs interest from the day FOLLOWING the agreed/appointed
+     date - and the strict boundary keeps the estimate an underclaim */
+  const start = Math.min(Number(bill.due) || cap, cap) + 86400000;
+  const now = nowMs || Date.now();
+  if (start >= now) return 0;
+  let base = pending, t = start;
+  while (t < now) {
+    const step = Math.min(MSMED_MONTH, now - t);
+    /* min of the rate at both step edges: a mid-step RBI cut is applied
+       early, not late - the bias always points DOWN */
+    const rate = Math.min(bankRateAt(t), bankRateAt(t + step));
+    base += base * ((rate * 3) / 100 / 12) * (step / MSMED_MONTH);
+    t += step;
+  }
+  return Math.round(base - pending);
+}
+/* floor, never round up - this string sits inside legal-disclosure copy */
+const msmedRateNow = () => String(Math.floor(bankRateAt(Date.now()) * 3 * 10) / 10);
+
 const TALLY_SAMPLE = {
   ledgers: [
     { name: "Apex Alloys", balance: 412000, grp: "debtor" },
@@ -3139,6 +3194,10 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
   const billsTotal = B.reduce((s, x) => s + Number(x.pending), 0);
   const overdueTotal = ageSum.b30 + ageSum.b60 + ageSum.b90;
   const overdueCount = ageCount.b30 + ageCount.b60 + ageCount.b90;
+  /* MSMED byaj - machining + Udyam only (traders are excluded by law) */
+  const isMachTrade = industryOf(data).key === "machining";
+  const showByaj = isMachTrade && !!(data.settings && data.settings.udyam);
+  const byajTotal = showByaj ? B.reduce((s, x) => s + msmedByaj(x, now), 0) : 0;
   const billsOf = (name) => B.filter((x) => String(x.party).trim().toLowerCase() === String(name).trim().toLowerCase())
     .sort((p, q) => billAge(q) - billAge(p));
   /* tie a bill back to its dispatch voucher (item/qty) via reference or voucher no */
@@ -3396,6 +3455,16 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
                     </div>
                   )}
                   {received != null && opening > 0 && <div className="mono" style={{ fontSize: 11, color: "var(--faint)", marginTop: 5 }}>{Math.round((received / opening) * 100)}% {tx("received", "aa chuka", "आ चुका")}</div>}
+                  {/* gate on byaj > 0, NOT late > 0: with credit periods over
+                      45 days the statutory clock runs from day 46 while the
+                      bill is not yet "late" - the chip must still show so the
+                      aging-card total always reconciles bill by bill */}
+                  {showByaj && msmedByaj(x, now) > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginTop: 10, padding: "8px 11px", borderRadius: 12, background: "#FEF2F2", border: "1px solid #FECACA" }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "#991B1B" }}>{tx("MSMED interest (est.)", "Kanooni byaj (andaza)", "कानूनी ब्याज (अंदाज़ा)")} · {msmedRateNow()}{tx("% compound", "% compound", "% चक्रवृद्धि")}{late <= 0 ? tx(" (45-day rule)", " (45 din ka niyam)", " (45 दिन का नियम)") : ""}</span>
+                      <b className="mono" style={{ fontSize: 13.5, color: "#DC2626", flexShrink: 0 }}>+{inr(msmedByaj(x, now))}</b>
+                    </div>
+                  )}
                   <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 10, borderTop: "1px dashed var(--line)", paddingTop: 9 }}>
                     {x.party}{tx(" owes in total ", " par total baki ", " पर कुल बाकी ")}<b className="mono">{inr(balanceOf(x.party))}</b>
                     {" · "}{partyBills.length} {tx("open bill(s)", "khule bill", "खुले बिल")}
@@ -3408,6 +3477,7 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
         })}
         <div className="card-tint anim-in" style={{ padding: "13px 15px", fontSize: 12.5, color: "var(--dim)", lineHeight: 1.6, marginTop: 6 }}>
           {tx("This comes from Tally's Bills Receivable - every open bill with its due date. Chasing a specific bill number gets paid faster than asking for a lump sum.", "Ye Tally ke Bills Receivable se aata hai - har khula bill uski due date ke saath. 'Bill no 142, Rs 84,500, 43 din' bol kar maangne se paisa jaldi aata hai.", "यह Tally के Bills Receivable से आता है - हर खुला बिल उसकी ड्यू डेट के साथ। खास बिल नंबर बताकर मांगने से पैसा जल्दी आता है।")}
+          {showByaj && <span> {tx("Interest figures are estimates under MSMED s.16 for Udyam-registered manufacturer/service MSEs (Udyam must predate the bill); traders are not covered.", "Byaj ke aankde MSMED s.16 ka andaza hain - sirf Udyam-registered manufacturer/service MSE ke liye (Udyam bill se pehle ka ho); trader cover nahi hote.", "ब्याज के आंकड़े MSMED s.16 का अंदाज़ा हैं - सिर्फ उद्यम-पंजीकृत निर्माता/सेवा MSE के लिए (उद्यम बिल से पहले का हो); ट्रेडर कवर नहीं होते।")}</span>}
         </div>
       </div></div>
     );
@@ -3564,6 +3634,18 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
             </span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 13.5, fontWeight: 700, color: "var(--grn-d)", flexShrink: 0 }}>{tx("Bill by bill", "Har bill", "हर बिल")} <I.chev style={{ width: 14 }} /></span>
           </div>
+          {showByaj && byajTotal > 0 && (
+            <div style={{ marginTop: 10, borderTop: "1px dashed var(--line)", paddingTop: 9 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--dim)" }}>{tx("MSMED interest owed to you (est.)", "MSMED kanooni byaj banta (andaza)", "MSMED कानूनी ब्याज बनता (अंदाज़ा)")}</span>
+                <b className="mono" style={{ fontSize: 15, color: "#DC2626", flexShrink: 0 }}>+{inr(byajTotal)}</b>
+              </div>
+              <div style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 4, lineHeight: 1.5 }}>{tx("Estimate at " + msmedRateNow() + "% compound (3x bank rate, s.16). For Udyam-registered manufacturer/service MSEs; Udyam must predate the bill. Traders are not covered.", msmedRateNow() + "% compound (3x bank rate, s.16) ka andaza. Sirf Udyam-registered manufacturer/service MSE - Udyam bill se pehle ka ho. Trader cover nahi hote.", msmedRateNow() + "% चक्रवृद्धि (3x बैंक रेट, s.16) का अंदाज़ा। सिर्फ उद्यम-पंजीकृत निर्माता/सेवा MSE - उद्यम बिल से पहले का हो। ट्रेडर कवर नहीं होते।")}</div>
+            </div>
+          )}
+          {isMachTrade && !showByaj && overdueTotal > 0 && (
+            <div style={{ marginTop: 9, fontSize: 11.5, color: "var(--faint)", borderTop: "1px dashed var(--line)", paddingTop: 8 }}>{tx("Udyam registered? Turn it on in Setup - the legal interest on late bills (3x bank rate) shows here.", "Udyam registration hai? Setup mein bata do - late bills par kanooni byaj (3x bank rate) yahan dikhega.", "उद्यम रजिस्ट्रेशन है? सेटअप में बता दो - लेट बिलों पर कानूनी ब्याज (3x बैंक रेट) यहां दिखेगा।")}</div>
+          )}
         </button>
       )}
 
@@ -4721,6 +4803,31 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
           </div>
         ))}
       </div>
+
+      {/* ===== MSMED / Udyam - unlocks the kanooni-byaj counter on the Tally
+          page. Machining ONLY: traders are excluded from the MSMED
+          delayed-payment chapter by law, so the toggle must never render for
+          scrap/trading users (MSMED_LEVERAGE.md). ===== */}
+      {isMach && (<>
+      <div className="anim-in" style={{ margin: "24px 0 10px" }}><span className="eyebrow">MSMED / Udyam</span></div>
+      <div className="card" style={{ padding: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14 }}>
+          <div style={{ flex: 1 }}>
+            <div className="lbl" style={{ margin: 0 }}>{tx("Udyam registered?", "Udyam registration hai?", "उद्यम रजिस्ट्रेशन है?")}</div>
+            <span className="hint" style={{ margin: "5px 0 0" }}>
+              {s.udyam
+                ? tx("The legal interest owed to you on late bills (3x bank rate, compound - MSMED s.16) now shows on the Tally page. Manufacturers and service MSEs only; Udyam must be older than the bill.", "Late bills par aapka kanooni byaj (3x bank rate, compound - MSMED s.16) ab Tally page par dikhta hai. Sirf manufacturer/service MSE; Udyam bill se purana hona chahiye.", "लेट बिलों पर आपका कानूनी ब्याज (3x बैंक रेट, चक्रवृद्धि - MSMED s.16) अब Tally पेज पर दिखता है। सिर्फ निर्माता/सेवा MSE; उद्यम बिल से पुराना होना चाहिए।")
+                : tx("Registration is free - udyamregistration.gov.in, 10 minutes. For manufacturer/service MSEs, invoices AFTER registration get legal cover: payment due in max 45 days, then 3x bank-rate compound interest applies by law. Trading businesses are not covered.", "Registration free hai - udyamregistration.gov.in, 10 minute. Manufacturer/service MSE ke liye, registration ke BAAD ke invoices ko kanooni cover milta hai: payment max 45 din, uske baad 3x bank rate ka compound byaj lagta hai. Trading business cover nahi hote.", "रजिस्ट्रेशन मुफ्त है - udyamregistration.gov.in, 10 मिनट। निर्माता/सेवा MSE के लिए, रजिस्ट्रेशन के बाद के इनवॉइस को कानूनी कवर मिलता है: पेमेंट अधिकतम 45 दिन, उसके बाद 3x बैंक रेट का चक्रवृद्धि ब्याज लगता है। ट्रेडिंग व्यवसाय कवर नहीं होते।")}
+            </span>
+          </div>
+          <button onClick={() => { const on = !s.udyam; setS("udyam", on); ping(on ? tx("Byaj counter ON", "Byaj counter ON", "ब्याज काउंटर चालू") : tx("Byaj counter off", "Byaj counter off", "ब्याज काउंटर बंद")); }}
+            aria-label="Toggle Udyam registered" aria-pressed={!!s.udyam}
+            style={{ flexShrink: 0, width: 54, height: 32, borderRadius: 999, border: "none", cursor: "pointer", position: "relative", transition: "background .2s", background: s.udyam ? "linear-gradient(135deg,#2E9E33,#1B7A20)" : "var(--line2)" }}>
+            <span style={{ position: "absolute", top: 3, left: s.udyam ? 25 : 3, width: 26, height: 26, borderRadius: "50%", background: "#fff", boxShadow: "0 2px 6px rgba(22,32,26,.25)", transition: "left .2s" }} />
+          </button>
+        </div>
+      </div>
+      </>)}
 
       {/* ===== Smart reading (AI) - opt-in enquiry reader ===== */}
       <div className="anim-in" style={{ margin: "24px 0 10px" }}><span className="eyebrow">Smart reading (AI)</span></div>
