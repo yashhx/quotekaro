@@ -13,8 +13,11 @@
   "intervalSec": 60,
   "_help_intervalSec": "How often to check for new won quotes, in seconds. 60 (one minute) is fine for almost everyone.",
 
+  "pushOrders": false,
+  "_help_pushOrders": "false (default) = READ-ONLY: the connector only reads balances, dispatches and bills from Tally and never writes anything into it. Set to true when you also want won quotes pushed into Tally as Sales Orders. Start with false - see for yourself that nothing in Tally changes.",
+
   "voucherType": "Sales Order",
-  "_help_voucherType": "The Tally voucher type to create for each won quote. Leave as Sales Order unless you made your own voucher type in Tally and want that instead.",
+  "_help_voucherType": "The Tally voucher type to create for each won quote (only used when pushOrders is true). Leave as Sales Order unless you made your own voucher type in Tally and want that instead.",
 
   "salesLedger": "Sales",
   "_help_salesLedger": "The sales ledger each order's amount is booked under. If your Tally company already has one (usually called Sales or Sales Account), put its exact name here; otherwise the connector creates a ledger named Sales under Sales Accounts.",

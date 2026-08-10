@@ -79,7 +79,11 @@ function loadConfig() {
     voucherType: String(raw.voucherType || "Sales Order").trim() || "Sales Order",
     salesLedger: String(raw.salesLedger || "Sales").trim() || "Sales",
     dryRun: !!raw.dryRun || DRY_FLAG,
-    pullOutstanding: raw.pullOutstanding !== false
+    pullOutstanding: raw.pullOutstanding !== false,
+    /* READ-ONLY FIRST: order push is opt-in. A missing/false pushOrders means
+       the connector never imports anything into Tally - the trust-building
+       default for a new customer's live books. */
+    pushOrders: raw.pushOrders === true
   };
   if (!/^https?:\/\//i.test(cfg.cloudUrl)) {
     die([
@@ -417,13 +421,24 @@ function parseVouchers(rawText) {
     const iRe = /<ALLINVENTORYENTRIES\.LIST[^>]*>([\s\S]*?)<\/ALLINVENTORYENTRIES\.LIST>/gi;
     let im;
     while ((im = iRe.exec(body))) {
-      const ib = im[1];
-      const qm = /(-?[\d.,]+)\s*([A-Za-z]{0,12})/.exec(tag(ib, "ACTUALQTY") || tag(ib, "BILLEDQTY") || "");
+      /* GST-company hardening (2026-08-10): an inventory entry nests many
+         sub-lists (BATCHALLOCATIONS, ACCOUNTINGALLOCATIONS w/ BILLALLOCATIONS
+         inside, GST RATEDETAILS/GSTDETAILS...) and several carry their own
+         <AMOUNT>. Field ORDER shifts between releases - simulation showed a
+         GST sub-list placed before the line amount makes first-match read the
+         tax amount as the line value. Strip innermost .LIST blocks repeatedly
+         until none remain, then read the truly line-level fields. */
+      let flat = im[1], prev;
+      do {
+        prev = flat;
+        flat = flat.replace(/<([A-Z0-9]+(?:\.[A-Z0-9]+)*\.LIST)\b[^>]*>(?:(?!<\/?[A-Z0-9.]+\.LIST\b)[\s\S])*?<\/\1>/gi, "");
+      } while (flat !== prev);
+      const qm = /(-?[\d.,]+)\s*([A-Za-z]{0,12})/.exec(tag(flat, "ACTUALQTY") || tag(flat, "BILLEDQTY") || "");
       items.push({
-        item: tag(ib, "STOCKITEMNAME").slice(0, 80),
+        item: tag(flat, "STOCKITEMNAME").slice(0, 80),
         qty: qm ? Math.abs(parseFloat(qm[1].replace(/,/g, ""))) || 0 : 0,
         unit: qm && qm[2] ? qm[2] : "",
-        amount: money2(tag(ib, "AMOUNT")),
+        amount: money2(tag(flat, "AMOUNT")),
       });
     }
     if (!items.length) items.push({ item: "", qty: 0, unit: "", amount: 0 });
@@ -633,12 +648,21 @@ async function cycle(cfg) {
     warn("something answered at " + cfg.tallyUrl + " but it does not look like Tally (reply: " + ping.text.slice(0, 60) + ")");
   }
 
-  /* b) what does the cloud want us to import? */
-  let data;
-  try { data = await cloudFetchPending(cfg); }
-  catch (e) { err("cloud check failed - " + e.message); return; }
-  const pending = Array.isArray(data.pending) ? data.pending : [];
-  log("Cloud says " + pending.length + " won quote(s) waiting for Tally" + (data.shopName ? " (shop: " + data.shopName + ")" : ""));
+  /* b) what does the cloud want us to import? READ-ONLY MODE: when
+     pushOrders is false (the default - built for owners who first want
+     proof that we only READ), the connector never fetches the order feed
+     and never writes a single voucher or master into Tally. Everything
+     below the push loop is pull-only: exports, no imports. */
+  let pending = [];
+  let data = {};
+  if (cfg.pushOrders) {
+    try { data = await cloudFetchPending(cfg); }
+    catch (e) { err("cloud check failed - " + e.message); return; }
+    pending = Array.isArray(data.pending) ? data.pending : [];
+    log("Cloud says " + pending.length + " won quote(s) waiting for Tally" + (data.shopName ? " (shop: " + data.shopName + ")" : ""));
+  } else {
+    log("READ-ONLY mode - order push is OFF (pushOrders: false). Tally is only read, never written.");
+  }
 
   /* c+d) push each quote, REPORTING EACH RESULT TO THE CLOUD IMMEDIATELY.
      If the report only happened at the end of the cycle, a crash or closed

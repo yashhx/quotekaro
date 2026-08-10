@@ -438,6 +438,22 @@ const waFollowText = (q, shop) =>
   `Hi, this is ${shop}.\n` +
   `Just following up on our quotation for *${q.part}*` + (q.qty ? ` (${q.qty} pcs)` : "") + `.\n` +
   `Quoted ${inr(q.total)}. Please let us know if we can proceed or if any change is needed.\nThank you.`;
+/* MSMED reminder for a late Tally bill - the byaj counter's action button.
+   TONE IS DELIBERATE (user correction 2026-08-10): "kanoon yaad dilana" is
+   OFFENSIVE in this culture - a legal reminder reads as a threat and burns
+   the relationship. The winning register is polite-but-informed: share the
+   MSMED facts as information, explicitly say we would rather NOT press the
+   claim, and humbly request payment. Never harden this copy. Rendered ONLY
+   behind the machining + settings.udyam gate (traders are excluded from
+   MSMED delayed-payment protection - MSMED_LEVERAGE.md). Byaj figure is the
+   same understating estimate the counter shows. */
+const msmedChaseText = (shop, ref, pending, lateDays, byaj) =>
+  `Namaste, this is ${shop}.\n` +
+  `A humble reminder: our bill ${ref ? `*${ref}* ` : ""}of ${inr(pending)} is ` +
+  (lateDays > 0 ? `now ${lateDays} days past due.` : `pending beyond the 45-day period.`) + `\n` +
+  `We are a small Udyam-registered unit, and timely payments keep our work running - your support means a lot to us.\n` +
+  `Sirf aapki jaankari ke liye: MSMED niyam ke anusar MSE bills par 45 din ke baad byaj (ab tak lagbhag ${inr(byaj)}) apne aap judta hai. Hum ise claim karna bilkul nahi chahte - bas vinamra nivedan hai ki payment jaldi karwa dein.\n` +
+  `We truly value our relationship with you. Thank you for your support. 🙏`;
 /* Pull structured fields out of a pasted WhatsApp / enquiry message.
    Conservative, Hinglish-aware heuristics: every guess lands in an editable
    field, so prefer a decent guess over an empty box - the user checks anyway.
@@ -3200,6 +3216,13 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
   const byajTotal = showByaj ? B.reduce((s, x) => s + msmedByaj(x, now), 0) : 0;
   const billsOf = (name) => B.filter((x) => String(x.party).trim().toLowerCase() === String(name).trim().toLowerCase())
     .sort((p, q) => billAge(q) - billAge(p));
+  /* phone for the escalation button: reuse the pipeline's number for the same
+     customer (Tally bills carry no phone) - empty string still works, wa.me
+     without a number opens WhatsApp's pick-a-chat screen */
+  const phoneFor = (name) => {
+    const hit = (data.quotes || []).find((qq) => qq.phone && String(qq.customer).trim().toLowerCase() === String(name).trim().toLowerCase());
+    return hit ? hit.phone : "";
+  };
   /* tie a bill back to its dispatch voucher (item/qty) via reference or voucher no */
   const voucherForBill = (x) => V.find((v2) => (v2.ref && v2.ref === x.ref) || (v2.vno && v2.vno === x.ref));
   /* accordion identity - must be stable across renders (demo bdate is derived
@@ -3459,12 +3482,17 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
                       45 days the statutory clock runs from day 46 while the
                       bill is not yet "late" - the chip must still show so the
                       aging-card total always reconciles bill by bill */}
-                  {showByaj && msmedByaj(x, now) > 0 && (
+                  {showByaj && msmedByaj(x, now) > 0 && (<>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginTop: 10, padding: "8px 11px", borderRadius: 12, background: "#FEF2F2", border: "1px solid #FECACA" }}>
                       <span style={{ fontSize: 12, fontWeight: 600, color: "#991B1B" }}>{tx("MSMED interest (est.)", "Kanooni byaj (andaza)", "कानूनी ब्याज (अंदाज़ा)")} · {msmedRateNow()}{tx("% compound", "% compound", "% चक्रवृद्धि")}{late <= 0 ? tx(" (45-day rule)", " (45 din ka niyam)", " (45 दिन का नियम)") : ""}</span>
                       <b className="mono" style={{ fontSize: 13.5, color: "#DC2626", flexShrink: 0 }}>+{inr(msmedByaj(x, now))}</b>
                     </div>
-                  )}
+                    <a className="btn btn-grn btn-sm press" style={{ width: "100%", boxSizing: "border-box", textDecoration: "none", marginTop: 8, justifyContent: "center" }}
+                      href={waLink(phoneFor(x.party), msmedChaseText(data.shopName, x.ref, pending, late, msmedByaj(x, now)))}
+                      target="_blank" rel="noreferrer">
+                      {"🙏"} {tx("Send a polite reminder on WhatsApp", "WhatsApp par narmi se yaad dilao", "WhatsApp पर विनम्रता से याद दिलाएं")}
+                    </a>
+                  </>)}
                   <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 10, borderTop: "1px dashed var(--line)", paddingTop: 9 }}>
                     {x.party}{tx(" owes in total ", " par total baki ", " पर कुल बाकी ")}<b className="mono">{inr(balanceOf(x.party))}</b>
                     {" · "}{partyBills.length} {tx("open bill(s)", "khule bill", "खुले बिल")}
@@ -4854,6 +4882,9 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
         <div className="card" style={{ padding: 16 }}>
           <div style={{ fontSize: 15, color: "var(--ink)", lineHeight: 1.55 }}>
             Won quotes seedha aapke accountant ke Tally mein - koi retyping nahi. Customer ka baki (outstanding) bhi pipeline mein dikhega.
+          </div>
+          <div className="card-tint" style={{ marginTop: 10, padding: "11px 13px", fontSize: 13.5, color: "var(--dim)", lineHeight: 1.6 }}>
+            🔒 <b style={{ color: "var(--ink)" }}>Shuruaat READ-ONLY hoti hai:</b> connector aapke Tally ko sirf PADHTA hai - balances, bills, dispatches. Tally mein kuch nahi likha jaata. Jab aap taiyaar ho, order-push aap khud chalu karte ho (config mein pushOrders: true).
           </div>
           <div className="lbl" style={{ marginTop: 14 }}>Connector key</div>
           {tallyKey ? (
