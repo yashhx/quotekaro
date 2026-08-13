@@ -6,7 +6,9 @@ rem  two questions the first time, then keeps syncing.
 rem  Keep this file next to quotekaro-tally-connector.mjs.
 rem ==========================================================
 
-cd /d "%~dp0"
+rem pushd (not cd /d) so this also works when the folder sits on a network
+rem share or a mapped Mac folder - cmd.exe cannot "cd" into a \\server\path
+pushd "%~dp0"
 title TrackRakho Tally connector
 
 where node >nul 2>nul
@@ -57,4 +59,5 @@ node quotekaro-tally-connector.mjs %*
 echo.
 echo  Connector ruk gaya. Upar ki lines mein wajah likhi hai.
 echo  Setting badalni ho to:  start-connector.bat --setup
+popd
 pause
