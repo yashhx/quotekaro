@@ -26,6 +26,7 @@
    Runbook for owners: TALLY_SETUP.md at the repo root. */
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import readline from "node:readline/promises";
 import { fileURLToPath } from "node:url";
@@ -900,6 +901,47 @@ async function setupWizard(existing) {
   say("");
 }
 
+/* ------------------------------------------------------ single instance */
+
+/* Once the connector auto-starts hidden at logon there is no window to look
+   at, so a second copy (someone double-clicks start-connector.bat) would run
+   invisibly alongside it - two cycles racing on the same quote feed can push
+   the same voucher into Tally twice. A PID lock file prevents that.
+
+   The lock lives in the OS temp folder, NOT next to the script, so it also
+   catches the common real-world case of the SAME connector copied into two
+   folders (a share and a local disk) - a per-folder lock would happily let
+   both run. Line 1 is the pid alone so stop-connector.bat can read it with
+   one line of batch; line 2 names the folder so the message can say which
+   copy is running. --dry-run bypasses the lock: it writes nothing, so it is
+   always safe to run for a look. */
+const LOCK_PATH = path.join(os.tmpdir(), "trackrakho-connector.lock");
+
+/* -> { pid, dir } of the live instance, or null */
+function runningInstance() {
+  let lines = [];
+  try { lines = String(fs.readFileSync(LOCK_PATH, "utf8")).split(/\r?\n/); } catch { return null; }
+  const pid = Number((lines[0] || "").trim());
+  if (!pid || pid === process.pid) return null;
+  const dir = (lines[1] || "").trim();
+  try { process.kill(pid, 0); return { pid, dir }; }        /* alive */
+  catch (e) { return e && e.code === "EPERM" ? { pid, dir } : null; } /* EPERM = alive, other user */
+}
+
+function takeLock() {
+  try { fs.writeFileSync(LOCK_PATH, process.pid + "\n" + SCRIPT_DIR + "\n"); } catch { /* unwritable: run anyway */ }
+  const release = () => {
+    try {
+      const first = String(fs.readFileSync(LOCK_PATH, "utf8")).split(/\r?\n/)[0].trim();
+      if (Number(first) === process.pid) fs.unlinkSync(LOCK_PATH);
+    } catch { /* already gone */ }
+  };
+  process.on("exit", release);
+  for (const sig of ["SIGINT", "SIGTERM", "SIGHUP", "SIGBREAK"]) {
+    try { process.on(sig, () => { release(); process.exit(0); }); } catch { /* not on this platform */ }
+  }
+}
+
 /* ------------------------------------------------------------------ main */
 
 /* run the wizard when there is no usable config yet (or --setup was asked) */
@@ -914,6 +956,28 @@ if (SETUP_FLAG || !keyReady) {
 }
 
 const cfg = loadConfig();
+
+/* another copy already syncing? say so plainly and step aside */
+const busy = cfg.dryRun ? null : runningInstance();
+if (busy) {
+  console.log("");
+  console.log("  Connector pehle se chal raha hai (PID " + busy.pid + ")" +
+    (busy.dir && busy.dir !== SCRIPT_DIR ? "\n  Chalu copy yahan hai: " + busy.dir : " - background mein."));
+  console.log("  Do copy ek saath chalein to ek hi order Tally mein do baar ja sakta hai,");
+  console.log("  isliye ye wala band kiya ja raha hai - koi nuksan nahi hua.");
+  console.log("");
+  if (SETUP_FLAG) {
+    console.log("  Aapki nayi setting SAVE ho gayi hai. Use lagu karne ke liye:");
+    console.log("    1) stop-connector.bat  (chalu wale ko rokta hai)");
+    console.log("    2) install-autostart.bat  (naya setting ke saath chalu karta hai)");
+  } else {
+    console.log("  Chalu wale ko rokna ho to: stop-connector.bat");
+  }
+  console.log("");
+  process.exit(0);
+}
+if (!cfg.dryRun) takeLock();
+
 log("QuoteKaro Tally connector starting" + (cfg.dryRun ? " (DRY RUN - nothing will be written)" : ""));
 log("Cloud: " + cfg.cloudUrl);
 log("Tally: " + cfg.tallyUrl + " | voucher type: " + cfg.voucherType + " | every " + cfg.intervalSec + "s");

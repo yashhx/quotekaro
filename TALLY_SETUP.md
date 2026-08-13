@@ -86,6 +86,35 @@ node quotekaro-tally-connector.mjs --once --dry-run
 `--dry-run` prints the exact XML that WOULD go to Tally without sending
 anything (and saves nothing to the cloud); `--once` does a single round.
 
+## Step 4 - Background mode (recommended on a customer's PC)
+
+Step 3 leaves a window open on screen. On a real shop PC that window will get
+closed by someone, and syncing stops silently. Fix it once:
+
+Double-click **`install-autostart.bat`**.
+
+From then on the connector:
+
+- starts by itself every time the PC is switched on,
+- runs with **no window at all**,
+- writes every line it would have printed into **`connector.log`** in the same
+  folder (that is where you look if anything seems wrong; it is rotated at 2 MB).
+
+To stop it completely (and remove the auto-start), double-click
+**`stop-connector.bat`**. To start again, `install-autostart.bat`.
+
+Two safety notes:
+
+- **Only one connector can run on a PC.** If a second copy is started (or the
+  same folder exists twice), it prints "Connector pehle se chal raha hai",
+  names the folder that is running, and exits - it never double-imports.
+- **Put the folder on the PC's own disk** (e.g. `C:\TrackRakho\connector`), not
+  on a network/shared drive. A share may not be mounted yet when Windows starts,
+  and the connector would not launch.
+
+The connector does not need Tally to be open when the PC boots - it retries
+every minute and starts syncing the moment TallyPrime is opened with a company.
+
 ## Turning on order push (later, optional)
 
 The connector ships **read-only**: `"pushOrders": false`. When you want Won
