@@ -14,15 +14,20 @@
    ZERO npm dependencies - Node 18+ built-ins only (fetch, crypto, fs, path).
    Config lives in config.json NEXT TO THIS FILE (see config.example.json).
 
+   First run asks two questions in the console and writes config.json itself
+   (no Notepad, no JSON) - see setupWizard().
+
    Flags:
      --once      run a single sync cycle and exit (good for testing)
      --dry-run   print the Tally XML instead of sending it; nothing is
                  written to Tally or the cloud
+     --setup     re-run the first-run wizard (change key / sales ledger)
 
    Runbook for owners: TALLY_SETUP.md at the repo root. */
 
 import fs from "node:fs";
 import path from "node:path";
+import readline from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 
 /* ---------------------------------------------------------------- basics */
@@ -32,6 +37,7 @@ const CONFIG_PATH = path.join(SCRIPT_DIR, "config.json");
 const ARGS = process.argv.slice(2);
 const ONCE = ARGS.includes("--once");
 const DRY_FLAG = ARGS.includes("--dry-run");
+const SETUP_FLAG = ARGS.includes("--setup"); /* re-run the first-run wizard */
 
 const pad = (n) => String(n).padStart(2, "0");
 const stamp = () => {
@@ -58,9 +64,8 @@ function loadConfig() {
       "Cannot find config.json.",
       "Expected it here: " + CONFIG_PATH,
       "",
-      "Fix: copy config.example.json to config.json (same folder), then open",
-      "the QuoteKaro app > Setup > Tally, copy your connector key and paste",
-      "it into config.json as connectorKey."
+      "Fix: double-click start-connector.bat - it asks two questions and",
+      "writes this file for you."
     ]);
   }
   let raw;
@@ -95,9 +100,8 @@ function loadConfig() {
     die([
       "The connectorKey in config.json is missing or still the placeholder.",
       "",
-      "Fix: open the QuoteKaro app > Setup > Tally, copy your connector key",
-      "(it looks like tk_ followed by 40 letters and numbers) and paste it",
-      "into config.json. Keep the quotes around it."
+      "Fix: run  start-connector.bat --setup  and paste the key from the app",
+      "(Setup > Tally (BETA) > Get connector key). No file editing needed."
     ]);
   }
   return cfg;
@@ -768,7 +772,146 @@ async function cycle(cfg) {
   }
 }
 
+/* ------------------------------------------------------- first-run setup */
+
+/* The owner (or his accountant) should never open Notepad or type JSON. When
+   config.json is missing, unreadable, or still carries the placeholder key,
+   we ask three plain questions in the console instead and write the file
+   ourselves. Everything here is ASCII - cmd.exe mangles Devanagari and smart
+   punctuation. Re-run any time with:  start-connector.bat --setup          */
+
+async function askLine(question) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  try { return (await rl.question(question)).trim(); }
+  finally { rl.close(); }
+}
+
+/* ledgers under Sales Accounts, so the owner PICKS his sales ledger instead
+   of spelling it. Empty array = Tally unreachable or no such ledgers. */
+async function probeSalesLedgers(tallyUrl) {
+  try {
+    const text = await tallyPost({ tallyUrl }, ledgerExportXml("Sales Accounts"));
+    return parseLedgers(text, false).map((l) => l.name).filter(Boolean).slice(0, 20);
+  } catch { return []; }
+}
+
+async function setupWizard(existing) {
+  const say = (s) => console.log(s);
+  say("");
+  say("==========================================================");
+  say("  TrackRakho - Tally connector setup");
+  say("==========================================================");
+  say("");
+  say("  2 minute ka kaam hai. 2 cheezein poochhenge, bas.");
+  say("  Ye connector aapke Tally ko sirf PADHTA hai - shuruaat");
+  say("  mein Tally mein kuch bhi nahi likha jaata.");
+  say("");
+
+  const cloudUrl = String((existing && existing.cloudUrl) || "https://trackrakho.com").trim().replace(/\/+$/, "");
+
+  /* --- 1. the connector key --------------------------------------- */
+  say("[1/2] App ki key");
+  say("  TrackRakho kholo > Setup > Tally (BETA) > Get connector key > Copy.");
+  say("");
+  let key = "";
+  for (let tries = 0; tries < 5 && !key; tries++) {
+    const typed = (await askLine("  Key yahan paste karo (tk_ se shuru hoti hai): ")).replace(/\s+/g, "");
+    if (!/^tk_[0-9a-f]{40}$/.test(typed)) {
+      say("  ! Ye key theek nahi lagti (tk_ ke baad 40 letters/numbers hone chahiye). Phir se try karo.");
+      continue;
+    }
+    process.stdout.write("  ... key check kar rahe hain");
+    try {
+      const data = await cloudFetchPending({ cloudUrl, connectorKey: typed });
+      say("\r  OK - key chal gayi. Account: " + (data.shopName || "(naam nahi mila)") + "   ");
+      key = typed;
+    } catch (e) {
+      say("\r  ! " + ((e && e.message) || "key check nahi ho payi"));
+      say("    Internet chalu hai? Key dobara copy karke try karo.");
+    }
+  }
+  if (!key) {
+    die(["Key confirm nahi hui. start-connector.bat dobara chalao jab key taiyaar ho."]);
+  }
+
+  /* --- 2. Tally + the sales ledger --------------------------------- */
+  say("");
+  say("[2/2] Tally se jodna");
+  const tallyUrl = String((existing && existing.tallyUrl) || "http://localhost:9000").trim().replace(/\/+$/, "");
+  let ledgers = [];
+  for (let tries = 0; tries < 5; tries++) {
+    process.stdout.write("  ... Tally ko dhoond rahe hain (" + tallyUrl + ")");
+    const ping = await tallyPing({ tallyUrl });
+    if (ping.ok) {
+      say("\r  OK - Tally mil gaya.                                   ");
+      ledgers = await probeSalesLedgers(tallyUrl);
+      break;
+    }
+    say("\r  ! Tally nahi mila.                                       ");
+    say("    TallyPrime kholo, company kholo, phir:");
+    say("      K: Company > Features (ya F11) ... nahi -");
+    say("      F1 (Help) > Settings > Connectivity > Client/Server configuration");
+    say("      'TallyPrime acts as' = Both,  Port = 9000  > Ctrl+A");
+    const again = await askLine("    Ho gaya? Enter dabao (ya S likh kar aage badho): ");
+    if (/^s/i.test(again)) break;
+  }
+
+  let salesLedger = String((existing && existing.salesLedger) || "Sales").trim() || "Sales";
+  if (ledgers.length === 1) {
+    salesLedger = ledgers[0];
+    say("  Sales ledger mil gaya: " + salesLedger);
+  } else if (ledgers.length > 1) {
+    say("");
+    say("  Aapke Tally ke sales ledgers:");
+    ledgers.forEach((n, i) => say("    " + (i + 1) + ") " + n));
+    const pick = await askLine("  Number likho (Enter = 1): ");
+    const idx = pick === "" ? 0 : Number(pick) - 1;
+    salesLedger = ledgers[idx] || ledgers[0];
+    say("  Chuna gaya: " + salesLedger);
+  } else {
+    say("  Sales ledger apne aap nahi mila - abhi \"" + salesLedger + "\" rakh rahe hain.");
+    say("  (Baad mein badalna ho to: start-connector.bat --setup)");
+  }
+
+  /* --- write it ---------------------------------------------------- */
+  const out = {
+    cloudUrl,
+    connectorKey: key,
+    tallyUrl,
+    intervalSec: Math.max(15, Number(existing && existing.intervalSec) || 60),
+    voucherType: String((existing && existing.voucherType) || "Sales Order"),
+    salesLedger,
+    dryRun: false,
+    /* READ-ONLY FIRST: a brand new setup never writes into Tally */
+    pushOrders: existing && existing.pushOrders === true,
+    pullOutstanding: existing ? existing.pullOutstanding !== false : true,
+  };
+  try {
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(out, null, 2) + "\n");
+  } catch (e) {
+    die(["config.json save nahi ho payi: " + ((e && e.message) || "error"),
+      "Folder read-only to nahi? Connector folder ko Documents mein rakho."]);
+  }
+
+  say("");
+  say("  Ho gaya! Setting yahan save hui: " + CONFIG_PATH);
+  say("  Mode: SIRF PADHNA (read-only)" + (out.pushOrders ? " - nahi, order-push chalu hai" : ""));
+  say("  Ab connector chalu ho raha hai. Window khuli rehne do.");
+  say("");
+}
+
 /* ------------------------------------------------------------------ main */
+
+/* run the wizard when there is no usable config yet (or --setup was asked) */
+let rawExisting = null;
+if (fs.existsSync(CONFIG_PATH)) {
+  try { rawExisting = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8")); } catch { rawExisting = null; }
+}
+const keyReady = rawExisting && /^tk_[0-9a-f]{40}$/.test(String(rawExisting.connectorKey || "").trim());
+if (SETUP_FLAG || !keyReady) {
+  try { await setupWizard(rawExisting); }
+  catch (e) { die(["Setup poora nahi hua - " + ((e && e.message) || e)]); }
+}
 
 const cfg = loadConfig();
 log("QuoteKaro Tally connector starting" + (cfg.dryRun ? " (DRY RUN - nothing will be written)" : ""));

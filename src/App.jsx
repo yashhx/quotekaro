@@ -4904,9 +4904,9 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
             </button>
           )}
           <div style={{ fontSize: 15, color: "var(--dim)", lineHeight: 1.7, marginTop: 14 }}>
-            1. Tally wale computer par connector install karo (TALLY_SETUP.md file dekho).<br />
-            2. Key ko config.json mein daalo.<br />
-            3. start-connector.bat chalao.
+            1. Tally wale computer par <b>connector folder</b> copy karo.<br />
+            2. <b>start-connector.bat</b> double-click karo.<br />
+            3. Upar wali key paste kar do - bas, ho gaya.
           </div>
         </div>
 

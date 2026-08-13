@@ -13,17 +13,23 @@ each other directly, so a small **connector** program runs on the same PC as Tal
 and carries messages both ways. It checks once a minute. Close it any time - the
 app keeps working, and pending quotes simply wait until the connector runs again.
 
+**It starts READ-ONLY.** Out of the box the connector only *reads* Tally
+(balances, bills, dispatches) and writes nothing into it. Order push is opt-in,
+later, when you are comfortable - see "Turning on order push" at the end.
+
+**Whole setup is 3 steps, about 5 minutes.** No Notepad, no JSON, no commands.
+
 ## What you need
 
 - **TallyPrime on a Windows PC** (the connector runs on the same PC).
-- **Node.js LTS** - free, from https://nodejs.org (click the big LTS button,
-  install with all defaults). The connector is a small Node script with zero
-  extra downloads.
-- A **QuoteKaro cloud account** (you sign in with Google in the app). The
+- A **TrackRakho cloud account** (you sign in with Google in the app). The
   on-device-only mode has no cloud, so there is nothing for Tally to sync with.
 - The `connector` folder from this project, copied anywhere on that PC
-  (for example `C:\quotekaro-connector`). It contains three files:
+  (for example `C:\trackrakho-connector`). It contains three files:
   `quotekaro-tally-connector.mjs`, `config.example.json`, `start-connector.bat`.
+
+Node.js is **not** something you install yourself - `start-connector.bat`
+installs it the first time if the PC does not have it.
 
 ## Step 1 - Turn on the Tally gateway
 
@@ -40,62 +46,59 @@ TallyPrime has a built-in "gateway" that lets programs on the same PC talk to it
 Quick check: open a browser on the same PC and go to `http://localhost:9000` -
 you should see a short "server is running" message.
 
-## Step 2 - Enable Sales Orders in Tally (one time)
+## Step 2 - Get your connector key from the app
 
-The connector creates **Sales Order** vouchers. In many fresh Tally companies
-order vouchers are switched off:
-
-1. In TallyPrime press **F11** (Features).
-2. Find **"Enable sales order processing"** (you may need "Show more features")
-   and set it to **Yes**.
-
-If you skip this, the connector will log `Tally rejected: ... Voucher Type
-'Sales Order' ...` - just come back and do this step.
-
-## Step 3 - Get your connector key from the app
-
-1. Open the QuoteKaro app and sign in with Google.
-2. Go to **Setup > Tally** and copy the **connector key**. It looks like
-   `tk_` followed by 40 letters and numbers.
+1. Open the TrackRakho app and sign in with Google.
+2. Go to **Setup > Tally (BETA)** and tap **Get connector key**, then **Copy**.
+   It looks like `tk_` followed by 40 letters and numbers.
 
 This key is how the connector proves it is yours. Treat it like a password.
 
-## Step 4 - Fill in config.json
+## Step 3 - Double-click start-connector.bat
 
-In the connector folder:
+On the Tally PC, open the `connector` folder and double-click
+**`start-connector.bat`**. A black window opens and does the rest:
 
-1. Copy `config.example.json` and rename the copy to **`config.json`**.
-2. Open it in Notepad and paste your key into `connectorKey` (keep the quotes).
-3. Leave everything else as it is unless you know you changed it
-   (the `_help_...` lines explain each setting; the connector ignores them).
+1. If Node.js is missing it installs it (about 2 minutes, one time only).
+   On the rare PC where automatic install is unavailable it opens the
+   nodejs.org download page and tells you to run the .bat again afterwards.
+2. It asks for your **key** - paste it (right-click pastes in that window) and
+   press Enter. It immediately checks the key against the cloud and prints
+   your shop name so you know it is the right account.
+3. It looks for Tally, then shows a numbered list of the **sales ledgers**
+   found in your books. Type the number of the one your sales go into.
+   (If Tally is not reachable it prints the exact port-9000 steps and waits.)
+4. It writes `config.json` for you and starts syncing.
 
-```json
-{
-  "cloudUrl": "https://trackrakho.com",
-  "connectorKey": "tk_your40characterkeyhere...",
-  "tallyUrl": "http://localhost:9000",
-  "intervalSec": 60,
-  "voucherType": "Sales Order",
-  "dryRun": false,
-  "pullOutstanding": true
-}
-```
+Leave the window open - that is the connector working. It prints one line per
+action and checks once a minute. Close it to stop; nothing is lost, it picks up
+where it left off next time.
 
-## Step 5 - Run it
+To change the key or sales ledger later, run **`start-connector.bat --setup`**
+(or right-click the .bat > Edit is *not* needed - you never edit files by hand).
 
-Double-click **`start-connector.bat`**. A black window opens and stays open -
-that is the connector working. It prints one line per action. Close the window
-to stop syncing; nothing is lost, it continues where it left off next time.
-
-Want a careful first test? Open Command Prompt in the connector folder and run:
+Want a careful look before it syncs anything? In Command Prompt:
 
 ```
 node quotekaro-tally-connector.mjs --once --dry-run
 ```
 
 `--dry-run` prints the exact XML that WOULD go to Tally without sending
-anything (and saves nothing to the cloud); `--once` does a single round and
-exits. When the output looks right, run the .bat normally.
+anything (and saves nothing to the cloud); `--once` does a single round.
+
+## Turning on order push (later, optional)
+
+The connector ships **read-only**: `"pushOrders": false`. When you want Won
+quotes to land in Tally as **Sales Order** vouchers:
+
+1. In TallyPrime, activate the Sales Order voucher type once:
+   **Vouchers > F10 (Other Vouchers) > Show Inactive > Sales Order > Yes**.
+   (Older releases: F11 Features > "Enable sales order processing" = Yes.)
+2. Open `config.json` in the connector folder and set `"pushOrders": true`.
+3. Restart the connector.
+
+If the voucher type is not active, the connector logs that Tally parked the
+voucher in **Import Exceptions** (O: Import > Import Exceptions in Tally).
 
 ## What the log lines mean
 
