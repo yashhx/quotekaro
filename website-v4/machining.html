@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrackRakho for machine job shops — quotations, costing, floor and receivables</title>
+<meta name="description" content="For CNC and fabrication job shops: a quotation pipeline that does not forget, costing built on your true hourly rate, a live machine floor, and receivables read from TallyPrime." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;650&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/site.css" />
+</head>
+<body>
+
+<header class="hdr">
+  <div class="wrap hdr-in">
+    <a class="brand" href="index.html"><span class="brand-mark"></span>TrackRakho</a>
+    <button class="hdr-toggle" aria-label="Open menu" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+    </button>
+    <nav class="nav">
+      <div class="dd">
+        <button class="dd-btn" aria-expanded="false" aria-haspopup="true">For your trade
+          <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dd-menu" role="menu">
+          <a class="dd-item" href="machining.html" role="menuitem" aria-current="page">
+            <span class="dd-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg></span>
+            <span><span class="dd-title">Machine job shops</span><span class="dd-sub">CNC turning, milling, fabrication, fasteners</span></span>
+          </a>
+          <a class="dd-item" href="scrap.html" role="menuitem">
+            <span class="dd-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 8l9-4 9 4-9 4-9-4z"/><path d="M3 13l9 4 9-4"/></svg></span>
+            <span><span class="dd-title">Scrap &amp; metal trading</span><span class="dd-sub">Yards, weighbridges, fleets, dealers</span></span>
+          </a>
+        </div>
+      </div>
+      <a class="navlink" href="platform.html">Platform</a>
+      <a class="navlink" href="pricing.html">Pricing</a>
+      <a class="btn btn-primary btn-sm" href="pricing.html">Book a demo</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <!-- hero -->
+  <section class="band" style="padding-bottom: clamp(40px,6vw,72px)">
+    <div class="wrap">
+      <div class="split split-wide">
+        <div class="stack reveal">
+          <span class="eyebrow">For machine job shops</span>
+          <h1 class="display">Quote it right. Track it out. Get paid for it.</h1>
+          <p class="lede">Your shop already knows how to make the part. The money leaks somewhere else — in the quotation nobody followed up, the rate that never covered the machine, the job whose delivery date lived in someone's head, and the bill that quietly turned ninety days old.</p>
+          <div class="btn-row" style="margin-top:8px">
+            <a class="btn btn-primary" href="https://wa.me/919910605207" target="_blank" rel="noreferrer">Book a demo</a>
+            <a class="btn btn-ghost" href="pricing.html">₹999 a month</a>
+          </div>
+          <div class="rule" style="max-width:340px; margin-top:22px"></div>
+        </div>
+
+        <div class="reveal" data-delay="120">
+          <div class="frame">
+            <div class="frame-bar">
+              <span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span>
+              <span class="frame-title">Pipeline · this month</span>
+            </div>
+            <div class="frame-body stack">
+              <div class="kpi">
+                <div class="kpi-box"><div class="kpi-l">Quoted, still open</div><div class="kpi-v amber num">₹2,93,100</div></div>
+                <div class="kpi-box"><div class="kpi-l">Won this month</div><div class="kpi-v grn num">₹99,378</div></div>
+              </div>
+              <div>
+                <div class="row">
+                  <div class="row-main">
+                    <div class="row-t">Krishna Pumps — Gland Nut 60 mm</div>
+                    <div class="row-s num">500 pcs · ₹61.20/pc · follow up today</div>
+                  </div>
+                  <div class="row-n">₹30,600<small>pending</small></div>
+                </div>
+                <div class="row">
+                  <div class="row-main">
+                    <div class="row-t">Apex Hydraulics — Gland Nut 60 mm</div>
+                    <div class="row-s num">200 pcs · ₹174.39/pc · PO received</div>
+                  </div>
+                  <div class="row-n" style="color:var(--grn-d)">₹34,878<small>won</small></div>
+                </div>
+                <div class="row">
+                  <div class="row-main">
+                    <div class="row-t">Singh Auto Parts — Spacer Ø18</div>
+                    <div class="row-s num">1,000 pcs · repeat order</div>
+                  </div>
+                  <div class="row-n">₹22,500<small>pending</small></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="frame-cap"><b>What you are seeing:</b> the quotation pipeline — every enquiry with its status, rate and next follow-up. Sample figures.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 01 pipeline -->
+  <section class="band band-tint">
+    <div class="wrap">
+      <div class="split">
+        <div class="stack reveal">
+          <span class="eyebrow">01 · The forgotten quotation</span>
+          <h2 class="h1">Rates go out. Then nothing happens.</h2>
+          <p class="lede">A drawing arrives on WhatsApp at 11 pm. You reply with a rate. Two weeks later you cannot recall whether they said yes, whether anyone called back, or what you had even quoted. Nothing is written down, because writing it down was never worth thirty seconds.</p>
+          <div class="note">Logging a quote in TrackRakho takes under thirty seconds — customer, part, amount, status. Paste the WhatsApp message and even that gets filled in for you.</div>
+          <ul class="checks">
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>Pending, won and lost — the whole book on one screen</span></li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>A follow-up date on every quote, and a daily list of what is due</span></li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>One tap to chase on WhatsApp, with the part and amount already written</span></li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>Excel in, Excel out — your customers' formats still work</span></li>
+          </ul>
+        </div>
+        <div class="reveal" data-delay="100">
+          <div class="frame">
+            <div class="frame-bar"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-title">Follow-ups due</span></div>
+            <div class="frame-body">
+              <div class="row">
+                <div class="ico" style="width:34px;height:34px;border-radius:10px;background:var(--amber-100);color:var(--amber)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                </div>
+                <div class="row-main"><div class="row-t">Krishna Pumps</div><div class="row-s">Quoted 6 days ago · no reply</div></div>
+                <div class="row-n" style="color:var(--amber)">Today</div>
+              </div>
+              <div class="row">
+                <div class="ico" style="width:34px;height:34px;border-radius:10px;background:var(--red-100);color:var(--red)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                </div>
+                <div class="row-main"><div class="row-t">Bharat Gears</div><div class="row-s">Sample approved · PO awaited</div></div>
+                <div class="row-n" style="color:var(--red)">4 days late</div>
+              </div>
+              <div class="row">
+                <div class="ico" style="width:34px;height:34px;border-radius:10px">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                </div>
+                <div class="row-main"><div class="row-t">Singh Auto Parts</div><div class="row-s">Monthly repeat · call before 20th</div></div>
+                <div class="row-n muted">In 5 days</div>
+              </div>
+            </div>
+          </div>
+          <p class="frame-cap"><b>What you are seeing:</b> the daily follow-up list. Overdue in red, today in amber.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 costing -->
+  <section class="band">
+    <div class="wrap">
+      <div class="split" style="direction:rtl">
+        <div class="stack reveal" style="direction:ltr">
+          <span class="eyebrow">02 · The rate that lost money</span>
+          <h2 class="h1">Most shops quote from the last rate, not from their cost.</h2>
+          <p class="lede">Depreciation, power, the operator, maintenance — divided by the hours the machine actually runs. Very few shops have that number, so the quote is a guess anchored to whatever was charged last time, and margin disappears one job at a time.</p>
+          <div class="note">TrackRakho computes your true hourly rate first, then prices the job on it. A VMC 850 in an NCR shop works out near ₹366 an hour — usually more than the owner expected.</div>
+          <p class="body-lg">When one operator runs several machines, his salary is split across them and folded into the machine rate; the minutes he stands at one machine stay at full labour rate. That single distinction moves a price more than most people think.</p>
+        </div>
+        <div class="reveal" data-delay="100" style="direction:ltr">
+          <div class="frame">
+            <div class="frame-bar"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-title">Costing · Gland Nut 60 mm</span></div>
+            <div class="frame-body">
+              <div class="row"><div class="row-main"><div class="row-t">Material</div><div class="row-s num">0.6 kg EN8 @ ₹85/kg</div></div><div class="row-n num">₹51.00</div></div>
+              <div class="row"><div class="row-main"><div class="row-t">Machine</div><div class="row-s num">9 min @ ₹366/hr (true rate)</div></div><div class="row-n num">₹54.90</div></div>
+              <div class="row"><div class="row-main"><div class="row-t">Labour</div><div class="row-s num">9.25 min hands-on @ ₹80/hr</div></div><div class="row-n num">₹12.33</div></div>
+              <div class="row" style="border-top:1px solid var(--line-2)"><div class="row-main"><div class="row-t muted">Cost per piece</div></div><div class="row-n num muted">₹118.23</div></div>
+              <div class="row"><div class="row-main"><div class="row-t">Overhead 18%</div></div><div class="row-n num">₹139.51</div></div>
+              <div class="row"><div class="row-main"><div class="row-t">Margin 25%</div></div><div class="row-n num" style="color:var(--grn-d)">₹174.39</div></div>
+              <div class="row" style="border-top:1px solid var(--line-2)">
+                <div class="row-main"><div class="row-t">200 pieces</div><div class="row-s">quotation ready as a PDF</div></div>
+                <div class="row-n num" style="font-size:1.06rem">₹34,878</div>
+              </div>
+            </div>
+          </div>
+          <p class="frame-cap"><b>What you are seeing:</b> a live costing. Change any input and the price moves while you watch.</p>
+        </div>
+      </div>
+      <div class="card card-tint reveal" style="margin-top:34px">
+        <p class="body-lg" style="margin:0"><b>What this does not do:</b> TrackRakho never predicts machining time. You supply the cycle time — you know your machine, your tooling and your material. The app does the money.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 floor -->
+  <section class="band band-tint">
+    <div class="wrap">
+      <div class="split">
+        <div class="stack reveal">
+          <span class="eyebrow">03 · The delivery date in someone's head</span>
+          <h2 class="h1">“When will it be ready?” should not need a walk to the shop floor.</h2>
+          <p class="lede">A customer calls. The honest answer is that nobody knows without asking the operator, counting the bin and doing arithmetic. Meanwhile the next job is promised for a date that was never calculated.</p>
+          <div class="note">Log the job once — part, quantity, cycle time, handling time — pick the machines it runs on, and the board keeps the arithmetic for you from that moment on.</div>
+          <ul class="checks">
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>Per machine: percentage done, pieces done, time left, finish time</span></li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>Split one job across machines; pause one and move the balance to another</span></li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>Handling minutes counted on every piece — one minute of deburring moves a big batch by hours</span></li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>Every estimate carries an 8% allowance for tool changes and breakdowns — and says so on screen</span></li>
+          </ul>
+        </div>
+        <div class="reveal" data-delay="100">
+          <div class="frame">
+            <div class="frame-bar"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-title">Machine floor · running now</span></div>
+            <div class="frame-body stack">
+              <div>
+                <div class="mock-h"><span class="mock-t">VMC 850 #1</span><span class="mock-sub num">62% · 124 of 200</span></div>
+                <div class="bar" style="margin:9px 0 7px"><i style="width:62%"></i></div>
+                <div class="row-s num">Gland Nut 60 mm · Apex Hydraulics · ~6 hr 50 min left · ends 9:40 pm</div>
+              </div>
+              <div>
+                <div class="mock-h"><span class="mock-t">VMC 850 #2</span><span class="mock-sub num">58% · 116 of 200</span></div>
+                <div class="bar" style="margin:9px 0 7px"><i style="width:58%"></i></div>
+                <div class="row-s num">Gland Nut 60 mm · Apex Hydraulics · ~7 hr 35 min left · ends 10:25 pm</div>
+              </div>
+              <div class="card card-tint" style="padding:13px 15px">
+                <div class="row-s" style="margin:0">Cycle 9 min + 1 min handling per piece, split across two machines. Times include the 8% allowance.</div>
+              </div>
+            </div>
+          </div>
+          <p class="frame-cap"><b>What you are seeing:</b> the live floor board. No sensors, no wiring — it counts from when you pressed start.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 money + MSMED -->
+  <section class="band">
+    <div class="wrap">
+      <div class="stack reveal" style="margin-bottom:44px">
+        <span class="eyebrow">04 · The bill that turned ninety days old</span>
+        <h2 class="h1 measure">Your Tally already knows who owes you. It just cannot tell you on a Sunday.</h2>
+        <p class="lede">The connector reads bill-wise outstandings out of TallyPrime and ages every bill from its own due date — not from a lump-sum party balance. You get the aging bar, the bill number, the days, and the phone number to call.</p>
+      </div>
+
+      <div class="split">
+        <div class="reveal">
+          <div class="frame">
+            <div class="frame-bar"><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-dot"></span><span class="frame-title">Receivables · from Tally</span></div>
+            <div class="frame-body stack">
+              <div class="card card-tint" style="padding:16px 17px">
+                <div class="mock-h"><span class="mock-t">Where the money is stuck</span><span class="mock-sub num">₹3,96,700 late</span></div>
+                <div class="agebar" style="margin-top:12px">
+                  <i style="width:36%; background:#2E9E33"></i><i style="width:22%; background:#D97706"></i><i style="width:24%; background:#EA580C"></i><i style="width:18%; background:#DC2626"></i>
+                </div>
+                <div class="legend">
+                  <span><b style="background:#2E9E33"></b>Not due</span><span><b style="background:#D97706"></b>1–30</span><span><b style="background:#EA580C"></b>31–60</span><span><b style="background:#DC2626"></b>60+ days</span>
+                </div>
+              </div>
+              <div class="card" style="padding:14px 15px; border-color:#FECACA; background:var(--red-100)">
+                <div class="mock-h">
+                  <span style="font-size:.83rem; font-weight:600; color:#991B1B">Statutory interest owed to you (estimate)</span>
+                  <span class="num" style="font-weight:600; color:var(--red)">+₹8,540</span>
+                </div>
+                <div class="tiny muted" style="margin-top:6px">On ₹1,00,000 held six months past the due date, at 16.5% compounded monthly under MSMED s.16.</div>
+              </div>
+              <a class="btn btn-primary" style="width:100%" href="#">Send a polite reminder on WhatsApp</a>
+            </div>
+          </div>
+          <p class="frame-cap"><b>What you are seeing:</b> aging built from Tally's own bill-wise data, with the interest the law puts on a late payment.</p>
+        </div>
+
+        <div class="stack reveal" data-delay="100">
+          <h3 class="h2">The law changed in August 2026. Most owners do not know yet.</h3>
+          <p class="body-lg">Under the MSMED Act a buyer must pay a registered micro or small supplier within 45 days — and within 15 days if there is no written agreement, which describes most job-work orders. After that, interest runs at three times the RBI bank rate, compounded monthly, whether or not anyone asks for it.</p>
+          <p class="body-lg">The 2026 amendment added fixed timelines, an online dispute portal and recovery through the District Collector. TrackRakho does not send legal notices. It does something quieter and more useful: it keeps the number in front of you, and gives you a courteous message that shares the fact without threatening anybody.</p>
+          <div class="grid g-2" style="margin-top:8px">
+            <div class="stat"><div class="stat-n">45 days</div><div class="stat-l">the legal ceiling, even with a written agreement</div><div class="rule"></div></div>
+            <div class="stat"><div class="stat-n">16.5%</div><div class="stat-l">compounded monthly, from the day after it was due</div><div class="rule"></div></div>
+          </div>
+          <p class="tiny muted" style="margin-top:6px">Figures shown in the app are estimates, deliberately computed on the low side. The delayed-payment provisions cover Udyam-registered manufacturers and service providers whose registration predates the bill; trading businesses are not covered.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- close -->
+  <section class="band band-ink">
+    <div class="wrap wrap-narrow" style="text-align:center">
+      <div class="stack reveal">
+        <h2 class="h1">Twenty minutes, your own numbers.</h2>
+        <p class="lede" style="margin-inline:auto">If your Tally is running, most of the demo is your own receivables on the screen. If it is not, the app still tracks every quotation from day one.</p>
+        <div class="btn-row" style="justify-content:center; margin-top:8px">
+          <a class="btn btn-primary" href="https://wa.me/919910605207" target="_blank" rel="noreferrer">Book a demo on WhatsApp</a>
+          <a class="btn btn-ghost" href="platform.html">See the platform</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="ftr">
+  <div class="wrap">
+    <div class="ftr-grid">
+      <div>
+        <a class="brand" href="index.html"><span class="brand-mark"></span>TrackRakho</a>
+        <p class="small muted measure-sm" style="margin-top:14px">Built in Faridabad for Indian job shops and metal yards. Runs on the phone in your pocket and the Tally on your accountant's desk.</p>
+      </div>
+      <div><h4>Trades</h4><ul><li><a href="machining.html">Machine job shops</a></li><li><a href="scrap.html">Scrap &amp; metal trading</a></li></ul></div>
+      <div><h4>Product</h4><ul><li><a href="platform.html">Platform</a></li><li><a href="platform.html#tally">Tally connector</a></li><li><a href="pricing.html">Pricing</a></li></ul></div>
+      <div><h4>Talk to us</h4><ul><li><a href="https://wa.me/919910605207" target="_blank" rel="noreferrer">WhatsApp</a></li><li><a href="pricing.html">Book a demo</a></li></ul></div>
+    </div>
+    <div class="ftr-btm"><span>© 2026 TrackRakho · Early access</span><span class="num">Faridabad, Haryana</span></div>
+  </div>
+</footer>
+
+<script src="assets/site.js"></script>
+</body>
+</html>

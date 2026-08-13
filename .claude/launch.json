@@ -1,6 +1,22 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "quotekaro-dev", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"], "port": 5173 }
+    {
+      "name": "quotekaro-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 5173
+    },
+    {
+      "name": "site-v4",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "/private/tmp/claude-501/-Users-yashbagri-Downloads-quotekaro-app-4/e331e1ad-e0f9-4647-beba-0ef792910e31/scratchpad/serve-site.mjs"
+      ],
+      "port": 4173
+    }
   ]
 }
