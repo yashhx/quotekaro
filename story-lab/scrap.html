@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>One week in the yard. — TrackRakho</title>
+<meta name="description" content="A scroll-told story: one week in a scrap yard, and the 1.8 MT nobody noticed leaving." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   Scroll-told story - machining.
+   Same tokens as the live site (public/site/index.html) so this
+   can slot straight in if it works.
+
+   ONE object carries the whole film: the WEIGHBRIDGE. It draws
+   itself in the opening frame, weighs material in, weighs the
+   truck out, and in the last act weighs the pile and disagrees
+   with the books - the way the pear recurs on the site that
+   inspired this.
+
+   Mechanics: every act is a tall section with a sticky stage.
+   A single rAF loop writes each act's 0..1 scroll progress into
+   a CSS custom property (--p) and a few JS-driven numbers. All
+   animation is transform/opacity only.
+   ============================================================ */
+
+:root{
+  --bg:#070B08; --bg2:#0A100C; --panel:#0C1410; --panel2:#101B14;
+  --line:rgba(124,227,131,.13); --line2:rgba(124,227,131,.24);
+  --grn:#7CE383; --grn-d:#4CBB5B; --ink:#EAF5EC; --dim:#A8C2AF; --faint:#6E8A77;
+  --amber:#F0B357; --red:#FF6B5E;
+  --disp:'Space Grotesk',sans-serif; --sans:'Inter',sans-serif; --mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--sans); line-height:1.6; overflow-x:hidden;
+}
+::selection{background:rgba(124,227,131,.3)}
+h1,h2,h3{font-family:var(--disp);font-weight:700;line-height:1.06;letter-spacing:-.025em;margin:0}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.24em;color:var(--grn);text-transform:uppercase}
+.dim{color:var(--dim)} .faint{color:var(--faint)}
+
+/* ---------------- act scaffolding ---------------- */
+.act{position:relative}
+.stage{
+  position:sticky; top:0; height:100vh; height:100svh;
+  display:grid; place-items:center; overflow:hidden;
+}
+.stage-in{
+  width:min(1140px,100%); padding:0 22px;
+  display:grid; grid-template-columns:1fr 1fr; gap:clamp(24px,5vw,64px);
+  align-items:center;
+}
+.stage-solo .stage-in{grid-template-columns:1fr; text-align:center; justify-items:center}
+
+/* text beats: each fades+rises across its own slice of the act */
+.beat{opacity:0; transform:translateY(16px); will-change:opacity,transform}
+
+/* ---------------- the part (hero object) ---------------- */
+.partwrap{display:grid; place-items:center; position:relative}
+.part{width:min(78%,420px); height:auto; overflow:visible}
+.part .ln{fill:none; stroke:var(--grn); stroke-width:1.4; vector-effect:non-scaling-stroke}
+.part .ln-d{stroke:var(--grn-d)}
+.part .ln-f{stroke:rgba(124,227,131,.34)}
+.part .dim-l{stroke:rgba(124,227,131,.4); stroke-width:.9; vector-effect:non-scaling-stroke; fill:none}
+.part .dim-t{fill:var(--faint); font-family:var(--mono); font-size:8px; letter-spacing:.1em}
+.part .body-f{fill:rgba(124,227,131,.06)}
+/* draw-on: pathLength=1 so one dasharray fits every path */
+.draw{stroke-dasharray:1; stroke-dashoffset:calc(1 - var(--d,0))}
+
+/* ---------------- typography ---------------- */
+.big{font-size:clamp(2.1rem,5.2vw,4rem)}
+.mid{font-size:clamp(1.5rem,3.2vw,2.4rem)}
+.lede{font-size:clamp(1rem,1.35vw,1.16rem); color:var(--dim); max-width:46ch}
+.tiny{font-size:.8rem; line-height:1.5; color:var(--faint)}
+
+/* ---------------- panels ---------------- */
+.panel{
+  background:linear-gradient(180deg,var(--panel),var(--panel2));
+  border:1px solid var(--line); border-radius:20px; padding:20px 22px;
+}
+.rowl{display:flex; align-items:baseline; justify-content:space-between; gap:14px; padding:9px 0}
+.rowl+.rowl{border-top:1px solid var(--line)}
+.rowl b{font-family:var(--mono); font-weight:600}
+.k{font-size:.9rem; color:var(--dim)}
+.k small{display:block; font-family:var(--mono); font-size:.68rem; color:var(--faint); letter-spacing:.04em}
+
+.pill{display:inline-flex; align-items:center; gap:7px; font-family:var(--mono);
+  font-size:10.5px; letter-spacing:.16em; text-transform:uppercase;
+  padding:6px 12px; border-radius:999px; border:1px solid var(--line2); color:var(--grn)}
+
+/* ---------------- act 1: the message ---------------- */
+.msg{
+  background:#12261A; border:1px solid var(--line2); border-radius:16px 16px 16px 4px;
+  padding:14px 16px; max-width:340px; font-size:.98rem;
+  box-shadow:0 18px 50px rgba(0,0,0,.6);
+}
+.msg .meta{font-family:var(--mono); font-size:10.5px; color:var(--faint); letter-spacing:.1em; margin-bottom:7px}
+.glow{
+  position:absolute; inset:-14% -10% auto; height:70%;
+  background:radial-gradient(60% 60% at 50% 40%, rgba(124,227,131,.14), transparent 70%);
+  filter:blur(20px); pointer-events:none;
+}
+
+/* ---------------- act 3: the machine ---------------- */
+.mc .ln{fill:none;stroke:var(--grn-d);stroke-width:1.4;vector-effect:non-scaling-stroke}
+.mc .ln-b{stroke:var(--grn)}
+.mc .fillp{fill:rgba(124,227,131,.05)}
+.chip{fill:var(--amber)}
+
+/* ---------------- act 4: aging ---------------- */
+.agebar{height:12px;border-radius:999px;overflow:hidden;display:flex;border:1px solid var(--line)}
+.agebar i{display:block;transition:none}
+
+/* ---------------- close ---------------- */
+.btn{
+  display:inline-flex;align-items:center;gap:9px;font-family:var(--sans);font-weight:600;
+  padding:14px 26px;border-radius:999px;font-size:1rem;
+  background:linear-gradient(160deg,var(--grn),var(--grn-d));color:#052E10;
+  box-shadow:0 10px 34px rgba(124,227,131,.24);
+}
+.btn-2{background:none;color:var(--ink);border:1px solid var(--line2);box-shadow:none}
+
+/* scroll hint */
+.hint{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;color:var(--faint);text-transform:uppercase}
+.hint span{display:block;width:1px;height:26px;margin:9px auto 0;background:linear-gradient(var(--grn),transparent)}
+
+@media (max-width:820px){
+  .stage-in{grid-template-columns:1fr; gap:26px; text-align:left}
+  .stage-solo .stage-in{text-align:left; justify-items:start}
+  .part{width:min(64%,300px)}
+  .order-art{order:-1}
+
+  /* A pinned stage clips anything taller than the screen, and on a phone
+     every act is taller than the screen. So on narrow screens the acts
+     UNPIN and flow like an ordinary document - nothing is ever cut off.
+     The scenes still animate: progress is driven by the section travelling
+     through the viewport instead of by a pinned scroll run. */
+  .act{height:auto !important}
+  .stage{position:static; height:auto; overflow:visible; padding:56px 0 64px}
+  .hint{display:none}
+  .lede{max-width:none}
+}
+
+/* reduced motion: no pinning, everything at rest, all visible */
+@media (prefers-reduced-motion:reduce){
+  .act{height:auto !important}
+  .stage{position:static;height:auto;padding:64px 0}
+  .beat{opacity:1 !important;transform:none !important}
+  .draw{stroke-dashoffset:0 !important}
+  .hint{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ============================ ACT 0 - title ============================ -->
+<section class="act" data-act style="height:180vh">
+  <div class="stage stage-solo">
+    <div class="stage-in">
+      <div>
+        <div class="beat" data-in="0"><span class="eyebrow">One yard · one week · every tonne</span></div>
+        <h1 class="big beat" data-in="0" style="margin-top:18px">Everything you own<br/>is lying outside.</h1>
+        <p class="lede beat" data-in="0" style="margin:18px auto 0">Crores of material sit in the open, move on trust, and get remembered rather than recorded. This is one week in a yard — and the tonne and a half that nobody noticed leaving.</p>
+      </div>
+
+      <!-- HERO OBJECT: the weighbridge. It returns in every act. -->
+      <div class="partwrap beat" data-in="0" style="margin-top:34px">
+        <svg class="part" viewBox="0 0 400 250" style="width:min(96%,560px)" aria-hidden="true">
+          <!-- ground -->
+          <path class="ln-f draw" data-draw="0,.3" pathLength="1" d="M8 232 H392"/>
+          <!-- ramps -->
+          <path class="ln-d draw" data-draw=".04,.34" pathLength="1" d="M22 232 L78 206 M322 206 L378 232"/>
+          <!-- deck -->
+          <path class="ln draw" data-draw=".08,.4" pathLength="1" d="M78 198 H322 V210 H78 Z"/>
+          <!-- hazard stripes at the deck ends -->
+          <g class="ln-f draw" data-draw=".16,.46" pathLength="1">
+            <path d="M82 210 L92 198 M92 210 L102 198 M102 210 L112 198"/>
+            <path d="M288 210 L298 198 M298 210 L308 198 M308 210 L318 198"/>
+          </g>
+          <!-- load cells -->
+          <g class="ln-d draw" data-draw=".2,.5" pathLength="1">
+            <path d="M92 210 H104 V222 H92 Z M182 210 H194 V222 H182 Z M296 210 H308 V222 H296 Z"/>
+          </g>
+          <!-- tipper standing ON the deck -->
+          <g style="opacity:calc((var(--p,0) - .3) * 2.4)">
+            <path class="ln-b draw" data-draw=".34,.62" pathLength="1" d="M104 170 H300 V182 H104 Z"/>
+            <path class="ln-b draw" data-draw=".38,.66" pathLength="1" d="M104 170 V134 H140 L152 152 V170"/>
+            <path class="ln-f draw" data-draw=".42,.7" pathLength="1" d="M112 142 H136 L144 154 H112 Z"/>
+            <path class="ln-b draw" data-draw=".44,.72" pathLength="1" d="M158 170 V126 H300 V170"/>
+            <!-- heaped load -->
+            <path class="ln draw" data-draw=".5,.8" pathLength="1"
+              d="M160 126 C176 108 190 118 204 106 C218 96 232 112 248 104 C264 96 278 116 294 126"/>
+            <!-- wheels -->
+            <g class="ln-b draw" data-draw=".54,.84" pathLength="1">
+              <circle cx="130" cy="186" r="12"/><circle cx="240" cy="186" r="12"/><circle cx="272" cy="186" r="12"/>
+            </g>
+          </g>
+          <!-- indicator pillar -->
+          <path class="ln draw" data-draw=".24,.54" pathLength="1" d="M344 206 V96 H392 V206"/>
+          <path class="ln-d draw" data-draw=".3,.6" pathLength="1" d="M350 104 H386 V132 H350 Z"/>
+          <text class="dim-t" x="368" y="122" text-anchor="middle" style="font-size:11px;fill:var(--grn);opacity:var(--dtxt,0)" data-num="wb">— · —</text>
+          <text class="dim-t" x="368" y="146" text-anchor="middle" style="opacity:calc(var(--dtxt,0)*.7)">METRIC TONNES</text>
+          <!-- signal cable -->
+          <path class="ln-f draw" data-draw=".28,.58" pathLength="1" d="M322 204 C334 204 338 196 344 190"/>
+        </svg>
+      </div>
+    </div>
+    <div class="hint">Scroll<span></span></div>
+  </div>
+</section>
+
+<!-- ============================ ACT 1 - material in ============================ -->
+<section class="act" data-act style="height:250vh">
+  <div class="stage">
+    <div class="stage-in">
+      <div>
+        <div class="beat" data-in="0"><span class="eyebrow">Monday · material in</span></div>
+        <h2 class="mid beat" data-in=".04" style="margin-top:16px">A truck comes in.<br/>The kanta says 12.5.</h2>
+        <p class="lede beat" data-in=".14" style="margin-top:16px">The slip goes into a drawer. The number goes into somebody's head. In most yards that is the entire record — until the accountant asks in April what the opening stock was.</p>
+        <p class="lede beat" data-in=".42" style="margin-top:14px;color:var(--grn)">Log it once at the gate and the yard total updates itself. No register, no evening reconciliation.</p>
+      </div>
+      <div class="order-art">
+        <div class="panel beat" data-in=".08">
+          <div class="rowl" style="border:0;padding-top:0">
+            <span class="k">Weighbridge<small>gross − tare</small></span>
+            <b class="mono" style="font-size:1.3rem;color:var(--grn)" data-num="in_mt">0.0 MT</b>
+          </div>
+          <div class="rowl"><span class="k">Material</span><b>MS Scrap</b></div>
+          <div class="rowl"><span class="k">From</span><b>Delhi Scrap Suppliers</b></div>
+          <div class="rowl"><span class="k">Slip</span><b class="mono">#DSS/1188</b></div>
+        </div>
+        <div class="panel beat" data-in=".5" style="margin-top:14px">
+          <div class="rowl" style="border:0;padding:0">
+            <span class="k">MS Scrap in the yard<small>book stock, updated</small></span>
+            <b class="mono" style="color:var(--grn)" data-num="book_up">0.0 MT</b>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ ACT 2 - the pile ============================ -->
+<section class="act" data-act style="height:260vh">
+  <div class="stage">
+    <div class="stage-in">
+      <div class="order-art" style="display:grid;place-items:center">
+        <svg class="mc" viewBox="0 0 380 210" style="width:min(96%,520px)" aria-hidden="true">
+          <path class="ln-f" d="M10 186 H370" style="opacity:.5"/>
+          <!-- the heap grows with scroll -->
+          <g style="transform:translateY(calc((1 - var(--p,0)) * 26px)); opacity:calc(.25 + var(--p,0)*.75)">
+            <path class="ln-b" style="fill:rgba(124,227,131,.05)"
+              d="M40 186 C72 150 96 162 122 128 C146 98 176 116 204 92 C232 70 264 102 292 118 C318 132 336 160 350 186 Z"/>
+            <path class="ln-f" d="M96 168 L120 144 M150 150 L176 126 M206 122 L232 108 M258 118 L284 132 M132 176 L156 158 M236 150 L262 138"/>
+          </g>
+          <!-- category chips -->
+          <g class="dim-t" style="opacity:calc((var(--p,0)-.4)*2)">
+            <text x="70" y="204">MS</text><text x="150" y="204">CI</text><text x="230" y="204">ALU</text><text x="310" y="204">COPPER</text>
+          </g>
+        </svg>
+        <div class="panel beat" data-in=".3" style="width:min(100%,420px);margin-top:16px">
+          <div class="rowl" style="border:0;padding-top:0">
+            <span class="k">Total in the yard<small>all materials</small></span>
+            <b class="mono" style="font-size:1.25rem" data-num="yard">0.0 MT</b>
+          </div>
+          <div class="rowl">
+            <span class="k">Sent this month</span>
+            <b class="mono" data-num="sent">0.0 MT</b>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="beat" data-in="0"><span class="eyebrow">The pile</span></div>
+        <h2 class="mid beat" data-in=".04" style="margin-top:16px">Nobody can weigh a yard<br/>by looking at it.</h2>
+        <p class="lede beat" data-in=".14" style="margin-top:16px">Purchases are recorded. Sales are recorded. The difference is assumed to be lying outside, and that assumption is never checked. It is the largest unaudited number in the business.</p>
+        <p class="lede beat" data-in=".46" style="margin-top:14px;color:var(--grn)">TrackRakho keeps a running figure per material — opening stock, plus what came in, minus everything that went out, including every truck.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ ACT 3 - dispatch ============================ -->
+<section class="act" data-act style="height:280vh">
+  <div class="stage">
+    <div class="stage-in">
+      <div>
+        <div class="beat" data-in="0"><span class="eyebrow">Wednesday · dispatch</span></div>
+        <h2 class="mid beat" data-in=".04" style="margin-top:16px">The gaadi leaves at 9.<br/>By evening, nobody is sure what was on it.</h2>
+        <p class="lede beat" data-in=".14" style="margin-top:16px">Which truck, which dealer, how many tonnes, against which order — agreed on the phone, remembered by whoever was standing at the gate, and the slip is in someone's pocket.</p>
+        <p class="lede beat" data-in=".5" style="margin-top:14px;color:var(--grn)">One entry at the gate marks the truck OUT, drops the yard stock, and files the dispatch against the dealer — all three at once, so they can never disagree.</p>
+      </div>
+      <div class="order-art" style="display:grid;place-items:center">
+        <svg class="mc" viewBox="0 0 400 170" style="width:min(96%,520px)" aria-hidden="true">
+          <path class="ln-f" d="M6 140 H394" style="opacity:.45"/>
+          <!-- the loaded tipper drives out of frame as the act runs -->
+          <g style="transform:translateX(calc(var(--p,0) * 150px)); opacity:calc(1 - var(--p,0)*.35)">
+            <path class="ln-b" d="M56 122 H244 V134 H56 Z"/>
+            <path class="ln-b" d="M56 122 V86 H92 L104 104 V122"/>
+            <path class="ln-f" d="M64 94 H88 L96 106 H64 Z"/>
+            <path class="ln-b" d="M110 122 V78 H244 V122"/>
+            <path class="ln" d="M112 78 C128 60 142 70 156 58 C170 48 184 64 200 56 C216 48 228 68 242 78"/>
+            <g class="ln-b"><circle cx="82" cy="138" r="11"/><circle cx="192" cy="138" r="11"/><circle cx="222" cy="138" r="11"/></g>
+            <!-- label plate -->
+            <g style="opacity:calc((var(--p,0)-.25)*2.2)">
+              <path class="ln-f" d="M258 84 H392 V126 H258 Z" style="fill:rgba(124,227,131,.05)"/>
+              <text class="dim-t" x="268" y="100" style="font-size:9px;fill:var(--grn)">HR 38 AB 1234 · #SL/142</text>
+              <text class="dim-t" x="268" y="114">Apex Alloys · MS Scrap</text>
+            </g>
+          </g>
+        </svg>
+        <div class="panel beat" data-in=".2" style="width:min(100%,420px);margin-top:14px">
+          <div class="rowl" style="border:0;padding-top:0">
+            <span class="k">On the truck<small>weighbridge · #SL/142</small></span>
+            <b class="mono" style="font-size:1.2rem" data-num="out_mt">0.0 MT</b>
+          </div>
+          <div class="rowl"><span class="k">Value</span><b class="mono" data-num="out_val">₹0</b></div>
+          <div class="rowl">
+            <span class="k">Status</span>
+            <span class="pill" style="border-color:rgba(240,179,87,.4);color:var(--amber)" data-num="out_status">Loading</span>
+          </div>
+          <div class="rowl">
+            <span class="k">MS Scrap left in the yard</span>
+            <b class="mono" data-num="book_dn">0.0 MT</b>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ ACT 4 - the money ============================ -->
+<section class="act" data-act style="height:300vh">
+  <div class="stage">
+    <div class="stage-in">
+      <div class="order-art">
+        <div class="panel beat" data-in=".04">
+          <div class="rowl" style="border:0;padding-top:0">
+            <span class="k">Aane wale paise<small>customers owe you</small></span>
+            <b class="mono" style="font-size:1.35rem;color:var(--grn)" data-num="recv">₹0</b>
+          </div>
+          <div class="rowl">
+            <span class="k">Dene wale paise<small>you owe suppliers</small></span>
+            <b class="mono" data-num="pay">₹0</b>
+          </div>
+          <div style="margin-top:16px">
+            <div class="agebar">
+              <i style="width:calc(29% - var(--p,0)*8%);background:var(--grn-d)"></i>
+              <i style="width:23%;background:var(--amber)"></i>
+              <i style="width:calc(27% + var(--p,0)*4%);background:#E8834A"></i>
+              <i style="width:calc(21% + var(--p,0)*4%);background:var(--red)"></i>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:9px" class="dim-t">
+              <span style="font-size:10px;color:var(--faint)">NOT DUE</span>
+              <span style="font-size:10px;color:var(--faint)">1–30</span>
+              <span style="font-size:10px;color:var(--faint)">31–60</span>
+              <span style="font-size:10px;color:var(--red)">60+ DIN</span>
+            </div>
+          </div>
+        </div>
+        <div class="panel beat" data-in=".42" style="margin-top:14px">
+          <div class="rowl" style="border:0;padding-top:0"><span class="k">Apex Alloys<small>3 bills · oldest 43 din</small></span><b class="mono">₹4,12,000</b></div>
+          <div class="rowl"><span class="k">Bharat Steels<small>2 bills · oldest 12 din</small></span><b class="mono">₹1,85,500</b></div>
+          <div class="rowl"><span class="k">Om Metals<small>2 bills · part paid</small></span><b class="mono">₹96,000</b></div>
+        </div>
+      </div>
+      <div>
+        <div class="beat" data-in="0"><span class="eyebrow">The money that follows</span></div>
+        <h2 class="mid beat" data-in=".04" style="margin-top:16px">Maal chala gaya.<br/>Paisa abhi raaste mein hai.</h2>
+        <p class="lede beat" data-in=".14" style="margin-top:16px">Material leaves on credit, payment returns in parts, and the true position sits inside Tally as a list of bills your accountant reads and you do not.</p>
+        <p class="lede beat" data-in=".5" style="margin-top:14px">TrackRakho reads that list straight out of TallyPrime and ages every bill from its own due date — so a conversation at a dealer's office starts with a bill number instead of a feeling.</p>
+        <p class="lede beat" data-in=".72" style="margin-top:14px;color:var(--grn)">It reads only. Nothing is written into your books unless you switch it on yourself.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ ACT 5 - the kanta check ============================ -->
+<section class="act" data-act style="height:340vh">
+  <div class="stage">
+    <div class="glow" style="opacity:calc(var(--p,0)*.8)"></div>
+    <div class="stage-in">
+      <div>
+        <div class="beat" data-in="0"><span class="eyebrow">Saturday · the check nobody does</span></div>
+        <h2 class="mid beat" data-in=".04" style="margin-top:16px">Ten minutes on the kanta.<br/>Then the books have to answer.</h2>
+        <p class="lede beat" data-in=".16" style="margin-top:16px">A yard does not lose material in one dramatic night. It goes a little at a time, on ordinary loadings, over months — and there is no moment at which anybody notices.</p>
+        <p class="lede beat" data-in=".58" style="margin-top:14px">Weigh the pile. The app already knows what it should be.</p>
+        <p class="lede beat" data-in=".82" style="margin-top:14px;color:var(--grn)">Found this Saturday — not next audit, and not never.</p>
+      </div>
+      <div class="order-art">
+        <div class="panel">
+          <div class="rowl" style="border:0;padding-top:0">
+            <span class="k">Book stock · MS Scrap<small>opening + in − everything out</small></span>
+            <b class="mono" style="font-size:1.15rem" data-num="k_book">0.0 MT</b>
+          </div>
+          <div class="rowl">
+            <span class="k">Weighed today<small>from the kanta slip</small></span>
+            <b class="mono" style="font-size:1.15rem" data-num="k_real">—</b>
+          </div>
+          <div class="rowl" style="border-top:1px solid var(--line2)">
+            <span class="k" style="color:var(--red);opacity:var(--gap,0)">Ghata<small style="color:#FFB3AC">4.1% of the pile</small></span>
+            <b class="mono" style="font-size:1.35rem;color:var(--red);opacity:var(--gap,0)" data-num="k_gap">—</b>
+          </div>
+        </div>
+        <div class="panel beat" data-in=".72" style="margin-top:14px;border-color:rgba(255,107,94,.3);background:rgba(255,107,94,.06)">
+          <div class="rowl" style="border:0;padding:0">
+            <span class="k" style="color:#FFB3AC">At today's MS rate<small>1.8 MT × ₹30,000</small></span>
+            <b class="mono" style="color:var(--red);font-size:1.15rem" data-num="k_money">₹0</b>
+          </div>
+        </div>
+        <p class="tiny beat" data-in=".88" style="margin-top:12px">The baseline resets to the weighed figure, so the next check measures only what happens from here.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ CLOSE ============================ -->
+<section class="act" data-act style="height:150vh">
+  <div class="stage stage-solo">
+    <div class="stage-in">
+      <div>
+        <div class="beat" data-in="0"><span class="eyebrow">One yard · one week · 1.8 MT caught</span></div>
+        <h2 class="big beat" data-in=".06" style="margin-top:18px">Your yard, your fleet,<br/>your money — visible.</h2>
+        <p class="lede beat" data-in=".14" style="margin:18px auto 0">Stock that reconciles, trucks you can account for, and receivables read straight from your Tally. ₹999 a month, on the phone already in your pocket.</p>
+        <div class="beat" data-in=".2" style="margin-top:28px;display:flex;gap:12px;flex-wrap:wrap">
+          <a class="btn" href="https://wa.me/919910605207" target="_blank" rel="noreferrer">Book a demo on WhatsApp</a>
+          <a class="btn btn-2" href="/site/scrap/">See the full product</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<script>
+(function(){
+  "use strict";
+  var still = window.matchMedia && window.matchMedia("(prefers-reduced-motion:reduce)").matches;
+
+  var acts = [].slice.call(document.querySelectorAll("[data-act]")).map(function(el){
+    return {
+      el: el,
+      stage: el.querySelector(".stage"),
+      pinned: true, /* recomputed on load + resize */
+      beats: [].slice.call(el.querySelectorAll(".beat")).map(function(b){
+        return { el:b, in:parseFloat(b.dataset.in||0), out:parseFloat(b.dataset.out||1) };
+      }),
+      draws: [].slice.call(el.querySelectorAll(".draw")).map(function(d){
+        var r=(d.dataset.draw||"0,1").split(",");
+        return { el:d, a:parseFloat(r[0]), b:parseFloat(r[1]) };
+      }),
+      nums: [].slice.call(el.querySelectorAll("[data-num]"))
+    };
+  });
+
+  var clamp = function(v){ return v<0?0:v>1?1:v; };
+  var lerp  = function(a,b,t){ return a+(b-a)*t; };
+  var inr   = function(n){ return "₹" + Math.round(n).toLocaleString("en-IN"); };
+  var inr2  = function(n){ return "₹" + n.toFixed(2); };
+  /* ease so a beat is fully lit for most of its slice instead of only at the ends */
+  var ease  = function(t){ return t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; };
+
+  function paintAct(a, p){
+    a.el.style.setProperty("--p", p.toFixed(4));
+
+    a.beats.forEach(function(b){
+      /* a beat at in<=0 is part of the opening frame: lit before the first
+         scroll, otherwise the page loads looking empty. Everything else
+         rises over a fixed 12% of the act, then stays lit. */
+      var v = b.in <= 0 ? 1 : ease(clamp((p - b.in) / .12));
+      b.el.style.opacity = v;
+      b.el.style.transform = "translateY(" + (16 * (1 - v)).toFixed(2) + "px)";
+    });
+
+    a.draws.forEach(function(d){
+      var t = clamp((p - d.a) / Math.max(.0001, d.b - d.a));
+      d.el.style.setProperty("--d", t.toFixed(4));
+    });
+
+    if (a.nums.length) paintNums(a, p);
+  }
+
+  function paintNums(a, p){
+    a.nums.forEach(function(el){
+      var kind = el.dataset.num, t;
+      switch(kind){
+        /* ---- the weighbridge display, act 0: settles on the pile figure ---- */
+        case "wb":
+          el.textContent = p < .55 ? "— · —" : (lerp(0, 42.0, clamp((p-.55)/.3))).toFixed(1);
+          break;
+
+        /* ---- act 1: material in ---- */
+        case "in_mt":   el.textContent = lerp(0, 12.5, clamp((p-.10)/.22)).toFixed(1) + " MT"; break;
+        case "book_up": el.textContent = lerp(43.8, 56.3, clamp((p-.52)/.24)).toFixed(1) + " MT"; break;
+
+        /* ---- act 2: the pile ---- */
+        case "yard": el.textContent = lerp(0, 72.4, clamp((p-.20)/.4)).toFixed(1) + " MT"; break;
+        case "sent": el.textContent = lerp(0, 55.6, clamp((p-.40)/.4)).toFixed(1) + " MT"; break;
+
+        /* ---- act 3: dispatch ---- */
+        case "out_mt":  el.textContent = lerp(0, 12.5, clamp((p-.10)/.2)).toFixed(1) + " MT"; break;
+        case "out_val": el.textContent = inr(lerp(0, 412500, clamp((p-.22)/.2))); break;
+        case "out_status":
+          if (p < .34){ el.textContent = "Loading"; el.style.color = "var(--amber)"; el.style.borderColor = "rgba(240,179,87,.4)"; }
+          else { el.textContent = "Out · " + Math.max(1, Math.round((p-.34)*9)) + " hr"; el.style.color = "var(--amber)"; }
+          break;
+        case "book_dn": el.textContent = lerp(56.3, 43.8, clamp((p-.4)/.25)).toFixed(1) + " MT"; break;
+
+        /* ---- act 4: the money ---- */
+        case "recv": el.textContent = inr(lerp(0, 708700, clamp((p-.08)/.26))); break;
+        case "pay":  el.textContent = inr(lerp(0, 278500, clamp((p-.18)/.24))); break;
+
+        /* ---- act 5: the kanta check ---- */
+        case "k_book": el.textContent = lerp(0, 43.8, clamp((p-.14)/.2)).toFixed(1) + " MT"; break;
+        case "k_real": el.textContent = p < .44 ? "—" : lerp(0, 42.0, clamp((p-.44)/.18)).toFixed(1) + " MT"; break;
+        case "k_gap":
+          var shown = p >= .66;
+          a.el.style.setProperty("--gap", shown ? clamp((p-.66)/.08) : 0);
+          el.textContent = shown ? ("\u2212" + lerp(0, 1.8, clamp((p-.66)/.12)).toFixed(1) + " MT") : "\u2014";
+          break;
+        case "k_money": el.textContent = "\u2212" + inr(lerp(0, 54000, clamp((p-.78)/.14))); break;
+      }
+    });
+  }
+
+  function measure(){
+    for (var i=0;i<acts.length;i++){
+      acts[i].pinned = getComputedStyle(acts[i].stage).position === "sticky";
+    }
+  }
+
+  function frame(){
+    var vh = window.innerHeight;
+    for (var i=0;i<acts.length;i++){
+      var a = acts[i], r = a.el.getBoundingClientRect(), p;
+      if (a.pinned){
+        /* pinned: 0 when the stage locks to the top, 1 when it releases */
+        p = clamp(-r.top / Math.max(1, a.el.offsetHeight - vh));
+      } else {
+        /* flowing (phones): 0 as the section reaches the lower viewport,
+           1 once it has travelled most of its own height upward */
+        p = clamp((vh * .82 - r.top) / Math.max(1, r.height * .72));
+      }
+      paintAct(a, p);
+    }
+    ticking = false;
+  }
+
+  var ticking = false;
+  function onScroll(){ if (!ticking){ ticking = true; requestAnimationFrame(frame); } }
+  function onResize(){ measure(); onScroll(); }
+
+  /* DEV: ?act=2&p=0.8 freezes one act at one scroll position, for reviewing
+     a single frame of the film without scrolling to it. Inert without the
+     query string. */
+  window.__acts = acts; window.__paint = paintAct;
+  var q = new URLSearchParams(location.search);
+  if (q.has("act")){
+    var ai = Number(q.get("act")), ap = Number(q.get("p") || 1);
+    acts.forEach(function(a,j){ a.el.style.display = (j===ai ? "" : "none"); a.el.style.height = (j===ai ? "100vh" : ""); });
+    paintAct(acts[ai], ap);
+    return;
+  }
+
+  if (still){
+    acts.forEach(function(a){ paintAct(a, 1); });
+  } else {
+    measure();
+    window.addEventListener("scroll", onScroll, {passive:true});
+    window.addEventListener("resize", onResize);
+    /* rAF is paused while a tab is hidden, so repaint on return - otherwise
+       the film can sit on a stale frame after a tab switch or a bfcache back */
+    document.addEventListener("visibilitychange", function(){ if (!document.hidden) onScroll(); });
+    window.addEventListener("pageshow", onScroll);
+    frame();
+  }
+
+  /* the drawing's dimension text fades in with the drawing */
+  var titleAct = acts[0];
+  if (titleAct && !still){
+    var obs = function(){ titleAct.el.style.setProperty("--dtxt", clamp((parseFloat(titleAct.el.style.getPropertyValue("--p"))-.6)/.2)); requestAnimationFrame(obs); };
+    obs();
+  } else if (titleAct){ titleAct.el.style.setProperty("--dtxt", 1); }
+})();
+</script>
+</body>
+</html>

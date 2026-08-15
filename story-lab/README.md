@@ -5,6 +5,27 @@ in a browser — there is no build step and no server needed.
 
     open "story-lab/machining.html"
 
+## scrap.html — "One week in the yard."
+
+Hero object: **the weighbridge**. It draws itself in the opening frame, weighs
+material in, weighs the truck out, and in the last act weighs the pile and
+disagrees with the books.
+
+| Act | Beat |
+|---|---|
+| 0 | The weighbridge draws on, a loaded tipper standing on the deck |
+| 1 | Monday - 12.5 MT in, book stock 43.8 -> 56.3 |
+| 2 | The pile - 72.4 MT in the yard, 55.6 MT sent this month |
+| 3 | Wednesday - #SL/142 loads 12.5 MT for Apex and drives out; stock 56.3 -> 43.8 |
+| 4 | The money that follows - Rs 7,08,700 owed, aged bill by bill from Tally |
+| 5 | Saturday - kanta says 42.0 against a book of 43.8. Ghata -1.8 MT = Rs 54,000 |
+| 6 | Close - CTA |
+
+The arithmetic is a closed loop on purpose: 43.8 + 12.5 = 56.3, minus 12.5 =
+43.8, weighed 42.0, so the gap is 1.8 MT and nothing else. No MSMED interest
+appears anywhere on this page - traders are excluded from those provisions by
+law.
+
 ## machining.html — "One part. Start to paid."
 
 An answer to: can a TrackRakho page feel like a story instead of a brochure?
