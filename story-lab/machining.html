@@ -132,8 +132,19 @@ h1,h2,h3{font-family:var(--disp);font-weight:700;line-height:1.06;letter-spacing
 
 @media (max-width:820px){
   .stage-in{grid-template-columns:1fr; gap:26px; text-align:left}
+  .stage-solo .stage-in{text-align:left; justify-items:start}
   .part{width:min(64%,300px)}
   .order-art{order:-1}
+
+  /* A pinned stage clips anything taller than the screen, and on a phone
+     every act is taller than the screen. So on narrow screens the acts
+     UNPIN and flow like an ordinary document - nothing is ever cut off.
+     The scenes still animate: progress is driven by the section travelling
+     through the viewport instead of by a pinned scroll run. */
+  .act{height:auto !important}
+  .stage{position:static; height:auto; overflow:visible; padding:56px 0 64px}
+  .hint{display:none}
+  .lede{max-width:none}
 }
 
 /* reduced motion: no pinning, everything at rest, all visible */
@@ -396,6 +407,8 @@ h1,h2,h3{font-family:var(--disp);font-weight:700;line-height:1.06;letter-spacing
   var acts = [].slice.call(document.querySelectorAll("[data-act]")).map(function(el){
     return {
       el: el,
+      stage: el.querySelector(".stage"),
+      pinned: true, /* recomputed on load + resize */
       beats: [].slice.call(el.querySelectorAll(".beat")).map(function(b){
         return { el:b, in:parseFloat(b.dataset.in||0), out:parseFloat(b.dataset.out||1) };
       }),
@@ -442,9 +455,12 @@ h1,h2,h3{font-family:var(--disp);font-weight:700;line-height:1.06;letter-spacing
         case "mat":   el.textContent = inr2(lerp(0, 51.00,  clamp((p-.10)/.12))); break;
         case "mac":   el.textContent = inr2(lerp(0, 54.90,  clamp((p-.20)/.12))); break;
         case "lab":   el.textContent = inr2(lerp(0, 12.33,  clamp((p-.30)/.12))); break;
+        /* the running total carries forward, but a row stays blank until the
+           story actually reaches it - otherwise "Margin 25%" shows a number
+           before the margin has been added */
         case "cost":  el.textContent = inr2(lerp(0, 118.23, clamp((p-.40)/.10))); break;
-        case "ovh":   el.textContent = inr2(lerp(118.23, 139.51, clamp((p-.50)/.10))); break;
-        case "price": el.textContent = inr2(lerp(139.51, 174.39, clamp((p-.60)/.10))); break;
+        case "ovh":   el.textContent = p < .50 ? "—" : inr2(lerp(118.23, 139.51, clamp((p-.50)/.10))); break;
+        case "price": el.textContent = p < .60 ? "—" : inr2(lerp(139.51, 174.39, clamp((p-.60)/.10))); break;
         case "total": el.textContent = inr(lerp(0, 34878, clamp((p-.70)/.14))); break;
 
         /* ---- act 3: the job runs ---- */
@@ -470,12 +486,24 @@ h1,h2,h3{font-family:var(--disp);font-weight:700;line-height:1.06;letter-spacing
     });
   }
 
+  function measure(){
+    for (var i=0;i<acts.length;i++){
+      acts[i].pinned = getComputedStyle(acts[i].stage).position === "sticky";
+    }
+  }
+
   function frame(){
     var vh = window.innerHeight;
     for (var i=0;i<acts.length;i++){
-      var a = acts[i], r = a.el.getBoundingClientRect();
-      /* progress across the pinned run: 0 when the stage locks, 1 when it releases */
-      var p = clamp(-r.top / Math.max(1, a.el.offsetHeight - vh));
+      var a = acts[i], r = a.el.getBoundingClientRect(), p;
+      if (a.pinned){
+        /* pinned: 0 when the stage locks to the top, 1 when it releases */
+        p = clamp(-r.top / Math.max(1, a.el.offsetHeight - vh));
+      } else {
+        /* flowing (phones): 0 as the section reaches the lower viewport,
+           1 once it has travelled most of its own height upward */
+        p = clamp((vh * .82 - r.top) / Math.max(1, r.height * .72));
+      }
       paintAct(a, p);
     }
     ticking = false;
@@ -483,6 +511,7 @@ h1,h2,h3{font-family:var(--disp);font-weight:700;line-height:1.06;letter-spacing
 
   var ticking = false;
   function onScroll(){ if (!ticking){ ticking = true; requestAnimationFrame(frame); } }
+  function onResize(){ measure(); onScroll(); }
 
   /* DEV: ?act=2&p=0.8 freezes one act at one scroll position, for reviewing
      a single frame of the film without scrolling to it. Inert without the
@@ -499,8 +528,13 @@ h1,h2,h3{font-family:var(--disp);font-weight:700;line-height:1.06;letter-spacing
   if (still){
     acts.forEach(function(a){ paintAct(a, 1); });
   } else {
+    measure();
     window.addEventListener("scroll", onScroll, {passive:true});
-    window.addEventListener("resize", onScroll);
+    window.addEventListener("resize", onResize);
+    /* rAF is paused while a tab is hidden, so repaint on return - otherwise
+       the film can sit on a stale frame after a tab switch or a bfcache back */
+    document.addEventListener("visibilitychange", function(){ if (!document.hidden) onScroll(); });
+    window.addEventListener("pageshow", onScroll);
     frame();
   }
 
