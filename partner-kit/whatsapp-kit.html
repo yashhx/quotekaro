@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrackRakho — WhatsApp kit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+/* Built to be used ON A PHONE, standing outside someone's office.
+   Tap a message, it copies, you paste into WhatsApp. Nothing else. */
+:root{
+  --ink:#16201A; --ink2:#3D4A41; --ink3:#6B7A70;
+  --grn:#228B22; --grn-d:#155E18; --grn-100:#E8F4E9; --grn-50:#F4FAF4;
+  --line:#DCE6DD; --paper:#F6F8F6;
+  --disp:'Space Grotesk',sans-serif; --sans:'Inter',sans-serif; --mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.55;font-size:16px}
+.wrap{max-width:720px;margin:0 auto;padding:26px 18px 70px}
+h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.02em;line-height:1.15}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--disp);font-weight:700;font-size:19px}
+.mark{width:26px;height:26px;border-radius:8px;background:linear-gradient(140deg,#3FAE45,var(--grn-d));position:relative;flex:none}
+.mark::after{content:"";position:absolute;inset:7px 6px auto 6px;height:2px;border-radius:2px;background:rgba(255,255,255,.95);box-shadow:0 5px 0 rgba(255,255,255,.55),0 10px 0 rgba(255,255,255,.3)}
+
+.sec{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--grn-d);font-weight:600;margin:30px 0 10px}
+.hint{color:var(--ink3);font-size:14px;margin:6px 0 0}
+
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:15px 16px;margin-bottom:12px}
+.card h3{font-size:15.5px}
+.when{font-size:13px;color:var(--ink3);margin:3px 0 11px}
+.msg{
+  background:#EAF6EA;border:1px solid #CFE3D1;border-radius:12px 12px 12px 4px;
+  padding:12px 13px;white-space:pre-wrap;font-size:14.5px;line-height:1.55;color:#14261A;
+}
+.btn{
+  margin-top:10px;width:100%;padding:11px;border-radius:999px;border:0;cursor:pointer;
+  background:linear-gradient(160deg,var(--grn),var(--grn-d));color:#fff;
+  font-family:var(--sans);font-weight:600;font-size:14.5px;
+}
+.btn.done{background:#14261A}
+.tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  padding:4px 9px;border-radius:999px;background:var(--grn-100);color:var(--grn-d);margin-bottom:8px}
+.tag.warn{background:#FEF3E2;color:#B45309}
+.rule{border-left:2px solid var(--grn);padding:2px 0 2px 12px;color:var(--ink2);font-size:14px;margin:10px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand"><span class="mark"></span>TrackRakho</div>
+  <h1 style="font-size:26px;margin-top:14px">WhatsApp kit</h1>
+  <p class="hint">Tap any message to copy it, then paste into WhatsApp. Replace the words in [brackets] before sending. Keep the tone as written — polite, never pushy. In this trade a pushy message costs more than it earns.</p>
+
+  <!-- ============ A. reaching a Tally partner ============ -->
+  <div class="sec">A · Reaching a Tally partner</div>
+
+  <div class="card">
+    <span class="tag">First touch</span>
+    <h3>Cold, to a partner firm</h3>
+    <p class="when">After you find them on Tally's partner locator. Short on purpose.</p>
+    <div class="msg" data-copy>Namaste [naam] ji, main Yash — Faridabad se. Maine aapko Tally ke partner locator par dekha.
+
+Main ek chhota app banata hoon jo TallyPrime ke saath chalta hai — shop owner ke phone par uske quotations, dispatches aur baaki payment dikhata hai. Tally ko sirf padhta hai, kuch likhta nahi.
+
+Aapke jaise partners ke liye ek programme rakha hai: pehle saal 30%, uske baad har renewal par 15%.
+
+10 minute baat kar sakte hain? Main aapke office aa sakta hoon.</div>
+    <button class="btn">Copy</button>
+  </div>
+
+  <div class="card">
+    <span class="tag">Warm — best odds</span>
+    <h3>When a customer tells you who sold him Tally</h3>
+    <p class="when">Ask every customer: "Aapka Tally kisse liya?" Then send this. This converts far better than cold.</p>
+    <div class="msg" data-copy>Namaste [naam] ji, main Yash. [Customer ka naam] ji ne aapka reference diya — unka Tally aapse hi hai.
+
+Wo mera app TrackRakho use kar rahe hain: Tally se unka bill-wise baaki paisa phone par aa jaata hai, aur quotations bhi track hote hain.
+
+Unhone kaha aapse baat karni chahiye. Aapke aur bhi clients ke liye kaam ka ho sakta hai — aur partner ko pehle saal 30%, phir har renewal par 15% milta hai.
+
+Kab time hai aapke paas?</div>
+    <button class="btn">Copy</button>
+  </div>
+
+  <div class="card">
+    <span class="tag">Follow-up</span>
+    <h3>Polite nudge after no reply</h3>
+    <p class="when">Once, after 4–5 days. Then stop — a second nudge annoys.</p>
+    <div class="msg" data-copy>Namaste [naam] ji, upar wala message dekha hoga shayad. Koi jaldi nahi hai.
+
+Agar aapko theek lage to main 10 minute mein demo dikha deta hoon — aapke kisi ek client ke Tally par, unke apne numbers ke saath. Kuch install karne ki zaroorat nahi, sirf dekhna hai.
+
+Aap batayein, main uske hisaab se aa jaunga.</div>
+    <button class="btn">Copy</button>
+  </div>
+
+  <!-- ============ B. partner → shop owner ============ -->
+  <div class="sec">B · Partner introducing you to a shop owner</div>
+  <p class="hint" style="margin-bottom:12px">Send these <b>to the partner</b> so he can forward them. Written in his voice, not yours — that is why they work.</p>
+
+  <div class="card">
+    <span class="tag">Machining</span>
+    <h3>For a machine shop customer</h3>
+    <div class="msg" data-copy>[Shop owner ka naam] ji, ek cheez aapke kaam ki hai.
+
+TrackRakho — aapke Tally ke upar chalta hai. Phone par dikha dega: kaunsa quotation pending hai, kis party par kitna paisa kitne din se baaki hai, aur machine par kaunsa job kab tak khatam hoga.
+
+Tally mein kuch likhta nahi, sirf padhta hai.
+
+Inke founder Yash ji khud aa kar 20 minute mein dikha denge — aapke apne numbers par. Bhej doon unka number?</div>
+    <button class="btn">Copy</button>
+  </div>
+
+  <div class="card">
+    <span class="tag">Scrap</span>
+    <h3>For a scrap / metal trading customer</h3>
+    <div class="msg" data-copy>[Owner ka naam] ji, aapke liye ek cheez hai.
+
+TrackRakho — Tally ke saath chalta hai. Phone par: kis dealer par kitna paisa kitne din se baaki hai, kaunsi gaadi kahan gayi, aur yard mein kitna maal hona chahiye vs kitna nikla.
+
+Kanta check ka hisaab bhi rakhta hai — agar 1-2 tonne ka farak aa raha hai to usi hafte pata chal jaata hai.
+
+Tally mein kuch likhta nahi, sirf padhta hai. Demo 20 minute ka hai, founder khud aate hain.</div>
+    <button class="btn">Copy</button>
+  </div>
+
+  <!-- ============ C. running the demo ============ -->
+  <div class="sec">C · Around the demo</div>
+
+  <div class="card">
+    <span class="tag">Before</span>
+    <h3>Confirming the visit</h3>
+    <div class="msg" data-copy>Namaste [naam] ji, kal [din, time] par aa raha hoon. 20 minute lagenge.
+
+Ek request: Tally wala computer chalu rakhiyega, company khuli ho. Us par aapke apne numbers dikha paunga — demo data se koi matlab nahi banta.
+
+Kuch install nahi karna hai. Bas dekhna hai.</div>
+    <button class="btn">Copy</button>
+  </div>
+
+  <div class="card">
+    <span class="tag warn">The objection</span>
+    <h3>When the accountant says no to Tally access</h3>
+    <p class="when">This will happen. Do not argue — agree with him, then narrow the ask.</p>
+    <div class="msg" data-copy>Bilkul sahi soch rahe hain aap — books se zyada zaroori kuch nahi hai.
+
+Isiliye connector shuruaat mein sirf PADHTA hai. Tally mein ek voucher tak nahi banata. Ye setting aap khud dekh sakte hain, aur band karna ho to ek click mein band ho jaata hai.
+
+Jab tak aap kahenge nahi, likhne wala hissa chalu hi nahi hoga.
+
+Ek hafte chala kar dekh lijiye. Kuch bhi badla nahi to aage baat karenge.</div>
+    <button class="btn">Copy</button>
+  </div>
+
+  <div class="card">
+    <span class="tag warn">The price question</span>
+    <h3>When he asks why ₹999 when Tally is cheaper</h3>
+    <p class="when">Never defend the price against Tally. Move the comparison.</p>
+    <div class="msg" data-copy>Tally ka to koi jawab hi nahi — wo aapka hisaab likhta hai, jo ho chuka hai uska.
+
+Ye uske aage ka kaam karta hai: jo paisa aana baaki hai, jo quotation bhoola pada hai, jo gaadi bahar hai. Muneem ka kaam yaad rakhne ka hai — ye usko yaad dilata hai.
+
+Saal ka ₹9,999 hai, matlab ₹27 roz. Ek bhoola hua quotation isse kai guna mehenga padta hai.
+
+Aap pehle dekh lijiye. Pasand aaye to baat karenge.</div>
+    <button class="btn">Copy</button>
+  </div>
+
+  <div class="card">
+    <span class="tag">After</span>
+    <h3>Same evening, after the demo</h3>
+    <div class="msg" data-copy>Namaste [naam] ji, aaj time dene ke liye dhanyavaad.
+
+Jo screen aapne dekhi — usmein aapka ₹[amount] abhi baahar ghoom raha hai, aur [X] bill 60 din se upar hain. Wo screen aapke phone par roz rahegi.
+
+₹999 mahina, saal ka ₹9,999. Sab kuch isi mein — koi extra charge nahi.
+
+Koi jaldi nahi hai. Aap sochiye, main [din] ko ek baar poochh lunga.</div>
+    <button class="btn">Copy</button>
+  </div>
+
+  <div class="rule">Rule for all of these: never send twice in a row, never send after 9 pm, and never mention interest or legal points to a scrap trader — traders are excluded from the MSMED delayed-payment provisions, so that argument is not true for them.</div>
+
+  <p class="hint" style="margin-top:26px">Partner one-pager to send along with these: <b>one-pager.html</b> → Ctrl/Cmd + P → Save as PDF.</p>
+
+</div>
+
+<script>
+document.querySelectorAll(".card").forEach(function(card){
+  var box = card.querySelector("[data-copy]"), btn = card.querySelector(".btn");
+  if (!box || !btn) return;
+  function copy(){
+    var text = box.textContent;
+    var done = function(){
+      btn.textContent = "Copied ✓"; btn.classList.add("done");
+      setTimeout(function(){ btn.textContent = "Copy"; btn.classList.remove("done"); }, 1800);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else { fallback(); }
+    function fallback(){
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly",""); ta.style.position="fixed"; ta.style.opacity="0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); done(); } catch(e){ btn.textContent = "Select and copy manually"; }
+      document.body.removeChild(ta);
+    }
+  }
+  btn.addEventListener("click", copy);
+  box.addEventListener("click", copy);
+});
+</script>
+</body>
+</html>

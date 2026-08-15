@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrackRakho — Partner one-pager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   Partner one-pager. Designed to fit ONE A4 page.
+   Print it, or use the browser's "Save as PDF" to get a file
+   you can send on WhatsApp.
+   Light theme on purpose - this gets printed and forwarded.
+   ============================================================ */
+:root{
+  --ink:#16201A; --ink2:#3D4A41; --ink3:#6B7A70;
+  --grn:#228B22; --grn-d:#155E18; --grn-100:#E8F4E9; --grn-50:#F4FAF4;
+  --line:#DCE6DD; --amber:#B45309;
+  --disp:'Space Grotesk',sans-serif; --sans:'Inter',sans-serif; --mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; padding:26px 20px 60px; background:#EEF2EE;
+  font-family:var(--sans); color:var(--ink); line-height:1.45; font-size:12px;
+}
+.sheet{
+  width:210mm; min-height:297mm; margin:0 auto; background:#fff; padding:12mm 14mm;
+  box-shadow:0 10px 40px rgba(22,32,26,.14);
+}
+h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.02em;line-height:1.12}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* header */
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:9px}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--disp);font-weight:700;font-size:19px;letter-spacing:-.03em}
+.mark{width:26px;height:26px;border-radius:8px;background:linear-gradient(140deg,#3FAE45,var(--grn-d));position:relative;flex:none}
+.mark::after{content:"";position:absolute;inset:7px 6px auto 6px;height:2px;border-radius:2px;background:rgba(255,255,255,.95);box-shadow:0 5px 0 rgba(255,255,255,.55),0 10px 0 rgba(255,255,255,.3)}
+.tagline{font-size:11px;color:var(--ink3);text-align:right;line-height:1.45}
+
+.lead{margin:10px 0 0;font-size:13.4px;color:var(--ink2)}
+.lead b{color:var(--ink)}
+
+h2.sec{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--grn-d);font-family:var(--mono);font-weight:600;margin:10px 0 5px}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.box{border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+.box h3{font-size:12.5px;margin-bottom:3px}
+.box p{margin:0;font-size:11.6px;color:var(--ink2)}
+
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);font-weight:600;padding:0 0 6px}
+td{padding:5px 0;border-top:1px solid var(--line);vertical-align:top}
+td.r{text-align:right;font-family:var(--mono);font-weight:600;white-space:nowrap}
+
+.money{background:var(--grn-50);border:1px solid #CFE3D1;border-radius:9px;padding:10px 12px;margin-top:6px}
+.money .big{font-family:var(--mono);font-size:19px;font-weight:600;color:var(--grn-d);letter-spacing:-.02em}
+
+ul.tick{list-style:none;margin:0;padding:0}
+ul.tick li{padding:3px 0 3px 18px;position:relative;color:var(--ink2);font-size:11.8px}
+ul.tick li::before{content:"";position:absolute;left:2px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--grn)}
+
+.note{border-left:2px solid var(--grn);padding:1px 0 1px 10px;color:var(--ink2);font-size:11.6px;margin-top:7px}
+.foot{margin-top:12px;padding-top:9px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:14px;font-size:11px;color:var(--ink3)}
+.foot b{color:var(--ink)}
+
+.hidenote{max-width:210mm;margin:0 auto 14px;font-size:12px;color:#4A5A4E}
+.hidenote b{color:#16201A}
+
+@media print{
+  body{background:#fff;padding:0}
+  .sheet{box-shadow:none;width:auto;min-height:0;padding:0}
+  .hidenote{display:none}
+  @page{size:A4;margin:11mm 13mm}
+}
+@media (max-width:760px){
+  .sheet{width:100%;padding:18px}
+  .grid2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<p class="hidenote"><b>To make a PDF:</b> press Ctrl/Cmd + P and choose "Save as PDF". This note does not print.</p>
+
+<div class="sheet">
+
+  <div class="top">
+    <div>
+      <div class="brand"><span class="mark"></span>TrackRakho</div>
+      <div style="font-size:11.5px;color:var(--ink3);margin-top:3px">Partner programme · Delhi NCR</div>
+    </div>
+    <div class="tagline">A daily-use app for your<br/>Tally customers — and a<br/>renewal commission every year.</div>
+  </div>
+
+  <p class="lead">Between TSS renewals there is nothing new to sell to an existing customer. <b>TrackRakho is that something.</b> It sits on top of the TallyPrime you already installed, puts your customer's quotations, dispatches and unpaid bills on his phone, and pays you on every sale and every renewal after it.</p>
+
+  <h2 class="sec">What your customer gets</h2>
+  <div class="grid2">
+    <div class="box">
+      <h3>Machine job shops</h3>
+      <p>Quotation pipeline with follow-ups, true hourly-rate costing, a live machine-floor board, and receivables aged bill by bill from Tally.</p>
+    </div>
+    <div class="box">
+      <h3>Scrap &amp; metal traders</h3>
+      <p>Yard stock that reconciles against the weighbridge, a truck board, dealer-wise receivables, and a variance flag the week material goes missing.</p>
+    </div>
+  </div>
+  <div class="note">Both trades get the same core: every quotation tracked, every follow-up remembered, every unpaid bill visible on the owner's phone — in English, Hinglish or Hindi, whichever he reads.</div>
+
+  <h2 class="sec">What you earn</h2>
+  <table>
+    <tr><th>Line</th><th style="text-align:right">Your share</th></tr>
+    <tr><td>First year of every customer you bring</td><td class="r">30%</td></tr>
+    <tr><td>Every renewal, for as long as they stay</td><td class="r">15%</td></tr>
+    <tr><td>Customer price</td><td class="r">₹999/month · ₹9,999/year</td></tr>
+  </table>
+
+  <div class="money">
+    <div style="font-size:11.5px;color:var(--ink2);margin-bottom:3px">If you convert 20 customers from your existing book</div>
+    <div class="big">≈ ₹60,000 in year one, then ≈ ₹30,000 every year</div>
+    <div style="font-size:11.5px;color:var(--ink3);margin-top:4px">Paid monthly against invoice. Attribution by your own partner code — no disputes about whose customer it was.</div>
+  </div>
+  <div class="note">For comparison, Tally's own Anchors programme pays 10% on a new licence and 5% on renewals. This is a different scale of annuity, on a product your customer uses every day rather than once a year.</div>
+
+  <h2 class="sec">Why the customer says yes</h2>
+  <ul class="tick">
+    <li><b>It runs on his own numbers.</b> The connector reads his TallyPrime and shows him his own stuck money — not a slideshow.</li>
+    <li><b>It reads only.</b> Nothing is written into his books. Order push exists, is off, and stays off until he switches it on himself. This is the objection his accountant will raise, and it is already answered.</li>
+    <li><b>Setup is minutes, not a project.</b> Copy a folder to the Tally PC, double-click once, paste a key — then it starts by itself whenever the PC is switched on, with no window on screen.</li>
+    <li><b>One price, everything in it.</b> No per-user maths, no modules, all his firms included.</li>
+  </ul>
+
+  <h2 class="sec">What we ask of you</h2>
+  <ul class="tick">
+    <li><b>Only the introduction.</b> Tell us which customers to meet. We run the demo and the install; you keep the relationship and the commission.</li>
+    <li><b>The first three demos, together.</b> The founder comes with you. You learn the pitch by watching it, not by reading a deck.</li>
+  </ul>
+
+  <h2 class="sec">Where the product stands — honestly</h2>
+  <ul class="tick">
+    <li><b>Early access.</b> We are signing our first NCR customers now — you would be among the first partners, on the terms that go with being early.</li>
+    <li><b>The connector is tested on real TallyPrime</b> — Release 7.x, GST and non-GST books, reconciled to the rupee against Tally's own Bills Receivable report.</li>
+    <li><b>What it does not do:</b> it never predicts machining time, and it does not replace Tally. It is the layer around Tally.</li>
+  </ul>
+
+  <div class="foot">
+    <div>
+      <b>Yash Bagri</b> · Founder, TrackRakho · Faridabad<br/>
+      WhatsApp <span class="mono">+91 99106 05207</span> · <span class="mono">trackrakho.com</span>
+    </div>
+    <div style="text-align:right">
+      Partner terms are simple and in writing.<br/>
+      Ask for the one-page agreement.
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
