@@ -69,10 +69,14 @@ ul.tick li::before{content:"";position:absolute;left:2px;top:9px;width:6px;heigh
 .hidenote b{color:#16201A}
 
 @media print{
-  body{background:#fff;padding:0}
-  .sheet{box-shadow:none;width:auto;min-height:0;padding:0}
+  /* Page margin is ZERO and the sheet owns its own margins as padding.
+     Headless printers (and some browsers) quietly override @page margins
+     with their own default of about an inch, which silently pushed this
+     onto a second page. This way nothing outside our control decides it. */
+  body{background:#fff;padding:0;margin:0}
+  .sheet{box-shadow:none;width:210mm;min-height:0;padding:12mm 14mm;margin:0}
   .hidenote{display:none}
-  @page{size:A4;margin:11mm 13mm}
+  @page{size:A4;margin:0}
 }
 @media (max-width:760px){
   .sheet{width:100%;padding:18px}
@@ -107,7 +111,6 @@ ul.tick li::before{content:"";position:absolute;left:2px;top:9px;width:6px;heigh
       <p>Yard stock that reconciles against the weighbridge, a truck board, dealer-wise receivables, and a variance flag the week material goes missing.</p>
     </div>
   </div>
-  <div class="note">Both trades get the same core: every quotation tracked, every follow-up remembered, every unpaid bill visible on the owner's phone — in English, Hinglish or Hindi, whichever he reads.</div>
 
   <h2 class="sec">What you earn</h2>
   <table>
@@ -120,7 +123,7 @@ ul.tick li::before{content:"";position:absolute;left:2px;top:9px;width:6px;heigh
   <div class="money">
     <div style="font-size:11.5px;color:var(--ink2);margin-bottom:3px">If you convert 20 customers from your existing book</div>
     <div class="big">≈ ₹60,000 in year one, then ≈ ₹30,000 every year</div>
-    <div style="font-size:11.5px;color:var(--ink3);margin-top:4px">Paid monthly against invoice. Attribution by your own partner code — no disputes about whose customer it was.</div>
+    <div style="font-size:11.5px;color:var(--ink3);margin-top:3px">Paid monthly against invoice, attributed by your own partner code.</div>
   </div>
   <div class="note">For comparison, Tally's own Anchors programme pays 10% on a new licence and 5% on renewals. This is a different scale of annuity, on a product your customer uses every day rather than once a year.</div>
 
@@ -128,7 +131,7 @@ ul.tick li::before{content:"";position:absolute;left:2px;top:9px;width:6px;heigh
   <ul class="tick">
     <li><b>It runs on his own numbers.</b> The connector reads his TallyPrime and shows him his own stuck money — not a slideshow.</li>
     <li><b>It reads only.</b> Nothing is written into his books. Order push exists, is off, and stays off until he switches it on himself. This is the objection his accountant will raise, and it is already answered.</li>
-    <li><b>Setup is minutes, not a project.</b> Copy a folder to the Tally PC, double-click once, paste a key — then it starts by itself whenever the PC is switched on, with no window on screen.</li>
+    <li><b>Setup is minutes, not a project</b>, and it then starts by itself whenever the PC is switched on, with no window on screen.</li>
     <li><b>One price, everything in it.</b> No per-user maths, no modules, all his firms included.</li>
   </ul>
 
