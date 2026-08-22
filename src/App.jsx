@@ -86,6 +86,10 @@ async function aiReadMedia(mediaId, caption) {
    The refresh token is captured once after a scoped Google OAuth round-trip
    and handed straight to the server; the browser never stores it. */
 const GMAIL_FLAG = "quotekaro:gmail:connecting";
+/* set just before linkIdentity() sends the user to Google, so that when the app
+   reloads on the way back we know the redirect was a LINK and not a fresh login,
+   and can report the outcome instead of silently doing nothing */
+const LINK_FLAG = "quotekaro:link:google";
 async function gmailStatus() {
   try {
     const r = await fetch(WA_API + "/gmail-connect", { headers: { accept: "application/json", ...(await authHeaders()) } });
@@ -339,8 +343,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:28px; hei
 .seg{display:flex; background:var(--soft); border:1px solid var(--line); border-radius:14px; padding:4px; margin-bottom:24px;}
 .seg button{flex:1; border:none; background:none; font-family:var(--sans); font-weight:600; font-size:14px; padding:11px; border-radius:11px; cursor:pointer; color:var(--dim); transition:all .2s;}
 .seg button.on{background:#fff; color:var(--grn-d); box-shadow:var(--sh-s);}
-.otp-row{display:flex; gap:9px; justify-content:space-between; margin:6px 0 4px;}
-.otp-row input{width:100%; aspect-ratio:1; text-align:center; font-family:var(--mono); font-size:24px; font-weight:600; border:1.5px solid var(--line2); border-radius:14px; outline:none; transition:border-color .15s, box-shadow .15s; color:var(--ink);}
+/* six boxes now (Supabase issues 6-digit codes) - tighter gap and type so the
+   row still fits a 375px phone without shrinking the tap targets */
+.otp-row{display:flex; gap:6px; justify-content:space-between; margin:6px 0 4px;}
+.otp-row input{width:100%; min-width:0; aspect-ratio:1; text-align:center; font-family:var(--mono); font-size:21px; font-weight:600; border:1.5px solid var(--line2); border-radius:12px; outline:none; transition:border-color .15s, box-shadow .15s; color:var(--ink); padding:0;}
 .otp-row input:focus{border-color:var(--grn); box-shadow:0 0 0 4px rgba(34,139,34,.12);}
 .phone-field{display:flex; align-items:center; border:1.5px solid var(--line2); border-radius:14px; overflow:hidden; transition:border-color .15s, box-shadow .15s;}
 .phone-field:focus-within{border-color:var(--grn); box-shadow:0 0 0 4px rgba(34,139,34,.12);}
@@ -1135,15 +1141,76 @@ function Auth({ onAuthed, authError }) {
     } catch {}
   }, []);
   const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  /* Supabase issues 6-digit codes; the on-device demo keeps its old 4 */
+  const [otp, setOtp] = useState(() => Array(sb ? 6 : 4).fill(""));
   const [uname, setUname] = useState("");
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
   const otpRefs = useRef([]);
+  /* resend cooldown - Supabase refuses a second code inside 60s anyway, and
+     every send costs real money, so do not let the button invite it */
+  const [cool, setCool] = useState(0);
+  useEffect(() => {
+    if (cool <= 0) return;
+    const t = setTimeout(() => setCool((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cool]);
+  const OTP_LEN = sb ? 6 : 4;
+  const blankOtp = () => Array(OTP_LEN).fill("");
 
-  /* cloud mode: the only real login is Google via Supabase. This return sits
-     BELOW every hook declaration, so hook order stays constant. */
+  /* shared by both modes - one box per digit, auto-advance and backspace */
+  const onOtpChange = (i, v) => {
+    if (!/^\d?$/.test(v)) return;
+    const next = [...otp]; next[i] = v; setOtp(next);
+    if (v && i < OTP_LEN - 1) otpRefs.current[i + 1]?.focus();
+  };
+  const onOtpKey = (i, e) => { if (e.key === "Backspace" && !otp[i] && i > 0) otpRefs.current[i - 1]?.focus(); };
+  /* let the whole code be pasted into the first box (WhatsApp copy button) */
+  const onOtpPaste = (e) => {
+    const t = (e.clipboardData && e.clipboardData.getData("text") || "").replace(/\D/g, "").slice(0, OTP_LEN);
+    if (!t) return;
+    e.preventDefault();
+    const next = blankOtp(); t.split("").forEach((d, i) => { next[i] = d; });
+    setOtp(next);
+    otpRefs.current[Math.min(t.length, OTP_LEN - 1)]?.focus();
+  };
+
+  /* cloud mode: phone is the main way in (a shop owner remembers his number, not
+     which Gmail he used); Google stays as the second door. Both land on the SAME
+     account once linked - see the "Login ke tareeke" card in Setup.
+     This return sits BELOW every hook declaration, so hook order stays constant. */
   if (sb) {
+    const e164 = () => "+91" + phone.replace(/\D/g, "");
+    /* Supabase speaks English error strings; say something a shop owner can act on */
+    const say = (e) => {
+      const m = String((e && e.message) || "").toLowerCase();
+      if (/rate|too many|60 seconds|security purposes/.test(m)) return tx("Too many attempts. Wait a minute and try again.", "Bahut baar try kiya. Ek minute ruk kar dobara karein.", "\u092C\u0939\u0941\u0924 \u092C\u093E\u0930 \u0915\u094B\u0936\u093F\u0936 \u0939\u0941\u0908\u0964 \u090F\u0915 \u092E\u093F\u0928\u091F \u092C\u093E\u0926 \u0926\u094B\u092C\u093E\u0930\u093E \u0915\u0930\u0947\u0902\u0964");
+      if (/expired|invalid|incorrect|token/.test(m)) return tx("That code is wrong or has expired. Ask for a new one.", "Code galat hai ya purana ho gaya. Naya code mangwaein.", "\u092F\u0939 \u0915\u094B\u0921 \u0917\u0932\u0924 \u092F\u093E \u092A\u0941\u0930\u093E\u0928\u093E \u0939\u0948\u0964 \u0928\u092F\u093E \u0915\u094B\u0921 \u092E\u0902\u0917\u0935\u093E\u090F\u0902\u0964");
+      if (/whatsapp|send/.test(m)) return tx("Could not send the code on WhatsApp. Use Google instead, or check the number.", "WhatsApp par code nahi bhej paye. Google se login karein, ya number check karein.", "WhatsApp \u092A\u0930 \u0915\u094B\u0921 \u0928\u0939\u0940\u0902 \u092D\u0947\u091C \u092A\u093E\u090F\u0964 Google \u0938\u0947 \u0932\u0949\u0917\u093F\u0928 \u0915\u0930\u0947\u0902\u0964");
+      return (e && e.message) || tx("Something went wrong. Try again.", "Kuch gadbad ho gayi. Dobara try karein.", "\u0915\u0941\u091B \u0917\u0921\u092C\u0921 \u0939\u0941\u0908\u0964 \u0926\u094B\u092C\u093E\u0930\u093E \u0915\u0930\u0947\u0902\u0964");
+    };
+    const sendCode = async () => {
+      if (phone.replace(/\D/g, "").length !== 10) {
+        setErr(tx("Enter a valid 10-digit number", "Poora 10 digit ka number daalein", "\u092A\u0942\u0930\u093E 10 \u0905\u0902\u0915\u094B\u0902 \u0915\u093E \u0928\u0902\u092C\u0930 \u0921\u093E\u0932\u0947\u0902")); return;
+      }
+      setErr(""); setBusy(true);
+      const { error } = await sb.auth.signInWithOtp({ phone: e164() });
+      setBusy(false);
+      if (error) { setErr(say(error)); return; }
+      setOtp(blankOtp()); setStage("code"); setCool(45);
+      setTimeout(() => otpRefs.current[0]?.focus(), 100);
+    };
+    const verifyCode = async () => {
+      const code = otp.join("");
+      if (code.length < OTP_LEN) {
+        setErr(tx("Enter the 6-digit code", "6 digit ka code daalein", "6 \u0905\u0902\u0915\u094B\u0902 \u0915\u093E \u0915\u094B\u0921 \u0921\u093E\u0932\u0947\u0902")); return;
+      }
+      setErr(""); setBusy(true);
+      const { error } = await sb.auth.verifyOtp({ phone: e164(), token: code, type: "sms" });
+      setBusy(false);
+      /* on success onAuthStateChange takes over and the app opens itself */
+      if (error) setErr(say(error));
+    };
     const google = async () => {
       setBusy(true);
       try { await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } }); }
@@ -1153,18 +1220,64 @@ function Auth({ onAuthed, authError }) {
       <div className="auth">
         <div className="auth-top">
           <div className="auth-logo">QK</div>
-          <h1>Track<span style={{ color: "var(--grn)" }}>Rakho</span></h1>
+          {/* NOT var(--grn): that is #228B22, the exact middle stop of this header's
+    own gradient, so "Rakho" was invisible and the wordmark read "Track" */}
+<h1>Track<span style={{ color: "#B9F2BE" }}>Rakho</span></h1>
           <p>Quotations in five minutes - built for India's job-shops.</p>
         </div>
         <div className="auth-body">
-          <label className="lbl">Sign in to your shop</label>
-          <span className="hint">Your quotes live in your own private account - alag, surakshit, sirf aapke liye. Log in from any phone or computer.</span>
-          <button className="btn btn-ghost press" style={{ width: "100%", marginTop: 14, gap: 12 }} onClick={google} disabled={busy}>
-            <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.7 1.22 9.19 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-            {busy ? "Opening Google..." : "Continue with Google"}
-          </button>
+          {stage === "enter" ? (
+            <div className="anim-in">
+              <label className="lbl">{tx("Your mobile number", "Aapka mobile number", "\u0906\u092A\u0915\u093E \u092E\u094B\u092C\u093E\u0907\u0932 \u0928\u0902\u092C\u0930")}</label>
+              <span className="hint">{tx("We send a code on WhatsApp. Use the number WhatsApp runs on.", "Code WhatsApp par aayega. Wahi number daalein jis par WhatsApp chalta hai.", "\u0915\u094B\u0921 WhatsApp \u092A\u0930 \u0906\u090F\u0917\u093E\u0964 \u0935\u0939\u0940 \u0928\u0902\u092C\u0930 \u0921\u093E\u0932\u0947\u0902 \u091C\u093F\u0938 \u092A\u0930 WhatsApp \u091A\u0932\u0924\u093E \u0939\u0948\u0964")}</span>
+              <div className="phone-field">
+                <span className="cc">+91</span>
+                <input type="tel" inputMode="numeric" autoComplete="tel" placeholder="98xxxxxxxx" value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                  onKeyDown={(e) => { if (e.key === "Enter") sendCode(); }} />
+              </div>
+              {err && <div style={{ color: "var(--red)", fontSize: 13, marginTop: 10 }}>{err}</div>}
+              <button className="btn btn-grn press" style={{ width: "100%", marginTop: 18 }} onClick={sendCode} disabled={busy}>
+                <I.phone2 /> {busy ? tx("Sending...", "Bhej rahe hain...", "\u092D\u0947\u091C \u0930\u0939\u0947 \u0939\u0948\u0902...") : tx("Send code on WhatsApp", "WhatsApp par code bhejein", "WhatsApp \u092A\u0930 \u0915\u094B\u0921 \u092D\u0947\u091C\u0947\u0902")}
+              </button>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 14px" }}>
+                <i style={{ flex: 1, height: 1, background: "var(--line2)" }} />
+                <span style={{ fontSize: 12, color: "var(--faint)" }}>{tx("or", "ya", "\u092F\u093E")}</span>
+                <i style={{ flex: 1, height: 1, background: "var(--line2)" }} />
+              </div>
+              <button className="btn btn-ghost press" style={{ width: "100%", gap: 12 }} onClick={google} disabled={busy}>
+                <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.7 1.22 9.19 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                {busy ? "Opening Google..." : "Continue with Google"}
+              </button>
+              <div className="auth-note">{tx("Already used Google here? Sign in with Google once, then add your number in Setup - both will open the same account.", "Pehle Google se aate the? Ek baar Google se aayein, phir Setup mein apna number jodein - dono se wahi account khulega.", "\u092A\u0939\u0932\u0947 Google \u0938\u0947 \u0906\u0924\u0947 \u0925\u0947? \u090F\u0915 \u092C\u093E\u0930 Google \u0938\u0947 \u0906\u090F\u0902, \u092B\u093F\u0930 Setup \u092E\u0947\u0902 \u0905\u092A\u0928\u093E \u0928\u0902\u092C\u0930 \u091C\u094B\u0921\u093C\u0947\u0902 - \u0926\u094B\u0928\u094B\u0902 \u0938\u0947 \u0935\u0939\u0940 \u0905\u0915\u093E\u0909\u0902\u091F \u0916\u0941\u0932\u0947\u0917\u093E\u0964")}</div>
+            </div>
+          ) : (
+            <div className="anim-in">
+              <label className="lbl">{tx("Enter the code", "Code daalein", "\u0915\u094B\u0921 \u0921\u093E\u0932\u0947\u0902")}</label>
+              <span className="hint">
+                {tx("Sent on WhatsApp to", "WhatsApp par bheja hai", "WhatsApp \u092A\u0930 \u092D\u0947\u091C\u093E \u0939\u0948")} +91 {phone}.{" "}
+                <button onClick={() => { setStage("enter"); setOtp(blankOtp()); setErr(""); }} style={{ border: "none", background: "none", color: "var(--grn-d)", fontWeight: 600, cursor: "pointer", fontSize: 12.5 }}>{tx("Change", "Badlein", "\u092C\u0926\u0932\u0947\u0902")}</button>
+              </span>
+              <div className="otp-row">
+                {otp.map((d, i) => (
+                  <input key={i} ref={(el) => (otpRefs.current[i] = el)} inputMode="numeric" autoComplete="one-time-code" maxLength={1} value={d}
+                    onChange={(e) => onOtpChange(i, e.target.value)} onKeyDown={(e) => onOtpKey(i, e)} onPaste={onOtpPaste} />
+                ))}
+              </div>
+              {err && <div style={{ color: "var(--red)", fontSize: 13, marginTop: 10 }}>{err}</div>}
+              <button className="btn btn-grn press" style={{ width: "100%", marginTop: 18 }} onClick={verifyCode} disabled={busy}>
+                <I.lock /> {busy ? tx("Checking...", "Check kar rahe hain...", "\u091C\u093E\u0901\u091A \u0930\u0939\u0947 \u0939\u0948\u0902...") : tx("Verify & continue", "Verify karke aage badhein", "\u0935\u0947\u0930\u093F\u092B\u093E\u0908 \u0915\u0930\u0915\u0947 \u0906\u0917\u0947 \u092C\u0922\u093C\u0947\u0902")}
+              </button>
+              <div className="auth-note">
+                {cool > 0
+                  ? tx("Resend in ", "Dobara bhejein ", "\u0926\u094B\u092C\u093E\u0930\u093E \u092D\u0947\u091C\u0947\u0902 ") + "0:" + String(cool).padStart(2, "0")
+                  : <button onClick={sendCode} disabled={busy} style={{ border: "none", background: "none", color: "var(--grn-d)", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>{tx("Send the code again", "Code dobara bhejein", "\u0915\u094B\u0921 \u0926\u094B\u092C\u093E\u0930\u093E \u092D\u0947\u091C\u0947\u0902")}</button>}
+              </div>
+            </div>
+          )}
+
           {(authError || authErr) && <div style={{ marginTop: 14, padding: "11px 13px", borderRadius: 12, background: "var(--red-bg)", color: "var(--red)", fontSize: 13, lineHeight: 1.5 }}>Login error: {authError || authErr}</div>}
-          <div className="auth-note">One tap, no password to remember. We only receive your name and email - nothing else from your Google account.</div>
           <div style={{ marginTop: 12, display: "flex", gap: 9, alignItems: "flex-start", fontSize: 12.5, color: "var(--dim)", lineHeight: 1.55, background: "var(--grn-100)", borderRadius: 12, padding: "10px 12px" }}>
             <span aria-hidden="true">&#128274;</span>
             <span>{tx("Data safety is our top priority. Your quotes, rates and customers stay inside your shop's own account - no other shop can ever see them.", "Data safety hamari pehli priority hai. Aapke quotes, rate aur customer sirf aapki shop ke account mein rehte hain - kisi aur shop ko kabhi nahi dikhte.", "\u0921\u0947\u091F\u093E \u0915\u0940 \u0938\u0941\u0930\u0915\u094D\u0937\u093E \u0939\u092E\u093E\u0930\u0940 \u092A\u0939\u0932\u0940 \u092A\u094D\u0930\u093E\u0925\u092E\u093F\u0915\u0924\u093E \u0939\u0948\u0964 \u0906\u092A\u0915\u0947 \u0915\u094B\u091F\u0947\u0936\u0928, \u0930\u0947\u091F \u0914\u0930 \u0917\u094D\u0930\u093E\u0939\u0915 \u0938\u093F\u0930\u094D\u092B \u0906\u092A\u0915\u0940 \u0926\u0941\u0915\u093E\u0928 \u0915\u0947 \u0905\u0915\u093E\u0909\u0902\u091F \u092E\u0947\u0902 \u0930\u0939\u0924\u0947 \u0939\u0948\u0902 - \u0915\u093F\u0938\u0940 \u0914\u0930 \u0926\u0941\u0915\u093E\u0928 \u0915\u094B \u0915\u092D\u0940 \u0928\u0939\u0940\u0902 \u0926\u093F\u0916\u0924\u0947\u0964")}</span>
@@ -1181,14 +1294,8 @@ function Auth({ onAuthed, authError }) {
     setStage("code");
     setTimeout(() => otpRefs.current[0]?.focus(), 100);
   };
-  const onOtpChange = (i, v) => {
-    if (!/^\d?$/.test(v)) return;
-    const next = [...otp]; next[i] = v; setOtp(next);
-    if (v && i < 3) otpRefs.current[i + 1]?.focus();
-  };
-  const onOtpKey = (i, e) => { if (e.key === "Backspace" && !otp[i] && i > 0) otpRefs.current[i - 1]?.focus(); };
   const verifyOtp = () => {
-    if (otp.join("").length < 4) { setErr("Enter the 4-digit code"); return; }
+    if (otp.join("").length < OTP_LEN) { setErr("Enter the " + OTP_LEN + "-digit code"); return; }
     /* HOOK: verify OTP with backend here. Demo accepts any code. */
     onAuthed({ method: "phone", phone: "+91 " + phone, name: "", createdAt: Date.now() });
   };
@@ -1202,7 +1309,9 @@ function Auth({ onAuthed, authError }) {
     <div className="auth">
       <div className="auth-top">
         <div className="auth-logo">QK</div>
-        <h1>Track<span style={{ color: "var(--grn)" }}>Rakho</span></h1>
+        {/* NOT var(--grn): that is #228B22, the exact middle stop of this header's
+    own gradient, so "Rakho" was invisible and the wordmark read "Track" */}
+<h1>Track<span style={{ color: "#B9F2BE" }}>Rakho</span></h1>
         <p>Quotations in five minutes - built for India's job-shops.</p>
       </div>
       <div className="auth-body">
@@ -1233,7 +1342,7 @@ function Auth({ onAuthed, authError }) {
         {mode === "otp" && stage === "code" && (
           <div className="anim-in">
             <label className="lbl">Enter the code</label>
-            <span className="hint">Sent to +91 {phone}. <button onClick={() => { setStage("enter"); setOtp(["", "", "", ""]); setErr(""); }} style={{ border: "none", background: "none", color: "var(--grn-d)", fontWeight: 600, cursor: "pointer", fontSize: 12.5 }}>Change</button></span>
+            <span className="hint">Sent to +91 {phone}. <button onClick={() => { setStage("enter"); setOtp(blankOtp()); setErr(""); }} style={{ border: "none", background: "none", color: "var(--grn-d)", fontWeight: 600, cursor: "pointer", fontSize: 12.5 }}>Change</button></span>
             <div className="otp-row">
               {otp.map((d, i) => (
                 <input key={i} ref={(el) => (otpRefs.current[i] = el)} inputMode="numeric" maxLength={1} value={d}
@@ -1544,6 +1653,7 @@ export default function App() {
   const [waOn, setWaOn] = useState(false); // true once the WhatsApp backend has answered
   const [sync, setSync] = useState(sb ? "synced" : "local"); // cloud sync state: local|synced|saving|offline
   const [authError, setAuthError] = useState(""); // OAuth return error, shown on the login screen
+  const [guardOk, setGuardOk] = useState(false); // brand-new phone account answered "is this really new?"
   const [account, setAccount] = useState(undefined); // undefined = loading, null = logged out, object = logged in
   const [tallyBal, setTallyBal] = useState(null); // Tally outstanding by customer name (lowercased) - filled by the opt-in connector
   const saveT = useRef(null);
@@ -1583,10 +1693,23 @@ export default function App() {
       })();
       return;
     }
-    const toAccount = (session) => session ? {
-      method: "google", uid: session.user.id, email: session.user.email || "",
-      name: (session.user.user_metadata && (session.user.user_metadata.full_name || session.user.user_metadata.name)) || session.user.email || "",
-    } : null;
+    /* one account can now hold BOTH a phone and a Google identity, so carry the
+       provider list around - Setup uses it to offer the missing one, and the
+       new-account guard uses it to spot a phone-only account. */
+    const toAccount = (session) => {
+      if (!session) return null;
+      const u = session.user;
+      const providers = (u.identities || []).map((i) => String(i.provider || "")).filter(Boolean);
+      return {
+        method: u.email ? "google" : "phone",
+        uid: u.id,
+        email: u.email || "",
+        phone: u.phone ? "+" + String(u.phone).replace(/\D/g, "") : "",
+        providers,
+        createdAt: u.created_at || "",
+        name: (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || u.email || (u.phone ? "+" + u.phone : ""),
+      };
+    };
     let sub;
     (async () => {
       /* handle the OAuth redirect back from Google ourselves, capturing any error */
@@ -1595,8 +1718,18 @@ export default function App() {
         const hash = new URLSearchParams((u.hash || "").replace(/^#/, ""));
         const errDesc = u.searchParams.get("error_description") || hash.get("error_description") || u.searchParams.get("error") || hash.get("error");
         const code = u.searchParams.get("code");
+        const linkIntent = !!localStorage.getItem(LINK_FLAG);
         if (errDesc) {
-          setAuthError(String(errDesc).replace(/\+/g, " "));
+          const raw = String(errDesc).replace(/\+/g, " ");
+          /* a failed LINK must not read like a failed login - the commonest
+             cause is that the Google account is already attached elsewhere */
+          if (linkIntent) {
+            setToast(/already|linked|exists/i.test(raw)
+              ? tx("That Google account is already linked to another TrackRakho account.", "Ye Google account pehle se kisi aur TrackRakho account se juda hai.", "यह Google अकाउंट पहले से किसी और TrackRakho अकाउंट से जुड़ा है।")
+              : tx("Could not add Google: ", "Google nahi jud paya: ", "Google नहीं जुड़ पाया: ") + raw);
+            setTimeout(() => setToast(null), 9000);
+          } else setAuthError(raw);
+          localStorage.removeItem(LINK_FLAG);
         } else if (code) {
           /* exchangeCodeForSession expects the bare code, not the URL */
           const gmailIntent = localStorage.getItem(GMAIL_FLAG) || u.searchParams.get("gmail_connect") === "1";
@@ -1627,7 +1760,15 @@ export default function App() {
               say(res.ok ? "Gmail connected - RFQ emails will appear in your pipeline" : "Gmail connect failed: " + res.why, res.ok ? 4000 : 10000);
             }
           }
+          /* came back from "Add Google" in Setup and the exchange worked -
+             the identity is now on the same uid, so just say so */
+          else if (linkIntent) {
+            say(tx("Google added. Both your number and Google now open this account.",
+                   "Google jud gaya. Ab number aur Google dono se yahi account khulega.",
+                   "Google जुड़ गया। अब नंबर और Google दोनों से यही अकाउंट खुलेगा।"), 7000);
+          }
           localStorage.removeItem(GMAIL_FLAG);
+          localStorage.removeItem(LINK_FLAG);
         }
         /* strip auth params from the address bar either way */
         if (code || errDesc || u.hash) window.history.replaceState({}, "", u.origin + u.pathname);
@@ -1637,8 +1778,15 @@ export default function App() {
       catch { setAccount(null); }
       const res = sb.auth.onAuthStateChange((_evt, session) => setAccount((prev) => {
         const next = toAccount(session);
-        /* avoid pointless re-renders/reloads on token refresh for the same user */
-        return prev && next && prev.uid === next.uid ? prev : next;
+        /* avoid pointless re-renders/reloads on token refresh for the same user.
+           uid alone is NOT enough any more: linking a phone or a Google account
+           keeps the uid and only changes phone/providers, and holding on to the
+           stale object would leave Setup still offering a link that just
+           succeeded. */
+        const same = prev && next && prev.uid === next.uid
+          && prev.phone === next.phone && prev.email === next.email
+          && (prev.providers || []).join(",") === (next.providers || []).join(",");
+        return same ? prev : next;
       }));
       sub = res && res.data && res.data.subscription;
     })();
@@ -1673,6 +1821,9 @@ export default function App() {
     }
     if (account === undefined) return;      /* still resolving the session */
     if (!account) { setData(null); return; } /* logged out -> Auth screen */
+    /* brand-new phone account waiting on the "is this really new?" answer:
+       touch nothing until it answers, so the account stays discardable */
+    if (pendingNewAccount(account, guardOk)) return;
     cloudReadOk.current = false;             /* no cloud writes until a clean read */
     let alive = true;
     (async () => {
@@ -1723,7 +1874,7 @@ export default function App() {
       }
     })();
     return () => { alive = false; };
-  }, [account ? account.uid : null]);
+  }, [account ? account.uid : null, guardOk]);
 
   /* save shop data: local cache immediately, cloud row debounced */
   useEffect(() => {
@@ -1790,6 +1941,14 @@ export default function App() {
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
     return () => { cancelAnimationFrame(raf); clearTimeout(t); window.removeEventListener("resize", measure); };
   }, [tab, data]);
+
+  /* asked BEFORE any data is loaded or seeded, so the empty account stays
+     discardable if this turns out to be a Google customer who typed his number */
+  if (pendingNewAccount(account, guardOk))
+    return <NewAccountGuard account={account} onKeep={() => {
+      try { localStorage.setItem(NEWACCT_KEY + account.uid, "1"); } catch {}
+      setGuardOk(true);
+    }} />;
 
   if (account === undefined || (account && !data))
     return (<div className="qk-root"><style>{CSS}</style><div className="app" style={{ alignItems: "center", justifyContent: "center" }}>
@@ -4500,6 +4659,225 @@ function StockYard({ data, setData, ping, onBack }) {
   );
 }
 
+/* ================= LOGIN METHODS (cloud mode only) =================
+   One account, two doors. A shop owner remembers his phone number; his Gmail is
+   something his nephew set up in 2016. So phone is the main login - but the
+   accounts that already exist here were made with Google, and Supabase treats an
+   unseen identifier as a NEW user. If a Google customer ever signs in by phone
+   without linking first, he lands in an empty account and believes his data is
+   gone (it is not - it is still on the Google account, which is exactly why we
+   never copy anything between users).
+
+   This card is the cure: from inside the account you already hold, attach the
+   other door. Both then open the same uid, so shop_data never splits. */
+/* ================= NEW-ACCOUNT GUARD (cloud mode only) =================
+   Shown once, immediately after a phone number creates a BRAND NEW account that
+   has no Google attached. It exists for one person: the customer who has been
+   signing in with Google for months, types his phone number one day, and would
+   otherwise be dropped into an empty pipeline convinced the app ate his data.
+
+   Choosing "I used Google before" does NOT move any data. It throws away the
+   empty account he just made (server-side, and only if it truly holds nothing),
+   which frees his number, and sends him back through Google to his real account
+   - where Setup will offer to attach the same number properly. */
+const NEWACCT_KEY = "quotekaro:newacct:";
+/* A phone-only account born in the last few minutes that has not yet answered
+   the "is this really new?" question. While this is true the app must not load
+   or seed shop_data for it: writing a row would make the account look used, and
+   auth-discard rightly refuses to remove an account that holds anything. */
+function pendingNewAccount(account, guardOk) {
+  if (!sb || !account || guardOk) return false;
+  if (account.email || (account.providers || []).includes("google")) return false;
+  const born = Date.parse(account.createdAt || "");
+  if (!Number.isFinite(born) || Date.now() - born > 10 * 60 * 1000) return false;
+  try { if (localStorage.getItem(NEWACCT_KEY + account.uid)) return false; } catch {}
+  return true;
+}
+function NewAccountGuard({ account, onKeep }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const useGoogleInstead = async () => {
+    setErr(""); setBusy(true);
+    try {
+      const r = await fetch("/.netlify/functions/auth-discard", {
+        method: "POST", headers: { "content-type": "application/json", ...(await authHeaders()) },
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!j.ok) {
+        setBusy(false);
+        setErr(j.why || tx("Could not do that. Try Google from the login screen.", "Ye nahi ho paya. Login screen se Google try karein.", "यह नहीं हो पाया। लॉगिन स्क्रीन से Google आज़माएं।"));
+        return;
+      }
+      /* the empty account is gone - go straight to Google */
+      try { await sb.auth.signOut(); } catch {}
+      await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
+    } catch {
+      setBusy(false);
+      setErr(tx("Network problem. Try again.", "Network ki dikkat. Dobara try karein.", "नेटवर्क की दिक्कत। दोबारा करें।"));
+    }
+  };
+
+  return (
+    <div className="qk-root"><style>{CSS}</style><div className="app">
+      <div className="auth">
+        <div className="auth-top">
+          <div className="auth-logo">QK</div>
+          <h1>{tx("One last thing", "Ek aakhri baat", "एक आखिरी बात")}</h1>
+          <p>{account.phone || ""}</p>
+        </div>
+        <div className="auth-body">
+          <label className="lbl">{tx("Is this a new shop account?", "Kya ye naya account hai?", "क्या यह नया अकाउंट है?")}</label>
+          <span className="hint">
+            {tx("This number has made a fresh account. If you used Google here before, your old data is safe on that account - pick the second option and we will join them.",
+                "Is number se naya account bana hai. Agar aap pehle Google se aate the, to aapka purana data usi account mein surakshit hai - neeche doosra option chunein, hum dono ko jod denge.",
+                "इस नंबर से नया अकाउंट बना है। अगर आप पहले Google से आते थे, तो पुराना डेटा उसी अकाउंट में सुरक्षित है - नीचे दूसरा विकल्प चुनें।")}
+          </span>
+
+          <button className="btn btn-grn press" style={{ width: "100%", marginTop: 16 }} onClick={onKeep} disabled={busy}>
+            {tx("Yes, start fresh", "Haan, naya account hai", "हाँ, नया अकाउंट है")}
+          </button>
+          <button className="btn btn-ghost press" style={{ width: "100%", marginTop: 10 }} onClick={useGoogleInstead} disabled={busy}>
+            {busy ? tx("Please wait...", "Rukiye...", "रुकिए...") : tx("No, I used Google before", "Nahi, main pehle Google se aata tha", "नहीं, मैं पहले Google से आता था")}
+          </button>
+
+          {err && <div style={{ marginTop: 14, padding: "11px 13px", borderRadius: 12, background: "var(--red-bg)", color: "var(--red)", fontSize: 13, lineHeight: 1.5 }}>{err}</div>}
+          <div className="auth-note">
+            {tx("Nothing is deleted either way - an account that has any saved work is never touched.",
+                "Kisi bhi haalat mein kuch delete nahi hota - jis account mein kaam save hai, use haath nahi lagta.",
+                "किसी भी हाल में कुछ डिलीट नहीं होता - जिस अकाउंट में काम सेव है, उसे हाथ नहीं लगाया जाता।")}
+          </div>
+        </div>
+      </div>
+    </div></div>
+  );
+}
+
+function LoginMethods({ account, ping }) {
+  const [openAdd, setOpenAdd] = useState(false);
+  const [ph, setPh] = useState("");
+  const [stage, setStage] = useState("enter");
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  if (!sb || !account) return null;
+
+  const provs = account.providers || [];
+  const hasPhone = !!account.phone || provs.includes("phone");
+  const hasGoogle = provs.includes("google") || !!account.email;
+  const e164 = () => "+91" + ph.replace(/\D/g, "");
+
+  const say = (e) => {
+    const m = String((e && e.message) || "").toLowerCase();
+    if (/already been registered|already registered|already exists|duplicate/.test(m))
+      return tx("This number is already on another TrackRakho account. Log in with that number instead, or use a different one.",
+                "Ye number pehle se kisi aur TrackRakho account par hai. Usi number se login karein, ya doosra number daalein.",
+                "यह नंबर पहले से किसी और TrackRakho अकाउंट पर है। उसी नंबर से लॉगिन करें।");
+    if (/identity is already linked|already linked/.test(m))
+      return tx("That Google account is already linked to another TrackRakho account.",
+                "Ye Google account pehle se kisi aur TrackRakho account se juda hai.",
+                "यह Google अकाउंट पहले से किसी और TrackRakho अकाउंट से जुड़ा है।");
+    if (/manual linking|not enabled/.test(m))
+      return tx("Linking is switched off on the server. Tell us and we will turn it on.",
+                "Server par linking band hai. Humein batayein, hum chalu kar denge.",
+                "सर्वर पर लिंकिंग बंद है। हमें बताएं, हम चालू कर देंगे।");
+    if (/rate|too many|security purposes/.test(m))
+      return tx("Too many attempts. Wait a minute.", "Bahut baar try kiya. Ek minute ruk jaayein.", "बहुत बार कोशिश हुई। एक मिनट रुकें।");
+    if (/expired|invalid|incorrect|token/.test(m))
+      return tx("That code is wrong or has expired.", "Code galat hai ya purana ho gaya.", "कोड गलत या पुराना है।");
+    return (e && e.message) || tx("Something went wrong.", "Kuch gadbad ho gayi.", "कुछ गडबड हुई।");
+  };
+
+  const sendCode = async () => {
+    if (ph.replace(/\D/g, "").length !== 10) { setErr(tx("Enter a valid 10-digit number", "Poora 10 digit ka number daalein", "पूरा 10 अंकों का नंबर डालें")); return; }
+    setErr(""); setBusy(true);
+    /* updateUser({phone}) attaches the number to THIS user and sends a code to it */
+    const { error } = await sb.auth.updateUser({ phone: e164() });
+    setBusy(false);
+    if (error) { setErr(say(error)); return; }
+    setStage("code");
+  };
+  const confirmCode = async () => {
+    const t = code.replace(/\D/g, "");
+    if (t.length < 6) { setErr(tx("Enter the 6-digit code", "6 digit ka code daalein", "6 अंकों का कोड डालें")); return; }
+    setErr(""); setBusy(true);
+    const { error } = await sb.auth.verifyOtp({ phone: e164(), token: t, type: "phone_change" });
+    if (!error) { try { await sb.auth.refreshSession(); } catch {} }
+    setBusy(false);
+    if (error) { setErr(say(error)); return; }
+    setOpenAdd(false); setStage("enter"); setPh(""); setCode("");
+    ping(tx("Number added. You can now log in with it.", "Number jud gaya. Ab isi se login kar sakte hain.", "नंबर जुड़ गया। अब इसी से लॉगिन कर सकते हैं।"));
+  };
+  const linkGoogle = async () => {
+    setErr(""); setBusy(true);
+    try {
+      localStorage.setItem(LINK_FLAG, "1");
+      const { error } = await sb.auth.linkIdentity({ provider: "google", options: { redirectTo: window.location.origin } });
+      if (error) { localStorage.removeItem(LINK_FLAG); setErr(say(error)); setBusy(false); }
+      /* on success the browser leaves for Google; the return is handled in App */
+    } catch (e) { localStorage.removeItem(LINK_FLAG); setErr(say(e)); setBusy(false); }
+  };
+
+  const row = (on, label, value, action) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 0", borderTop: "1px solid var(--line)" }}>
+      <span style={{ width: 22, height: 22, borderRadius: "50%", flex: "none", display: "grid", placeItems: "center", background: on ? "var(--grn-100)" : "var(--soft)", color: on ? "var(--grn-d)" : "var(--faint)", fontSize: 12 }}>{on ? "✓" : "+"}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14.5, fontWeight: 600 }}>{label}</div>
+        <div style={{ fontSize: 12.5, color: "var(--dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</div>
+      </div>
+      {action}
+    </div>
+  );
+
+  return (
+    <div className="card anim-in" style={{ marginTop: 18 }}>
+      <div className="h-disp" style={{ fontSize: 16.5, fontWeight: 700 }}>{tx("Ways to log in", "Login ke tareeke", "लॉगिन के तरीके")}</div>
+      <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 3, lineHeight: 1.55 }}>
+        {tx("Attach both and either one opens this same account, with all your data.",
+            "Dono jod lein - dono se yahi account khulega, saara data ke saath.",
+            "दोनों जोड़ लें - दोनों से यही अकाउंट खुलेगा, सारे डेटा के साथ।")}
+      </div>
+
+      {row(hasPhone, tx("Phone number", "Phone number", "फोन नंबर"),
+        hasPhone ? account.phone || tx("Added", "Jud gaya", "जुड़ा हुआ") : tx("Not added yet", "Abhi nahi juda", "अभी नहीं जुड़ा"),
+        !hasPhone && !openAdd ? <button className="btn btn-ghost btn-sm press" onClick={() => { setOpenAdd(true); setErr(""); }}>{tx("Add", "Jodein", "जोड़ें")}</button> : null)}
+
+      {openAdd && !hasPhone && (
+        <div className="anim-in" style={{ padding: "2px 0 12px" }}>
+          {stage === "enter" ? (<>
+            <div className="phone-field">
+              <span className="cc">+91</span>
+              <input type="tel" inputMode="numeric" placeholder="98xxxxxxxx" value={ph}
+                onChange={(e) => setPh(e.target.value.replace(/\D/g, "").slice(0, 10))} />
+            </div>
+            <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 7 }}>
+              {tx("The code comes on WhatsApp.", "Code WhatsApp par aayega.", "कोड WhatsApp पर आएगा।")}
+            </div>
+            <button className="btn btn-grn btn-sm press" style={{ width: "100%", marginTop: 11 }} onClick={sendCode} disabled={busy}>
+              {busy ? tx("Sending...", "Bhej rahe hain...", "भेज रहे हैं...") : tx("Send code", "Code bhejein", "कोड भेजें")}
+            </button>
+          </>) : (<>
+            <input className="input" inputMode="numeric" maxLength={6} placeholder="6 digit code" value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} style={{ fontFamily: "var(--mono)", letterSpacing: ".2em", textAlign: "center" }} />
+            <button className="btn btn-grn btn-sm press" style={{ width: "100%", marginTop: 11 }} onClick={confirmCode} disabled={busy}>
+              {busy ? tx("Checking...", "Check kar rahe hain...", "जाँच रहे हैं...") : tx("Confirm number", "Number pakka karein", "नंबर पक्का करें")}
+            </button>
+            <button className="btn btn-ghost btn-sm press" style={{ width: "100%", marginTop: 8 }} onClick={() => { setStage("enter"); setCode(""); setErr(""); }}>
+              {tx("Change number", "Number badlein", "नंबर बदलें")}
+            </button>
+          </>)}
+          {err && <div style={{ color: "var(--red)", fontSize: 12.5, marginTop: 10, lineHeight: 1.5 }}>{err}</div>}
+        </div>
+      )}
+
+      {row(hasGoogle, "Google", hasGoogle ? account.email || tx("Added", "Jud gaya", "जुड़ा हुआ") : tx("Not added yet", "Abhi nahi juda", "अभी नहीं जुड़ा"),
+        !hasGoogle ? <button className="btn btn-ghost btn-sm press" onClick={linkGoogle} disabled={busy}>{tx("Add", "Jodein", "जोड़ें")}</button> : null)}
+
+      {!openAdd && err && <div style={{ color: "var(--red)", fontSize: 12.5, marginTop: 10, lineHeight: 1.5 }}>{err}</div>}
+    </div>
+  );
+}
+
 function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
   const [calcOpen, setCalcOpen] = useState(false);
   const [matPick, setMatPick] = useState(false);
@@ -4626,7 +5004,10 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
         );
       })()}
 
-      <label className="lbl">{tx("Shop name", "Shop name", "दुकान का नाम")}</label>
+      {/* one account, two doors - phone and Google both open this same shop */}
+      <LoginMethods account={account} ping={ping} />
+
+      <label className="lbl" style={{ marginTop: 18 }}>{tx("Shop name", "Shop name", "दुकान का नाम")}</label>
       <input className="input anim-in st1" value={data.shopName} onChange={(e) => setData({ ...data, shopName: e.target.value })} />
 
       {/* app language - the Hinglish/Hindi/English switch */}
