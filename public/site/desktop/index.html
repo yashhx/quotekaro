@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TrackRakho — try it before you install it</title>
+<meta name="description" content="A working walkthrough of TrackRakho: an enquiry becomes a quote, a quote becomes an order, and Tally tells you who still owes you. Do it yourself, on this page." />
+<link rel="canonical" href="https://trackrakho.com/site/desktop/" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* =============================================================
+   TrackRakho - DESKTOP walkthrough page.
+
+   Why this page exists, and the one rule it lives by:
+   research says an interactive demo is now the single most useful
+   thing on a B2B software site - ahead of pricing and case studies.
+   So the demo is not a section of this page, it IS the page.
+
+   THE RULE: scroll advances the story; clicking is optional.
+   Progress is never gated behind a click. Anyone who just scrolls
+   sees the whole story play itself; anyone who does the task gets
+   it ticked green. Scroll position is the ONLY source of truth -
+   clicking a hotspot merely scrolls to the next task, so the two
+   input modes can never disagree.
+
+   Numbers are the app's real demo data. Do not invent new ones.
+   ============================================================= */
+:root{
+  --bg:#070B08; --bg2:#0B120D; --panel:#101A13; --line:rgba(124,227,131,.16);
+  --ink:#EAF3EB; --dim:#9DB3A2; --faint:#6C8272;
+  --grn:#7CE383; --grn-d:#228B22; --grn-deep:#155E18; --amber:#F0B84E; --red:#FF8A6B;
+  --disp:'Space Grotesk',sans-serif; --sans:'Inter',sans-serif; --mono:'IBM Plex Mono',monospace;
+  --appink:#16201A; --appline:#DCE6DD; --appdim:#5C6B61;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3,h4{font-family:var(--disp);margin:0;letter-spacing:-.025em;line-height:1.08;font-weight:700}
+a{color:inherit}
+.wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ---------- ambient ---------- */
+.glow{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(900px 600px at 78% -5%, rgba(124,227,131,.13), transparent 60%),
+             radial-gradient(700px 500px at 5% 40%, rgba(34,139,34,.10), transparent 62%)}
+.grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.4;
+  background-image:linear-gradient(rgba(124,227,131,.045) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(124,227,131,.045) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,#000 30%,transparent 75%);
+  -webkit-mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,#000 30%,transparent 75%)}
+main,header,footer{position:relative;z-index:1}
+
+/* ---------- nav ---------- */
+header{position:sticky;top:0;z-index:60;backdrop-filter:blur(14px);
+  background:rgba(7,11,8,.76);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:68px}
+.brand{display:flex;align-items:center;gap:11px;font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:-.03em}
+.mark{width:30px;height:30px;border-radius:9px;background:linear-gradient(140deg,var(--grn),var(--grn-deep));position:relative;flex:none}
+.mark::after{content:"";position:absolute;inset:8px 7px auto 7px;height:2px;border-radius:2px;background:rgba(7,11,8,.9);
+  box-shadow:0 5px 0 rgba(7,11,8,.6),0 10px 0 rgba(7,11,8,.35)}
+.navlinks{display:flex;gap:30px;font-size:14.5px;color:var(--dim)}
+.navlinks a{text-decoration:none;transition:color .18s}
+.navlinks a:hover{color:var(--grn)}
+.btn{display:inline-flex;align-items:center;gap:9px;border-radius:999px;padding:12px 22px;font-weight:600;
+  font-size:14.5px;text-decoration:none;border:1px solid transparent;cursor:pointer;font-family:var(--sans);transition:transform .16s, box-shadow .16s, background .16s}
+.btn-p{background:linear-gradient(160deg,var(--grn),#3FAE45);color:#06210A;box-shadow:0 8px 26px rgba(124,227,131,.22)}
+.btn-p:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(124,227,131,.32)}
+.btn-g{border-color:var(--line);color:var(--ink);background:rgba(124,227,131,.05)}
+.btn-g:hover{border-color:var(--grn);color:var(--grn)}
+
+/* ---------- hero ---------- */
+.hero{padding:90px 0 60px;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--grn);border:1px solid var(--line);border-radius:999px;padding:7px 15px;
+  background:rgba(124,227,131,.06)}
+.hero h1{font-size:clamp(40px,4.4vw,62px);margin:22px 0 0}
+.hero h1 em{font-style:normal;color:var(--grn)}
+.hero p.sub{font-size:19px;color:var(--dim);margin:22px 0 0;max-width:33ch}
+.hero-cta{display:flex;gap:14px;margin-top:34px;align-items:center;flex-wrap:wrap}
+.hero-note{font-size:13px;color:var(--faint);margin-top:16px}
+
+/* ---------- the app frame (shared by hero + demo) ---------- */
+.frame{background:#fff;border-radius:18px;overflow:hidden;color:var(--appink);
+  box-shadow:0 40px 90px rgba(0,0,0,.55),0 0 0 1px rgba(124,227,131,.18);position:relative}
+.frame-bar{height:34px;background:#F2F6F2;border-bottom:1px solid var(--appline);display:flex;align-items:center;gap:7px;padding:0 13px}
+.dot{width:9px;height:9px;border-radius:50%;background:#D6DFD7}
+.frame-title{margin-left:10px;font-family:var(--mono);font-size:10.5px;color:#8DA093;letter-spacing:.08em}
+.screen{padding:18px;min-height:426px;background:#fff}
+
+/* app UI atoms - deliberately the app's real look, not a stylised mock */
+.appcard{border:1px solid var(--appline);border-radius:14px;padding:12px 13px;background:#fff;margin-bottom:10px}
+.microlbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;color:#8DA093}
+.h-disp{font-family:var(--disp);font-weight:700;color:var(--appink)}
+.kpi{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.kpi .k{border:1px solid var(--appline);border-radius:13px;padding:11px 12px}
+.kpi .k b{display:block;font-family:var(--mono);font-size:19px;color:#155E18;letter-spacing:-.02em;margin-top:3px}
+.kpi .k span{font-size:11.5px;color:var(--appdim)}
+.qrow{display:flex;gap:11px;align-items:flex-start;border:1px solid var(--appline);border-radius:14px;padding:11px;margin-bottom:9px;background:#fff;transition:box-shadow .2s, border-color .2s}
+.qrow .tile{width:46px;height:46px;border-radius:11px;background:#EDF6EE;display:grid;place-items:center;font-size:21px;flex:none}
+.qrow .nm{font-weight:600;font-size:14.5px}
+.qrow .mt{font-size:12px;color:var(--appdim);margin-top:1px}
+.qrow .amt{margin-left:auto;text-align:right;font-family:var(--mono);font-weight:600;font-size:14.5px;white-space:nowrap}
+.pill{display:inline-block;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  padding:3px 8px;border-radius:999px;background:#EDF6EE;color:#155E18;margin-top:5px}
+.pill.pend{background:#FFF4E0;color:#8A5A00}
+.pill.won{background:#E4F5E6;color:#136B18}
+.pill.late{background:#FFE9E2;color:#A63A17}
+.wa{background:#EAF6EA;border:1px solid #CFE3D1;border-radius:12px 12px 12px 4px;padding:11px 12px;font-size:13px;
+  white-space:pre-wrap;color:#14261A;line-height:1.5}
+.field{border:1px solid var(--appline);border-radius:11px;padding:9px 11px;font-size:13.5px;margin-bottom:8px;background:#fff}
+.field i{display:block;font-style:normal;font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:#8DA093;text-transform:uppercase;margin-bottom:2px}
+.appbtn{display:block;width:100%;text-align:center;border:none;border-radius:999px;padding:11px;font-weight:700;font-size:14px;
+  font-family:var(--sans);cursor:pointer;background:linear-gradient(160deg,#2FA637,var(--grn-deep));color:#fff}
+.appbtn.ghost{background:#fff;color:#155E18;border:1.5px solid #CFE3D1}
+/* aging bar */
+.aging{display:flex;height:26px;border-radius:8px;overflow:hidden;margin:9px 0 7px}
+.aging i{display:block;height:100%}
+.legend{display:flex;gap:13px;flex-wrap:wrap;font-size:11px;color:var(--appdim)}
+.legend b{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+/* progress bars */
+.pbar{height:8px;border-radius:99px;background:#EDF1EE;overflow:hidden;margin-top:6px}
+.pbar i{display:block;height:100%;background:linear-gradient(90deg,#3FAE45,#155E18)}
+
+/* ---------- hotspot ---------- */
+.hot{position:relative;cursor:pointer}
+.hot::after{content:"";position:absolute;inset:-5px;border-radius:15px;border:2px solid var(--grn-d);
+  animation:pulse 1.9s ease-out infinite;pointer-events:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,139,34,.4);opacity:1}70%{box-shadow:0 0 0 13px rgba(34,139,34,0);opacity:.75}100%{box-shadow:0 0 0 0 rgba(34,139,34,0);opacity:1}}
+.hot-tag{position:absolute;top:-12px;right:-8px;z-index:3;background:var(--grn-deep);color:#fff;font-family:var(--mono);
+  font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:999px;white-space:nowrap}
+
+/* ---------- demo layout ---------- */
+.demo{padding:40px 0 0}
+.demo-head{text-align:center;max-width:760px;margin:0 auto 20px}
+.demo-head h2{font-size:clamp(32px,3.3vw,46px)}
+.demo-head p{color:var(--dim);font-size:17.5px;margin-top:16px}
+.tradepick{display:flex;gap:10px;justify-content:center;margin:26px 0 8px}
+.tradepick button{border-radius:999px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--sans);
+  background:rgba(124,227,131,.05);border:1px solid var(--line);color:var(--dim);transition:all .18s}
+.tradepick button:hover{color:var(--ink)}
+.tradepick button.on{background:linear-gradient(160deg,var(--grn),#3FAE45);color:#06210A;border-color:transparent}
+
+.stage{display:grid;grid-template-columns:1fr 1.02fr;gap:56px;align-items:start}
+/* Each task needs about a screen of scroll travel to itself, and the top and
+   bottom padding must be deep enough that the FIRST and LAST tasks can still
+   reach the middle of the viewport. Without this the page runs out of scroll
+   before the final step activates and the closing screen is never seen. */
+.tasks{padding:30vh 0 42vh}
+.task{min-height:58vh;display:flex;flex-direction:column;justify-content:center;
+  padding:18px 0;opacity:.28;transition:opacity .35s}
+.task.on{opacity:1}
+.chapter{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--grn);margin-bottom:12px}
+.task h3{font-size:26px;margin-bottom:10px}
+.task p{color:var(--dim);font-size:16px;margin:0}
+.task .do{margin-top:15px;display:inline-flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;
+  padding:11px 15px;font-size:14px;background:rgba(124,227,131,.05);color:var(--ink)}
+.task .do .n{width:21px;height:21px;border-radius:50%;background:var(--grn-deep);color:#fff;display:grid;place-items:center;
+  font-family:var(--mono);font-size:10.5px;flex:none;transition:background .25s}
+.task.done .do{border-color:rgba(124,227,131,.42);background:rgba(124,227,131,.11)}
+.task.done .do .n{background:var(--grn);color:#06210A}
+.task.done .do .txt{color:var(--grn)}
+.stickycol{position:sticky;top:96px;height:min-content}
+.progress{display:flex;gap:5px;margin-bottom:13px}
+.progress i{flex:1;height:3px;border-radius:99px;background:rgba(124,227,131,.16);transition:background .3s}
+.progress i.on{background:var(--grn)}
+.frame-cap{margin-top:13px;font-size:12.5px;color:var(--faint);text-align:center;min-height:19px;transition:opacity .25s}
+
+/* ---------- feature bento ---------- */
+.sec{padding:110px 0}
+.sec-h{max-width:720px;margin-bottom:46px}
+.sec-h h2{font-size:clamp(30px,3.1vw,44px)}
+.sec-h p{color:var(--dim);font-size:17.5px;margin-top:16px}
+.bento{display:grid;grid-template-columns:repeat(6,1fr);gap:16px}
+.b{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);border-radius:20px;padding:26px;
+  transition:transform .22s, border-color .22s}
+.b:hover{transform:translateY(-3px);border-color:rgba(124,227,131,.34)}
+.b.w3{grid-column:span 3}.b.w2{grid-column:span 2}.b.w4{grid-column:span 4}.b.w6{grid-column:span 6}
+.b h3{font-size:20px;margin-bottom:9px}
+.b p{color:var(--dim);font-size:15px;margin:0}
+.b .ic{font-size:22px;margin-bottom:13px;display:block}
+.b .tag{display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  padding:4px 9px;border-radius:999px;border:1px solid var(--line);color:var(--grn);margin-bottom:11px}
+
+/* ---------- pricing ---------- */
+.price{max-width:560px;margin:0 auto;background:linear-gradient(180deg,var(--panel),var(--bg2));
+  border:1px solid rgba(124,227,131,.3);border-radius:26px;padding:42px;text-align:center}
+.price .amt{font-family:var(--mono);font-size:56px;font-weight:600;color:var(--grn);letter-spacing:-.03em;line-height:1}
+.price ul{list-style:none;padding:0;margin:26px 0 0;text-align:left}
+.price li{padding:9px 0 9px 28px;position:relative;color:var(--dim);font-size:15.5px;border-top:1px solid var(--line)}
+.price li::before{content:"✓";position:absolute;left:2px;color:var(--grn);font-weight:700}
+
+footer{border-top:1px solid var(--line);padding:44px 0;color:var(--faint);font-size:14px}
+.foot{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}
+
+/* ---------- small screens: this page is the LAPTOP one ---------- */
+.smallnote{display:none}
+@media (max-width:1000px){
+  .smallnote{display:block;padding:70px 24px;text-align:center;max-width:560px;margin:0 auto}
+  .smallnote h1{font-size:32px;margin-bottom:16px}
+  .smallnote p{color:var(--dim);font-size:16.5px}
+  .desktoponly{display:none !important}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .hot::after{animation:none}
+  *{transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+<div class="glow"></div><div class="grid-bg"></div>
+
+<!-- narrow screens get an honest hand-off, not a broken layout -->
+<div class="smallnote">
+  <div class="brand" style="justify-content:center;margin-bottom:26px"><span class="mark"></span>TrackRakho</div>
+  <h1>This walkthrough needs a bigger screen.</h1>
+  <p>It puts the working app beside the instructions, which only fits on a laptop. Open <b style="color:var(--grn)">trackrakho.com/site/desktop/</b> on a computer — or read the phone-friendly version below.</p>
+  <div style="margin-top:28px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <a class="btn btn-p" href="/site/">Phone-friendly site</a>
+    <a class="btn btn-g" href="https://wa.me/919910605207">WhatsApp us</a>
+  </div>
+</div>
+
+<div class="desktoponly">
+<header>
+  <div class="wrap nav">
+    <div class="brand"><span class="mark"></span>TrackRakho</div>
+    <nav class="navlinks">
+      <a href="#demo">Walkthrough</a>
+      <a href="#features">Everything it does</a>
+      <a href="#tally">Tally</a>
+      <a href="#pricing">Pricing</a>
+    </nav>
+    <a class="btn btn-p" href="https://wa.me/919910605207">Book a demo</a>
+  </div>
+</header>
+
+<main>
+  <!-- ============================ HERO ============================ -->
+  <section class="wrap hero">
+    <div>
+      <span class="eyebrow">Early access · Delhi NCR</span>
+      <h1>Your whole shop,<br/><em>on one screen.</em></h1>
+      <p class="sub">Quotations, orders, machines, trucks and the money still stuck with your customers — read straight from the Tally you already run.</p>
+      <div class="hero-cta">
+        <a class="btn btn-p" href="#demo">Try it on this page &nbsp;↓</a>
+        <a class="btn btn-g" href="https://wa.me/919910605207">Talk to the founder</a>
+      </div>
+      <p class="hero-note">Nothing to install to look around. The walkthrough below is the real interface.</p>
+    </div>
+    <div>
+      <div class="frame">
+        <div class="frame-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="frame-title">TRACKRAKHO — SHARMA PRECISION WORKS</span></div>
+        <div class="screen" style="min-height:auto">
+          <div class="microlbl">At a glance</div>
+          <div class="h-disp" style="font-size:19px;margin:3px 0 12px">Monday morning</div>
+          <div class="kpi">
+            <div class="k"><span>Pending quotes</span><b>₹2,93,100</b></div>
+            <div class="k"><span>Won this month</span><b>₹99,378</b></div>
+            <div class="k"><span>Stuck in Tally</span><b style="color:#A63A17">₹7,08,700</b></div>
+            <div class="k"><span>On the floor</span><b>1 job</b></div>
+          </div>
+          <div class="appcard" style="margin-top:11px">
+            <div class="microlbl">Machine floor</div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px">
+              <b style="font-size:14px">VMC 850 #1 — Gland Nut</b>
+              <span class="mono" style="font-size:12.5px;color:#155E18">≈ 6:40 pm</span>
+            </div>
+            <div class="pbar"><i style="width:60%"></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ DEMO ============================ -->
+  <section class="demo wrap" id="demo">
+    <div class="demo-head">
+      <span class="eyebrow">The walkthrough</span>
+      <h2 style="margin-top:20px">One enquiry, from WhatsApp to paid.</h2>
+      <p>Scroll and it plays itself. Do the highlighted step yourself and it ticks green. Nothing here is a video — it is the real interface with the app's own demo numbers.</p>
+      <div class="tradepick" role="group" aria-label="Choose your trade">
+        <button data-trade="mach" class="on">Machine job shop</button>
+        <button data-trade="scrap">Scrap &amp; metal trading</button>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="tasks" id="tasks"><!-- injected --></div>
+      <div class="stickycol">
+        <div class="progress" id="prog"></div>
+        <div class="frame">
+          <div class="frame-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="frame-title" id="ftitle">TRACKRAKHO</span></div>
+          <div class="screen" id="screen"><!-- injected --></div>
+        </div>
+        <div class="frame-cap" id="fcap"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ FEATURES ============================ -->
+  <section class="sec wrap" id="features">
+    <div class="sec-h">
+      <span class="eyebrow">Everything it does</span>
+      <h2 style="margin-top:20px">Built from three years of walking into workshops.</h2>
+      <p>Not a general business app with your trade's name pasted on it. Each of these exists because an owner in Faridabad or Wazirpur showed us the problem.</p>
+    </div>
+    <div class="bento">
+      <div class="b w3">
+        <span class="ic">📥</span>
+        <h3>Enquiries that log themselves</h3>
+        <p>Paste a WhatsApp message and it pulls out the customer, the part, the quantity, the rate and the date they need it by. Connect your business number and they arrive on their own.</p>
+      </div>
+      <div class="b w3">
+        <span class="ic">📊</span>
+        <h3>A pipeline you can actually read</h3>
+        <p>Every quote as pending, won or lost, with follow-up dates that turn red when they slip. One tap chases the customer on WhatsApp from your own number.</p>
+      </div>
+      <div class="b w2">
+        <span class="ic">🧮</span>
+        <h3>Costing on your real rates</h3>
+        <p>Material, machine hour, labour, tooling, overhead, margin. The hourly rate is calculated from your depreciation, power and operator cost — not guessed.</p>
+      </div>
+      <div class="b w2">
+        <span class="ic">⚙️</span>
+        <h3>A live machine floor</h3>
+        <p>Split a job across machines and watch each one's progress and finish time. Pause a machine, move the remaining pieces to another, and every estimate recalculates.</p>
+      </div>
+      <div class="b w2">
+        <span class="ic">🚚</span>
+        <h3>Trucks and yard stock</h3>
+        <p>For traders: which vehicle went where, what the weighbridge said, and what the yard should be holding — with the shortfall flagged the same week.</p>
+      </div>
+      <div class="b w4">
+        <span class="tag">Two-way</span>
+        <h3>It reads TallyPrime. It does not disturb it.</h3>
+        <p>A small connector on your Tally computer reads your ledgers, vouchers and bill-wise outstandings and puts them on your phone. It reads only — writing orders back into Tally exists, ships switched off, and stays off until you turn it on yourself. Validated against real TallyPrime Release 7.x on GST and non-GST books, reconciled to the rupee against Tally's own Bills Receivable report.</p>
+      </div>
+      <div class="b w2">
+        <span class="ic">📄</span>
+        <h3>Excel and PDF, both ways</h3>
+        <p>Import your existing quote register, export whenever you want. Your data leaves as easily as it arrives — that is deliberate.</p>
+      </div>
+      <div class="b w6" style="display:grid;grid-template-columns:1.15fr 1fr;gap:34px;align-items:center">
+        <div>
+          <span class="tag">Honest about limits</span>
+          <h3>What it does not do.</h3>
+          <p style="margin-top:12px">It does not predict machining time — you know your cycle time, the app does the money maths around it. Every finish-time estimate carries an 8% allowance for tool changes and breakdowns, and says so on screen. It does not replace Tally; it is the layer around Tally. And photo-based job matching is designed but not built yet, so it is not on this page as a feature.</p>
+        </div>
+        <div style="border-left:1px solid var(--line);padding-left:30px">
+          <div class="mono" style="font-size:11px;letter-spacing:.16em;color:var(--grn);text-transform:uppercase">Anchored example</div>
+          <div style="margin-top:14px;font-size:14.5px;color:var(--dim);line-height:1.9">
+            <div>Material · 0.6 kg EN8 @ ₹85/kg <b class="mono" style="color:var(--ink);float:right">₹51.00</b></div>
+            <div>Machine · VMC at ₹366/hr <b class="mono" style="color:var(--ink);float:right">₹54.90</b></div>
+            <div>Labour + tooling <b class="mono" style="color:var(--ink);float:right">₹12.33</b></div>
+            <div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px">+18% overhead, +25% margin</div>
+            <div style="font-size:19px;color:var(--grn);margin-top:8px" class="mono"><b>₹174.39</b> / piece · 200 pcs = <b>₹34,878</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ TALLY ============================ -->
+  <section class="sec wrap" id="tally" style="padding-top:0">
+    <div class="sec-h">
+      <span class="eyebrow">The connector</span>
+      <h2 style="margin-top:20px">Five minutes, three steps, and no Notepad.</h2>
+      <p>The part every owner is nervous about, made as small as we could make it.</p>
+    </div>
+    <div class="bento">
+      <div class="b w2"><div class="mono" style="color:var(--grn);font-size:26px">01</div><h3 style="margin-top:10px">Copy a folder</h3><p>Onto the computer that runs Tally. Nothing else is installed — it fetches what it needs itself.</p></div>
+      <div class="b w2"><div class="mono" style="color:var(--grn);font-size:26px">02</div><h3 style="margin-top:10px">Double-click, paste your key</h3><p>It checks the key against your account and prints your shop's name back at you, so you know it is the right one.</p></div>
+      <div class="b w2"><div class="mono" style="color:var(--grn);font-size:26px">03</div><h3 style="margin-top:10px">Pick your sales ledger</h3><p>It lists what is actually in your books and you choose by number. No spelling, no JSON, no exact-match errors.</p></div>
+      <div class="b w6" style="text-align:center;padding:30px">
+        <p style="font-size:16px;max-width:66ch;margin:0 auto">After that it starts by itself every time the computer is switched on, with no black window on screen, and keeps a log you can read. Your accountant can watch it run for a week before you ever let it write anything.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ PRICING ============================ -->
+  <section class="sec wrap" id="pricing" style="padding-top:0">
+    <div class="sec-h" style="text-align:center;margin:0 auto 46px">
+      <span class="eyebrow">Pricing</span>
+      <h2 style="margin-top:20px">One plan. Everything in it.</h2>
+    </div>
+    <div class="price">
+      <div class="mono" style="font-size:11px;letter-spacing:.18em;color:var(--faint);text-transform:uppercase">Per shop</div>
+      <div class="amt" style="margin-top:12px">₹999<span style="font-size:19px;color:var(--dim)"> / month</span></div>
+      <div style="color:var(--dim);font-size:15px;margin-top:8px">₹9,999 a year · GST extra</div>
+      <ul>
+        <li>Every feature — no tiers, no add-ons, no modules</li>
+        <li>Everyone in your firm, on as many phones as you like</li>
+        <li>All your companies in one plan</li>
+        <li>The Tally connector included</li>
+        <li>Your data exports to Excel whenever you want it</li>
+      </ul>
+      <a class="btn btn-p" style="width:100%;justify-content:center;margin-top:28px" href="https://wa.me/919910605207">Ask for a demo on WhatsApp</a>
+      <p style="font-size:12.5px;color:var(--faint);margin:16px 0 0">No card, no automatic checkout. Payment is arranged with us directly.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <div>
+      <div class="brand" style="font-size:17px;margin-bottom:9px"><span class="mark" style="width:24px;height:24px"></span>TrackRakho</div>
+      <div>Built in Faridabad for India's job-shops and traders.</div>
+    </div>
+    <div style="text-align:right">
+      <div>WhatsApp <span class="mono" style="color:var(--grn)">+91 99106 05207</span></div>
+      <div class="mono" style="font-size:11px;letter-spacing:.14em;margin-top:9px">TRACKRAKHO · EARLY ACCESS</div>
+    </div>
+  </div>
+</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ------------------------------------------------------------------
+     DEMO DATA. Every figure here is the app's own demo data - the
+     machining anchor (Gland Nut, 200 pcs, Rs 174.39, Rs 34,878) and the
+     scrap anchors (7,08,700 / 2,78,500 / 43.8 vs 42.0 = -1.8 MT).
+     If you change a number in the app, change it here too.
+  ------------------------------------------------------------------ */
+  var TRADES = {
+    mach: {
+      firm: "SHARMA PRECISION WORKS",
+      msg: "Hello ji, this is Krishna Pumps.\nBush 42 dia chahiye, 500 pcs.\nRate 61.20/pc. Rate bhejo by 25th.",
+      cust: "Krishna Pumps", part: "Bush Ø42", qty: "500", rate: "61.20", total: "30,600",
+      emoji: "⚙️", due: "25 Aug",
+      ch4: {
+        chapter: "Chapter 4 · The floor",
+        title: "Put it on a machine.",
+        body: "A won order is not done until it is cut. Send it to the floor and the app splits 500 pieces across your two VMCs and tells you when each finishes.",
+        todo: "Tap “Floor pe bhejo”"
+      }
+    },
+    scrap: {
+      firm: "MAHADEV METAL TRADERS",
+      msg: "Bhai ye Shakti Steels se.\nMS scrap chahiye, 12.5 MT.\nRate 30,600 per MT. Kal tak bhej do.",
+      cust: "Shakti Steels", part: "MS scrap", qty: "12.5", rate: "30,600", total: "3,82,500",
+      emoji: "🧲", due: "kal",
+      ch4: {
+        chapter: "Chapter 4 · The yard",
+        title: "Weigh what actually left.",
+        body: "The truck says 43.8 MT went out. The kanta says 42.0. That 1.8 MT gap is about ₹54,000 - and you find it this week, not in six months.",
+        todo: "Tap “Kanta check”"
+      }
+    }
+  };
+  var trade = "mach";
+
+  /* ------------------------------------------------------------------
+     SCREENS. Each step returns the app's inner HTML for that moment.
+     `hot` marks the element the visitor is invited to click; clicking it
+     only SCROLLS to the next task, so scroll position stays the single
+     source of truth and the two input modes can never disagree.
+  ------------------------------------------------------------------ */
+  function screens(t){
+    return [
+      /* 0 - enquiry arrives */
+      { cap: "The message as it actually arrives on WhatsApp.",
+        html:
+        '<div class="microlbl">Incoming enquiries</div>'+
+        '<div class="h-disp" style="font-size:18px;margin:3px 0 12px">1 new on WhatsApp</div>'+
+        '<div class="appcard">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+            '<b style="font-size:13.5px">+91 98290 98290</b><span class="pill">WhatsApp</span></div>'+
+          '<div class="wa">'+t.msg+'</div>'+
+          '<div class="hot" data-hot style="margin-top:11px"><span class="hot-tag">click me</span>'+
+          '<button class="appbtn">Log as quote</button></div>'+
+        '</div>' },
+
+      /* 1 - parsed */
+      { cap: "Read automatically. Nothing typed by hand.",
+        html:
+        '<div class="microlbl">New quote</div>'+
+        '<div class="h-disp" style="font-size:18px;margin:3px 0 4px">Read from the message</div>'+
+        '<div style="font-size:12px;color:#8DA093;margin-bottom:11px">Check it, change anything, save.</div>'+
+        '<div class="field"><i>Customer</i>'+t.cust+'</div>'+
+        '<div style="display:grid;grid-template-columns:1.3fr 1fr;gap:8px">'+
+          '<div class="field"><i>Item</i>'+t.part+'</div>'+
+          '<div class="field"><i>Quantity</i>'+t.qty+'</div></div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
+          '<div class="field"><i>Rate</i>₹'+t.rate+'</div>'+
+          '<div class="field"><i>Follow up</i>'+t.due+'</div></div>'+
+        '<div class="field" style="border-color:#CFE3D1;background:#F4FAF4"><i>Total</i>'+
+          '<b class="mono" style="font-size:17px;color:#155E18">₹'+t.total+'</b></div>'+
+        '<div class="hot" data-hot><span class="hot-tag">click me</span><button class="appbtn">Save quote</button></div>' },
+
+      /* 2 - pipeline */
+      { cap: "Every quote you have out, in one list.",
+        html:
+        '<div class="microlbl">Pipeline</div>'+
+        '<div class="h-disp" style="font-size:18px;margin:3px 0 11px">Pending · 4 quotes</div>'+
+        row(t.emoji, t.cust, t.part+" · "+t.qty, "₹"+t.total, "pend", "Follow up "+t.due, true)+
+        row("⚙️","Apex Hydraulics","Gland Nut · 200","₹34,878","pend","Follow up today")+
+        row("🔩","Bharat Traders","MS Hex Bar lot","₹1,28,000","late","Overdue by 1 day")+
+        '<div style="text-align:center;margin-top:12px"><span class="pill">and 1 more</span></div>' },
+
+      /* 3 - won */
+      { cap: "Won. Now it is an order, not a hope.",
+        html:
+        '<div class="microlbl">Pipeline</div>'+
+        '<div class="h-disp" style="font-size:18px;margin:3px 0 11px">'+t.cust+'</div>'+
+        '<div class="appcard" style="border-color:#CFE3D1;background:#F4FAF4">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center">'+
+            '<div><b style="font-size:15px">'+t.part+'</b>'+
+            '<div style="font-size:12.5px;color:#5C6B61;margin-top:2px">'+t.qty+' · ₹'+t.rate+' each</div></div>'+
+            '<div class="mono" style="font-size:18px;font-weight:600;color:#155E18">₹'+t.total+'</div></div>'+
+          '<div style="margin-top:9px"><span class="pill won">Won</span></div>'+
+        '</div>'+
+        '<div class="hot" data-hot style="margin-top:6px"><span class="hot-tag">click me</span>'+
+        '<button class="appbtn">'+(trade==="mach"?"Floor pe bhejo":"Gaadi bhejo")+'</button></div>'+
+        '<button class="appbtn ghost" style="margin-top:9px">Chase on WhatsApp</button>' },
+
+      /* 4 - trade-specific work screen */
+      { cap: trade==="mach" ? "Every estimate carries an 8% allowance for tool changes." : "Book stock against the weighbridge, every week.",
+        html: trade==="mach" ? (
+          '<div class="microlbl">Machine floor</div>'+
+          '<div class="h-disp" style="font-size:18px;margin:3px 0 11px">'+t.part+' · 500 pcs</div>'+
+          unit("VMC 850 #1","250 pcs",62,"≈ 6:40 pm")+
+          unit("VMC 850 #2","250 pcs",41,"≈ 8:10 pm")+
+          '<div class="appcard" style="background:#F4FAF4;border-color:#CFE3D1">'+
+            '<div style="font-size:12.5px;color:#3D4A41;line-height:1.55">Times include an <b>8% allowance</b> for tool changes and small breakdowns. The app never guesses your cycle time - you tell it, it does the maths.</div>'+
+          '</div>'
+        ) : (
+          '<div class="microlbl">Yard stock</div>'+
+          '<div class="h-disp" style="font-size:18px;margin:3px 0 11px">Kanta check · MS scrap</div>'+
+          '<div class="kpi" style="margin-bottom:10px">'+
+            '<div class="k"><span>Book stock</span><b>43.8 MT</b></div>'+
+            '<div class="k"><span>Weighed today</span><b>42.0 MT</b></div></div>'+
+          '<div class="appcard" style="border-color:#F3C7B7;background:#FFF6F2">'+
+            '<div class="microlbl" style="color:#A63A17">Ghata</div>'+
+            '<div class="mono" style="font-size:26px;font-weight:600;color:#A63A17;margin-top:3px">− 1.8 MT</div>'+
+            '<div style="font-size:13px;color:#3D4A41;margin-top:5px">≈ ₹54,000 at today’s rate. Found this week, not in six months.</div>'+
+          '</div>'
+        ) },
+
+      /* 5 - tally aging */
+      { cap: "Read out of TallyPrime. Aged by real due dates, never guessed.",
+        html:
+        '<div class="microlbl">Tally · bill-wise</div>'+
+        '<div class="h-disp" style="font-size:18px;margin:3px 0 3px">Paisa kahan atka hai</div>'+
+        '<div class="mono" style="font-size:27px;font-weight:600;color:#A63A17;margin-bottom:11px">₹7,08,700</div>'+
+        '<div class="aging">'+
+          '<i style="width:44%;background:#3FAE45"></i><i style="width:20%;background:#F0B84E"></i>'+
+          '<i style="width:14%;background:#E8833A"></i><i style="width:22%;background:#C4452A"></i></div>'+
+        '<div class="legend">'+
+          '<span><b style="background:#3FAE45"></b>Time hai</span><span><b style="background:#F0B84E"></b>1-30 din</span>'+
+          '<span><b style="background:#E8833A"></b>31-60</span><span><b style="background:#C4452A"></b>60+ din</span></div>'+
+        '<div style="margin-top:13px">'+
+          bill("Apex Hydraulics","APX/PO-112","₹1,60,000","72 din")+
+          bill("Om Forgings","OM-12","₹2,80,000","44 din")+
+        '</div>'+
+        '<div class="hot" data-hot style="margin-top:4px"><span class="hot-tag">click me</span>'+
+        '<button class="appbtn ghost">🙏 WhatsApp par narmi se yaad dilao</button></div>' },
+
+      /* 6 - the reminder */
+      { cap: "Polite by design. A hard reminder costs more than it collects.",
+        html:
+        '<div class="microlbl">Reminder</div>'+
+        '<div class="h-disp" style="font-size:18px;margin:3px 0 11px">Goes from your own number</div>'+
+        '<div class="wa" style="font-size:13px">Namaste sir, Apex Hydraulics ki taraf se bill APX/PO-112 ka ₹1,60,000 abhi baaki hai - 72 din ho gaye hain.\n\nAapki jaankari ke liye: MSMED ke hisaab se is par byaj banta hai, lekin hum ise claim karna bilkul nahi chahte.\n\nJab suvidha ho, payment kara dijiyega. Dhanyavaad.</div>'+
+        '<div class="appcard" style="margin-top:11px;background:#F4FAF4;border-color:#CFE3D1">'+
+          '<div style="font-size:12.5px;color:#3D4A41;line-height:1.55">The interest figure is calculated from the RBI bank rate on the actual bill dates - and every rounding in it points downward, so the number is never overstated.</div></div>' },
+
+      /* 7 - monday morning */
+      { cap: "This is the screen you open at nine in the morning.",
+        html:
+        '<div class="microlbl">At a glance</div>'+
+        '<div class="h-disp" style="font-size:18px;margin:3px 0 12px">'+(trade==="mach"?"Monday morning":"Subah ka hisaab")+'</div>'+
+        '<div class="kpi">'+
+          '<div class="k"><span>Pending quotes</span><b>'+(trade==="mach"?"₹2,93,100":"₹6,24,500")+'</b></div>'+
+          '<div class="k"><span>Won this month</span><b>'+(trade==="mach"?"₹99,378":"₹32,40,000")+'</b></div>'+
+          '<div class="k"><span>Stuck in Tally</span><b style="color:#A63A17">₹7,08,700</b></div>'+
+          '<div class="k"><span>'+(trade==="mach"?"On the floor":"Gaadi bahar")+'</span><b>'+(trade==="mach"?"1 job":"1 truck")+'</b></div>'+
+        '</div>'+
+        '<div class="appcard" style="margin-top:11px">'+
+          '<div class="microlbl">Aaj ke follow-up</div>'+
+          '<div style="display:flex;justify-content:space-between;margin-top:5px;font-size:13.5px">'+
+            '<b>Apex Hydraulics</b><span class="mono" style="color:#A63A17">overdue</span></div>'+
+          '<div style="display:flex;justify-content:space-between;margin-top:6px;font-size:13.5px">'+
+            '<b>'+t.cust+'</b><span class="mono" style="color:#8A5A00">'+t.due+'</span></div>'+
+        '</div>' }
+    ];
+  }
+  function row(em,nm,mt,amt,pill,pt,fresh){
+    return '<div class="qrow"'+(fresh?' style="border-color:#CFE3D1;background:#F8FCF8"':'')+'>'+
+      '<div class="tile">'+em+'</div><div style="min-width:0"><div class="nm">'+nm+'</div>'+
+      '<div class="mt">'+mt+'</div><span class="pill '+pill+'">'+pt+'</span></div>'+
+      '<div class="amt">'+amt+'</div></div>';
+  }
+  function unit(nm,pcs,pct,eta){
+    return '<div class="appcard"><div style="display:flex;justify-content:space-between;align-items:baseline">'+
+      '<b style="font-size:14px">'+nm+'</b><span class="mono" style="font-size:12.5px;color:#155E18">'+eta+'</span></div>'+
+      '<div style="font-size:12px;color:#5C6B61;margin-top:2px">'+pcs+' · '+pct+'% done</div>'+
+      '<div class="pbar"><i style="width:'+pct+'%"></i></div></div>';
+  }
+  function bill(nm,ref,amt,age){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid #DCE6DD">'+
+      '<div><b style="font-size:13.5px">'+nm+'</b><div class="mono" style="font-size:11px;color:#8DA093">'+ref+'</div></div>'+
+      '<div style="text-align:right"><div class="mono" style="font-size:14px;font-weight:600">'+amt+'</div>'+
+      '<div class="mono" style="font-size:10.5px;color:#A63A17">'+age+'</div></div></div>';
+  }
+
+  /* task copy - the narrative half. 8 steps, 4 chapters, as the
+     research recommends: outcome-led titles, not button names. */
+  function tasksFor(t){
+    return [
+      { ch:"Chapter 1 · The enquiry", h:"A customer messages you at 11pm.",
+        p:"He does not fill in your form. He sends a line of Hinglish with a quantity buried in it, like every enquiry you have ever received.",
+        todo:"Tap “Log as quote”" },
+      { ch:"Chapter 1 · The enquiry", h:"The app reads it for you.",
+        p:"Customer, item, quantity, rate, and the date he wants it by - pulled out and filled in. You check it rather than type it. Thirty seconds, not five minutes.",
+        todo:"Tap “Save quote”" },
+      { ch:"Chapter 2 · The pipeline", h:"Now it cannot be forgotten.",
+        p:"It sits with every other quote you have out, with a follow-up date attached. When that date passes the card turns red - which is the entire reason quotes stop going quiet.",
+        todo:"Scroll on" },
+      { ch:"Chapter 2 · The pipeline", h:"He says yes.",
+        p:"One tap moves it to won. The number leaves your pending column and joins this month's orders, and the follow-up stops nagging you.",
+        todo:"Tap the green button" },
+      { ch:t.ch4.chapter, h:t.ch4.title, p:t.ch4.body, todo:t.ch4.todo },
+      { ch:"Chapter 3 · The money", h:"Six weeks later, where is the payment?",
+        p:"The connector reads your TallyPrime and ages every open bill by its real due date. Not a guess from the ledger balance - the actual bills, with their numbers.",
+        todo:"Tap the reminder button" },
+      { ch:"Chapter 3 · The money", h:"Ask for it without damaging the relationship.",
+        p:"A ready message that shares the facts and then explicitly says you are not claiming interest. In this trade a hard reminder costs more than it collects.",
+        todo:"Scroll on" },
+      { ch:"Chapter 4 · Every morning", h:"And this is all it was for.",
+        p:"One screen, before the first chai: what is pending, what you won, what is stuck, and who needs chasing today. That is the whole product.",
+        todo:"You have seen it all" }
+    ];
+  }
+
+  /* ---------------- render ---------------- */
+  var tasksEl = document.getElementById("tasks");
+  var screenEl = document.getElementById("screen");
+  var progEl = document.getElementById("prog");
+  var capEl = document.getElementById("fcap");
+  var titleEl = document.getElementById("ftitle");
+  var SC = [], TK = [], cur = -1, maxSeen = -1, doneSet = {};
+
+  function build(){
+    var t = TRADES[trade];
+    SC = screens(t); TK = tasksFor(t);
+    titleEl.textContent = "TRACKRAKHO — " + t.firm;
+    tasksEl.innerHTML = TK.map(function(k,i){
+      return '<div class="task" data-i="'+i+'">'+
+        '<div class="chapter">'+k.ch+'</div>'+
+        '<h3>'+k.h+'</h3><p>'+k.p+'</p>'+
+        '<div class="do"><span class="n">'+(i+1)+'</span><span class="txt">'+k.todo+'</span></div></div>';
+    }).join("");
+    progEl.innerHTML = SC.map(function(){ return "<i></i>"; }).join("");
+    cur = -1; maxSeen = -1; doneSet = {};
+    show(0);
+    onScroll();
+  }
+
+  function show(i){
+    if (i === cur) return;
+    cur = i;
+    if (i > maxSeen) maxSeen = i;
+    screenEl.innerHTML = SC[i].html;
+    capEl.textContent = SC[i].cap;
+    /* the invited click just scrolls to the next task - scroll stays
+       the single source of truth for what is on screen */
+    var hot = screenEl.querySelector("[data-hot]");
+    if (hot) hot.addEventListener("click", function(){
+      doneSet[i] = true;
+      var next = tasksEl.querySelector('.task[data-i="'+(i+1)+'"]');
+      if (next) next.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+      paint();
+    });
+    paint();
+  }
+
+  function paint(){
+    [].forEach.call(tasksEl.children, function(el, i){
+      el.classList.toggle("on", i === cur);
+      /* Green means YOU did it. A step that offers a hotspot only ticks when
+         it is actually clicked - otherwise scrolling to the bottom would turn
+         the whole list green and the reward would mean nothing. Steps with
+         nothing to click ("scroll on") tick once you have passed them. */
+      var interactive = SC[i] && SC[i].html.indexOf("data-hot") >= 0;
+      el.classList.toggle("done", !!doneSet[i] || (!interactive && i <= maxSeen));
+    });
+    [].forEach.call(progEl.children, function(el, i){ el.classList.toggle("on", i <= cur); });
+  }
+
+  /* activation = the task nearest the middle of the viewport.
+     Deterministic on purpose - IntersectionObserver batching made this
+     unreliable on the earlier sites, so it is not coming back. */
+  var ticking = false;
+  function onScroll(){
+    if (!tasksEl.children.length) return;
+    var mid = window.innerHeight / 2, best = 0, bestD = Infinity;
+    [].forEach.call(tasksEl.children, function(el, i){
+      var r = el.getBoundingClientRect();
+      var d = Math.abs(r.top + r.height / 2 - mid);
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    show(best);
+    ticking = false;
+  }
+  window.addEventListener("scroll", function(){
+    if (!ticking) { ticking = true; window.requestAnimationFrame(onScroll); }
+  }, { passive: true });
+  window.addEventListener("resize", onScroll, { passive: true });
+
+  /* trade switch */
+  [].forEach.call(document.querySelectorAll(".tradepick button"), function(b){
+    b.addEventListener("click", function(){
+      document.querySelectorAll(".tradepick button").forEach(function(x){ x.classList.remove("on"); });
+      b.classList.add("on");
+      trade = b.getAttribute("data-trade");
+      build();
+      document.getElementById("demo").scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    });
+  });
+
+  build();
+})();
+</script>
+</body>
+</html>
