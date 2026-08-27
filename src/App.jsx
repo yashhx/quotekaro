@@ -1183,11 +1183,16 @@ function Auth({ onAuthed, authError }) {
     const e164 = () => "+91" + phone.replace(/\D/g, "");
     /* Supabase speaks English error strings; say something a shop owner can act on */
     const say = (e) => {
-      const m = String((e && e.message) || "").toLowerCase();
+      const raw = String((e && e.message) || "").trim();
+      const m = raw.toLowerCase();
       if (/rate|too many|60 seconds|security purposes/.test(m)) return tx("Too many attempts. Wait a minute and try again.", "Bahut baar try kiya. Ek minute ruk kar dobara karein.", "\u092C\u0939\u0941\u0924 \u092C\u093E\u0930 \u0915\u094B\u0936\u093F\u0936 \u0939\u0941\u0908\u0964 \u090F\u0915 \u092E\u093F\u0928\u091F \u092C\u093E\u0926 \u0926\u094B\u092C\u093E\u0930\u093E \u0915\u0930\u0947\u0902\u0964");
       if (/expired|invalid|incorrect|token/.test(m)) return tx("That code is wrong or has expired. Ask for a new one.", "Code galat hai ya purana ho gaya. Naya code mangwaein.", "\u092F\u0939 \u0915\u094B\u0921 \u0917\u0932\u0924 \u092F\u093E \u092A\u0941\u0930\u093E\u0928\u093E \u0939\u0948\u0964 \u0928\u092F\u093E \u0915\u094B\u0921 \u092E\u0902\u0917\u0935\u093E\u090F\u0902\u0964");
-      if (/whatsapp|send/.test(m)) return tx("Could not send the code on WhatsApp. Use Google instead, or check the number.", "WhatsApp par code nahi bhej paye. Google se login karein, ya number check karein.", "WhatsApp \u092A\u0930 \u0915\u094B\u0921 \u0928\u0939\u0940\u0902 \u092D\u0947\u091C \u092A\u093E\u090F\u0964 Google \u0938\u0947 \u0932\u0949\u0917\u093F\u0928 \u0915\u0930\u0947\u0902\u0964");
-      return (e && e.message) || tx("Something went wrong. Try again.", "Kuch gadbad ho gayi. Dobara try karein.", "\u0915\u0941\u091B \u0917\u0921\u092C\u0921 \u0939\u0941\u0908\u0964 \u0926\u094B\u092C\u093E\u0930\u093E \u0915\u0930\u0947\u0902\u0964");
+      if (/whatsapp|send|hook|template|delivery/.test(m)) return tx("Could not send the code on WhatsApp. Use Google instead, or check the number.", "WhatsApp par code nahi bhej paye. Google se login karein, ya number check karein.", "WhatsApp \u092A\u0930 \u0915\u094B\u0921 \u0928\u0939\u0940\u0902 \u092D\u0947\u091C \u092A\u093E\u090F\u0964 Google \u0938\u0947 \u0932\u0949\u0917\u093F\u0928 \u0915\u0930\u0947\u0902\u0964");
+      /* When the SMS hook fails Supabase can surface a bare "{}" or a raw JSON
+         body. A shop owner can do nothing with that, so anything that is not a
+         readable sentence becomes plain words instead. */
+      const readable = raw.length >= 8 && /\s/.test(raw) && !/^[[{<]/.test(raw);
+      return readable ? raw : tx("Could not send the code right now. Please use Google, or try again in a minute.", "Abhi code nahi bhej paye. Google se login karein, ya thodi der baad try karein.", "\u0905\u092D\u0940 \u0915\u094B\u0921 \u0928\u0939\u0940\u0902 \u092D\u0947\u091C \u092A\u093E\u090F\u0964 Google \u0938\u0947 \u0932\u0949\u0917\u093F\u0928 \u0915\u0930\u0947\u0902, \u092F\u093E \u0925\u094B\u0921\u093C\u0940 \u0926\u0947\u0930 \u092C\u093E\u0926 \u0915\u094B\u0936\u093F\u0936 \u0915\u0930\u0947\u0902\u0964");
     };
     const sendCode = async () => {
       if (phone.replace(/\D/g, "").length !== 10) {
