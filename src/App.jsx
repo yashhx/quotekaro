@@ -1187,7 +1187,7 @@ function Auth({ onAuthed, authError }) {
       const m = raw.toLowerCase();
       if (/rate|too many|60 seconds|security purposes/.test(m)) return tx("Too many attempts. Wait a minute and try again.", "Bahut baar try kiya. Ek minute ruk kar dobara karein.", "\u092C\u0939\u0941\u0924 \u092C\u093E\u0930 \u0915\u094B\u0936\u093F\u0936 \u0939\u0941\u0908\u0964 \u090F\u0915 \u092E\u093F\u0928\u091F \u092C\u093E\u0926 \u0926\u094B\u092C\u093E\u0930\u093E \u0915\u0930\u0947\u0902\u0964");
       if (/expired|invalid|incorrect|token/.test(m)) return tx("That code is wrong or has expired. Ask for a new one.", "Code galat hai ya purana ho gaya. Naya code mangwaein.", "\u092F\u0939 \u0915\u094B\u0921 \u0917\u0932\u0924 \u092F\u093E \u092A\u0941\u0930\u093E\u0928\u093E \u0939\u0948\u0964 \u0928\u092F\u093E \u0915\u094B\u0921 \u092E\u0902\u0917\u0935\u093E\u090F\u0902\u0964");
-      if (/whatsapp|send|hook|template|delivery/.test(m)) return tx("Could not send the code on WhatsApp. Use Google instead, or check the number.", "WhatsApp par code nahi bhej paye. Google se login karein, ya number check karein.", "WhatsApp \u092A\u0930 \u0915\u094B\u0921 \u0928\u0939\u0940\u0902 \u092D\u0947\u091C \u092A\u093E\u090F\u0964 Google \u0938\u0947 \u0932\u0949\u0917\u093F\u0928 \u0915\u0930\u0947\u0902\u0964");
+      if (/whatsapp|send|hook|template|delivery|sms/.test(m)) return tx("Could not send the code. Use Google instead, or check the number.", "Code nahi bhej paye. Google se login karein, ya number check karein.", "\u0915\u094B\u0921 \u0928\u0939\u0940\u0902 \u092D\u0947\u091C \u092A\u093E\u090F\u0964 Google \u0938\u0947 \u0932\u0949\u0917\u093F\u0928 \u0915\u0930\u0947\u0902\u0964");
       /* When the SMS hook fails Supabase can surface a bare "{}" or a raw JSON
          body. A shop owner can do nothing with that, so anything that is not a
          readable sentence becomes plain words instead. */
@@ -1234,7 +1234,10 @@ function Auth({ onAuthed, authError }) {
           {stage === "enter" ? (
             <div className="anim-in">
               <label className="lbl">{tx("Your mobile number", "Aapka mobile number", "\u0906\u092A\u0915\u093E \u092E\u094B\u092C\u093E\u0907\u0932 \u0928\u0902\u092C\u0930")}</label>
-              <span className="hint">{tx("We send a code on WhatsApp. Use the number WhatsApp runs on.", "Code WhatsApp par aayega. Wahi number daalein jis par WhatsApp chalta hai.", "\u0915\u094B\u0921 WhatsApp \u092A\u0930 \u0906\u090F\u0917\u093E\u0964 \u0935\u0939\u0940 \u0928\u0902\u092C\u0930 \u0921\u093E\u0932\u0947\u0902 \u091C\u093F\u0938 \u092A\u0930 WhatsApp \u091A\u0932\u0924\u093E \u0939\u0948\u0964")}</span>
+              {/* deliberately does NOT name the channel - the backend sends by
+                  SMS or WhatsApp depending on OTP_CHANNEL, and the copy must
+                  stay true whichever one carries it */}
+              <span className="hint">{tx("We will send a 6-digit code to this number.", "Is number par 6 digit ka code aayega.", "\u0907\u0938 \u0928\u0902\u092C\u0930 \u092A\u0930 6 \u0905\u0902\u0915\u094B\u0902 \u0915\u093E \u0915\u094B\u0921 \u0906\u090F\u0917\u093E\u0964")}</span>
               <div className="phone-field">
                 <span className="cc">+91</span>
                 <input type="tel" inputMode="numeric" autoComplete="tel" placeholder="98xxxxxxxx" value={phone}
@@ -1243,7 +1246,7 @@ function Auth({ onAuthed, authError }) {
               </div>
               {err && <div style={{ color: "var(--red)", fontSize: 13, marginTop: 10 }}>{err}</div>}
               <button className="btn btn-grn press" style={{ width: "100%", marginTop: 18 }} onClick={sendCode} disabled={busy}>
-                <I.phone2 /> {busy ? tx("Sending...", "Bhej rahe hain...", "\u092D\u0947\u091C \u0930\u0939\u0947 \u0939\u0948\u0902...") : tx("Send code on WhatsApp", "WhatsApp par code bhejein", "WhatsApp \u092A\u0930 \u0915\u094B\u0921 \u092D\u0947\u091C\u0947\u0902")}
+                <I.phone2 /> {busy ? tx("Sending...", "Bhej rahe hain...", "\u092D\u0947\u091C \u0930\u0939\u0947 \u0939\u0948\u0902...") : tx("Send code", "Code bhejein", "\u0915\u094B\u0921 \u092D\u0947\u091C\u0947\u0902")}
               </button>
 
               <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 14px" }}>
@@ -1261,7 +1264,7 @@ function Auth({ onAuthed, authError }) {
             <div className="anim-in">
               <label className="lbl">{tx("Enter the code", "Code daalein", "\u0915\u094B\u0921 \u0921\u093E\u0932\u0947\u0902")}</label>
               <span className="hint">
-                {tx("Sent on WhatsApp to", "WhatsApp par bheja hai", "WhatsApp \u092A\u0930 \u092D\u0947\u091C\u093E \u0939\u0948")} +91 {phone}.{" "}
+                {tx("Sent to", "Bheja hai", "\u092D\u0947\u091C\u093E \u0939\u0948")} +91 {phone}.{" "}
                 <button onClick={() => { setStage("enter"); setOtp(blankOtp()); setErr(""); }} style={{ border: "none", background: "none", color: "var(--grn-d)", fontWeight: 600, cursor: "pointer", fontSize: 12.5 }}>{tx("Change", "Badlein", "\u092C\u0926\u0932\u0947\u0902")}</button>
               </span>
               <div className="otp-row">
@@ -4856,7 +4859,7 @@ function LoginMethods({ account, ping }) {
                 onChange={(e) => setPh(e.target.value.replace(/\D/g, "").slice(0, 10))} />
             </div>
             <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 7 }}>
-              {tx("The code comes on WhatsApp.", "Code WhatsApp par aayega.", "कोड WhatsApp पर आएगा।")}
+              {tx("A 6-digit code will come to that number.", "Us number par 6 digit ka code aayega.", "उस नंबर पर 6 अंकों का कोड आएगा।")}
             </div>
             <button className="btn btn-grn btn-sm press" style={{ width: "100%", marginTop: 11 }} onClick={sendCode} disabled={busy}>
               {busy ? tx("Sending...", "Bhej rahe hain...", "भेज रहे हैं...") : tx("Send code", "Code bhejein", "कोड भेजें")}
