@@ -426,34 +426,48 @@ footer{border-top:1px solid var(--line);padding:44px 0;color:var(--faint);font-s
   var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* ------------------------------------------------------------------
-     DEMO DATA. Every figure here is the app's own demo data - the
-     machining anchor (Gland Nut, 200 pcs, Rs 174.39, Rs 34,878) and the
-     scrap anchors (7,08,700 / 2,78,500 / 43.8 vs 42.0 = -1.8 MT).
+     DEMO DATA - taken from the APP'S OWN sample data (src/App.jsx), not
+     invented. Checked 2026-09-17 when writing the agency brief:
+       machining samples: Krishna Pumps 500 x 61.20 = 30,600 (follow-up in
+         2 days), Verma Enterprises 76,500 (today), Bharat Traders 1,28,000
+         (overdue 1 day); pending 2,93,100 / won 99,378
+       scrap samples: Shakti Traders MS turning boring 10 MT 2,70,000,
+         Om Metals 40,20,000, JMD Enterprises 12,20,000; pending 62,96,000 /
+         won 32,40,000; yard 43.8 book vs 42.0 weighed = -1.8 MT (the app
+         shows TONNES only - never add a rupee value here)
+       TALLY_SAMPLE: 7,08,700 owed; bills APX/PO-112 Apex Alloys 2,49,500
+         8 days late, OM/2214 Om Metals 42,000 71 days late; aging split
+         44 / 35.2 / 14.8 / 5.9 %; MSMED byaj on OM/2214 = Rs 1,341 by the
+         app's own msmedByaj()
+     The MSMED reminder is MACHINING ONLY - traders are excluded from that
+     law, so scrap shows the dispatch planner in that slot instead.
      If you change a number in the app, change it here too.
   ------------------------------------------------------------------ */
   var TRADES = {
     mach: {
       firm: "SHARMA PRECISION WORKS",
-      msg: "Hello ji, this is Krishna Pumps.\nBush 42 dia chahiye, 500 pcs.\nRate 61.20/pc. Rate bhejo by 25th.",
-      cust: "Krishna Pumps", part: "Bush Ø42", qty: "500", rate: "61.20", total: "30,600",
-      emoji: "⚙️", due: "25 Aug",
+      msg: "Hello ji, this is Krishna Pumps.\nBush 42 dia chahiye, 500 pcs.\nRate 61.20/pc. Rate 2 din mein bhejo.",
+      cust: "Krishna Pumps", part: "Bush Ø42", qty: "500", rate: "61.20", per: "each", total: "30,600",
+      emoji: "⚙️", due: "in 2 days",
+      pending: "₹2,93,100", won: "₹99,378",
       ch4: {
         chapter: "Chapter 4 · The floor",
         title: "Put it on a machine.",
         body: "A won order is not done until it is cut. Send it to the floor and the app splits 500 pieces across your two VMCs and tells you when each finishes.",
-        todo: "Tap “Floor pe bhejo”"
+        todo: "Scroll on"
       }
     },
     scrap: {
       firm: "MAHADEV METAL TRADERS",
-      msg: "Bhai ye Shakti Steels se.\nMS scrap chahiye, 12.5 MT.\nRate 30,600 per MT. Kal tak bhej do.",
-      cust: "Shakti Steels", part: "MS scrap", qty: "12.5", rate: "30,600", total: "3,82,500",
-      emoji: "🧲", due: "kal",
+      msg: "Namaste, Shakti Traders se.\nMS turning boring chahiye, 10 MT.\nRate 27,000 per MT. Kal tak confirm karo.",
+      cust: "Shakti Traders", part: "MS turning boring", qty: "10 MT", rate: "27,000", per: "per MT", total: "2,70,000",
+      emoji: "♻️", due: "kal",
+      pending: "₹62,96,000", won: "₹32,40,000",
       ch4: {
         chapter: "Chapter 4 · The yard",
-        title: "Weigh what actually left.",
-        body: "The truck says 43.8 MT went out. The kanta says 42.0. That 1.8 MT gap is about ₹54,000 - and you find it this week, not in six months.",
-        todo: "Tap “Kanta check”"
+        title: "Weigh what is really there.",
+        body: "Your books say the yard should hold 43.8 MT of MS scrap. The kanta says 42.0. That 1.8 MT gap shows up this week - not six months later, when nobody can say where it went.",
+        todo: "Scroll on"
       }
     }
   };
@@ -501,11 +515,16 @@ footer{border-top:1px solid var(--line);padding:44px 0;color:var(--faint);font-s
       { cap: "Every quote you have out, in one list.",
         html:
         '<div class="microlbl">Pipeline</div>'+
-        '<div class="h-disp" style="font-size:18px;margin:3px 0 11px">Pending · 4 quotes</div>'+
+        '<div class="h-disp" style="font-size:18px;margin:3px 0 11px">Pending quotes</div>'+
         row(t.emoji, t.cust, t.part+" · "+t.qty, "₹"+t.total, "pend", "Follow up "+t.due, true)+
-        row("⚙️","Apex Hydraulics","Gland Nut · 200","₹34,878","pend","Follow up today")+
-        row("🔩","Bharat Traders","MS Hex Bar lot","₹1,28,000","late","Overdue by 1 day")+
-        '<div style="text-align:center;margin-top:12px"><span class="pill">and 1 more</span></div>' },
+        (trade==="mach" ? (
+          row("⚙️","Verma Enterprises","SS 304 fittings","₹76,500","pend","Follow up today")+
+          row("🔩","Bharat Traders","MS Hex Bar lot","₹1,28,000","late","Overdue by 1 day")
+        ) : (
+          row("♻️","Om Metals","Aluminium wire scrap · 30 MT","₹40,20,000","pend","Pending")+
+          row("♻️","JMD Enterprises","Copper cable scrap · 2 MT","₹12,20,000","pend","Pending")
+        ))+
+        '<div style="text-align:center;margin-top:12px"><span class="pill">Total pending '+t.pending+'</span></div>' },
 
       /* 3 - won */
       { cap: "Won. Now it is an order, not a hope.",
@@ -515,18 +534,28 @@ footer{border-top:1px solid var(--line);padding:44px 0;color:var(--faint);font-s
         '<div class="appcard" style="border-color:#CFE3D1;background:#F4FAF4">'+
           '<div style="display:flex;justify-content:space-between;align-items:center">'+
             '<div><b style="font-size:15px">'+t.part+'</b>'+
-            '<div style="font-size:12.5px;color:#5C6B61;margin-top:2px">'+t.qty+' · ₹'+t.rate+' each</div></div>'+
+            '<div style="font-size:12.5px;color:#5C6B61;margin-top:2px">'+t.qty+' · ₹'+t.rate+' '+t.per+'</div></div>'+
             '<div class="mono" style="font-size:18px;font-weight:600;color:#155E18">₹'+t.total+'</div></div>'+
           '<div style="margin-top:9px"><span class="pill won">Won</span></div>'+
         '</div>'+
-        '<div class="hot" data-hot style="margin-top:6px"><span class="hot-tag">click me</span>'+
-        '<button class="appbtn">'+(trade==="mach"?"Floor pe bhejo":"Gaadi bhejo")+'</button></div>'+
-        '<button class="appbtn ghost" style="margin-top:9px">Chase on WhatsApp</button>' },
+        /* machining pipeline cards really carry "Floor pe bhejo"; scrap has no
+           such card button - loads are logged on the separate Truck board with
+           "+ Truck bhejo", so it is drawn as its own card, not on the quote */
+        (trade==="mach" ? (
+          '<div class="hot" data-hot style="margin-top:6px"><span class="hot-tag">click me</span>'+
+          '<button class="appbtn">Floor pe bhejo</button></div>'+
+          '<button class="appbtn ghost" style="margin-top:9px">Chase on WhatsApp</button>'
+        ) : (
+          '<div class="appcard" style="margin-top:4px"><div class="microlbl">Truck board</div>'+
+          '<div style="font-size:12.5px;color:#5C6B61;margin:3px 0 9px">Load it, weigh it at the kanta, send it.</div>'+
+          '<div class="hot" data-hot><span class="hot-tag">click me</span>'+
+          '<button class="appbtn">+ Truck bhejo</button></div></div>'
+        )) },
 
       /* 4 - trade-specific work screen */
       { cap: trade==="mach" ? "Every estimate carries an 8% allowance for tool changes." : "Book stock against the weighbridge, every week.",
         html: trade==="mach" ? (
-          '<div class="microlbl">Machine floor</div>'+
+          '<div class="microlbl">Machine floor · later that day</div>'+
           '<div class="h-disp" style="font-size:18px;margin:3px 0 11px">'+t.part+' · 500 pcs</div>'+
           unit("VMC 850 #1","250 pcs",62,"≈ 6:40 pm")+
           unit("VMC 850 #2","250 pcs",41,"≈ 8:10 pm")+
@@ -542,7 +571,7 @@ footer{border-top:1px solid var(--line);padding:44px 0;color:var(--faint);font-s
           '<div class="appcard" style="border-color:#F3C7B7;background:#FFF6F2">'+
             '<div class="microlbl" style="color:#A63A17">Ghata</div>'+
             '<div class="mono" style="font-size:26px;font-weight:600;color:#A63A17;margin-top:3px">− 1.8 MT</div>'+
-            '<div style="font-size:13px;color:#3D4A41;margin-top:5px">≈ ₹54,000 at today’s rate. Found this week, not in six months.</div>'+
+            '<div style="font-size:13px;color:#3D4A41;margin-top:5px">Recorded against MS scrap. Found this week, not in six months.</div>'+
           '</div>'
         ) },
 
@@ -553,26 +582,39 @@ footer{border-top:1px solid var(--line);padding:44px 0;color:var(--faint);font-s
         '<div class="h-disp" style="font-size:18px;margin:3px 0 3px">Paisa kahan atka hai</div>'+
         '<div class="mono" style="font-size:27px;font-weight:600;color:#A63A17;margin-bottom:11px">₹7,08,700</div>'+
         '<div class="aging">'+
-          '<i style="width:44%;background:#3FAE45"></i><i style="width:20%;background:#F0B84E"></i>'+
-          '<i style="width:14%;background:#E8833A"></i><i style="width:22%;background:#C4452A"></i></div>'+
+          '<i style="width:44%;background:#3FAE45"></i><i style="width:35.2%;background:#F0B84E"></i>'+
+          '<i style="width:14.8%;background:#E8833A"></i><i style="width:6%;background:#C4452A"></i></div>'+
         '<div class="legend">'+
           '<span><b style="background:#3FAE45"></b>Time hai</span><span><b style="background:#F0B84E"></b>1-30 din</span>'+
           '<span><b style="background:#E8833A"></b>31-60</span><span><b style="background:#C4452A"></b>60+ din</span></div>'+
         '<div style="margin-top:13px">'+
-          bill("Apex Hydraulics","APX/PO-112","₹1,60,000","72 din")+
-          bill("Om Forgings","OM-12","₹2,80,000","44 din")+
+          bill("Apex Alloys","APX/PO-112","₹2,49,500","8 din late")+
+          bill("Om Metals","OM/2214","₹42,000","71 din late")+
         '</div>'+
         '<div class="hot" data-hot style="margin-top:4px"><span class="hot-tag">click me</span>'+
-        '<button class="appbtn ghost">🙏 WhatsApp par narmi se yaad dilao</button></div>' },
+        '<button class="appbtn ghost">'+(trade==="mach" ? "🙏 WhatsApp par narmi se yaad dilao" : "🚚 Agla dispatch kise bhejein?")+'</button></div>' },
 
-      /* 6 - the reminder */
+      /* 6 - machining: the MSMED polite reminder (wording follows the app's
+         msmedChaseText). scrap: the dispatch planner - traders are excluded
+         from the MSMED law, so the reminder must never appear for them. */
+      trade==="mach" ? (
       { cap: "Polite by design. A hard reminder costs more than it collects.",
         html:
-        '<div class="microlbl">Reminder</div>'+
+        '<div class="microlbl">Reminder · bill OM/2214</div>'+
         '<div class="h-disp" style="font-size:18px;margin:3px 0 11px">Goes from your own number</div>'+
-        '<div class="wa" style="font-size:13px">Namaste sir, Apex Hydraulics ki taraf se bill APX/PO-112 ka ₹1,60,000 abhi baaki hai - 72 din ho gaye hain.\n\nAapki jaankari ke liye: MSMED ke hisaab se is par byaj banta hai, lekin hum ise claim karna bilkul nahi chahte.\n\nJab suvidha ho, payment kara dijiyega. Dhanyavaad.</div>'+
+        '<div class="wa" style="font-size:12.5px">Namaste, this is Sharma Precision Works.\nA humble reminder: our bill *OM/2214* of ₹42,000 is now 71 days past due.\nWe are a small Udyam-registered unit, and timely payments keep our work running.\nSirf aapki jaankari ke liye: MSMED niyam ke anusar 45 din ke baad byaj (ab tak lagbhag ₹1,341) apne aap judta hai. Hum ise claim karna bilkul nahi chahte - bas vinamra nivedan hai ki payment jaldi karwa dein.\nThank you for your support. 🙏</div>'+
         '<div class="appcard" style="margin-top:11px;background:#F4FAF4;border-color:#CFE3D1">'+
-          '<div style="font-size:12.5px;color:#3D4A41;line-height:1.55">The interest figure is calculated from the RBI bank rate on the actual bill dates - and every rounding in it points downward, so the number is never overstated.</div></div>' },
+          '<div style="font-size:12.5px;color:#3D4A41;line-height:1.55">For Udyam-registered manufacturers. The interest is worked out from the RBI bank rate on the real bill dates, and every rounding points downward - it is never overstated.</div></div>' }
+      ) : (
+      { cap: "Every suggestion shows its reasons. Nothing is a black box.",
+        html:
+        '<div class="microlbl">Tally · planner</div>'+
+        '<div class="h-disp" style="font-size:18px;margin:3px 0 11px">Agla dispatch kise bhejein?</div>'+
+        plan("1","Om Metals","Aluminium scrap · 26.6 MT baki",["Deadline nikal gayi","₹42,000 bill 71 din late"])+
+        plan("2","Apex Alloys","MS scrap · 17.5 MT baki",["4 din mein deadline","₹2,49,500 bill 8 din late"])+
+        plan("3","Bharat Steels","CI scrap · 6.8 MT baki",["10 din mein deadline","₹90,000 bill 33 din late"])+
+        '<div style="font-size:11.5px;color:#8DA093;margin-top:8px;text-align:center">Ranked on deadline, days since last dispatch, quantity left and late bills.</div>' }
+      ),
 
       /* 7 - monday morning */
       { cap: "This is the screen you open at nine in the morning.",
@@ -580,17 +622,22 @@ footer{border-top:1px solid var(--line);padding:44px 0;color:var(--faint);font-s
         '<div class="microlbl">At a glance</div>'+
         '<div class="h-disp" style="font-size:18px;margin:3px 0 12px">'+(trade==="mach"?"Monday morning":"Subah ka hisaab")+'</div>'+
         '<div class="kpi">'+
-          '<div class="k"><span>Pending quotes</span><b>'+(trade==="mach"?"₹2,93,100":"₹6,24,500")+'</b></div>'+
-          '<div class="k"><span>Won this month</span><b>'+(trade==="mach"?"₹99,378":"₹32,40,000")+'</b></div>'+
+          '<div class="k"><span>Pending quotes</span><b>'+t.pending+'</b></div>'+
+          '<div class="k"><span>Won this month</span><b>'+t.won+'</b></div>'+
           '<div class="k"><span>Stuck in Tally</span><b style="color:#A63A17">₹7,08,700</b></div>'+
           '<div class="k"><span>'+(trade==="mach"?"On the floor":"Gaadi bahar")+'</span><b>'+(trade==="mach"?"1 job":"1 truck")+'</b></div>'+
         '</div>'+
         '<div class="appcard" style="margin-top:11px">'+
           '<div class="microlbl">Aaj ke follow-up</div>'+
-          '<div style="display:flex;justify-content:space-between;margin-top:5px;font-size:13.5px">'+
-            '<b>Apex Hydraulics</b><span class="mono" style="color:#A63A17">overdue</span></div>'+
-          '<div style="display:flex;justify-content:space-between;margin-top:6px;font-size:13.5px">'+
-            '<b>'+t.cust+'</b><span class="mono" style="color:#8A5A00">'+t.due+'</span></div>'+
+          (trade==="mach" ? (
+            '<div style="display:flex;justify-content:space-between;margin-top:5px;font-size:13.5px">'+
+              '<b>Bharat Traders</b><span class="mono" style="color:#A63A17">overdue</span></div>'+
+            '<div style="display:flex;justify-content:space-between;margin-top:6px;font-size:13.5px">'+
+              '<b>Verma Enterprises</b><span class="mono" style="color:#8A5A00">today</span></div>'
+          ) : (
+            '<div style="display:flex;justify-content:space-between;margin-top:5px;font-size:13.5px">'+
+              '<b>'+t.cust+'</b><span class="mono" style="color:#8A5A00">'+t.due+'</span></div>'
+          ))+
         '</div>' }
     ];
   }
@@ -605,6 +652,14 @@ footer{border-top:1px solid var(--line);padding:44px 0;color:var(--faint);font-s
       '<b style="font-size:14px">'+nm+'</b><span class="mono" style="font-size:12.5px;color:#155E18">'+eta+'</span></div>'+
       '<div style="font-size:12px;color:#5C6B61;margin-top:2px">'+pcs+' · '+pct+'% done</div>'+
       '<div class="pbar"><i style="width:'+pct+'%"></i></div></div>';
+  }
+  function plan(rank,nm,line,reasons){
+    return '<div class="appcard" style="margin-bottom:8px"><div style="display:flex;gap:10px;align-items:flex-start">'+
+      '<span class="mono" style="width:22px;height:22px;border-radius:50%;background:#EDF6EE;color:#155E18;display:grid;place-items:center;font-size:11px;font-weight:600;flex:none">'+rank+'</span>'+
+      '<div style="min-width:0"><b style="font-size:14px">'+nm+'</b>'+
+      '<div style="font-size:12px;color:#5C6B61;margin-top:1px">'+line+'</div>'+
+      '<div style="margin-top:5px">'+reasons.map(function(r){ return '<span class="pill pend" style="margin:0 4px 3px 0">'+r+'</span>'; }).join("")+'</div>'+
+      '</div></div></div>';
   }
   function bill(nm,ref,amt,age){
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid #DCE6DD">'+
@@ -630,12 +685,18 @@ footer{border-top:1px solid var(--line);padding:44px 0;color:var(--faint);font-s
         p:"One tap moves it to won. The number leaves your pending column and joins this month's orders, and the follow-up stops nagging you.",
         todo:"Tap the green button" },
       { ch:t.ch4.chapter, h:t.ch4.title, p:t.ch4.body, todo:t.ch4.todo },
-      { ch:"Chapter 3 · The money", h:"Six weeks later, where is the payment?",
+      { ch:"Chapter 3 · The money", h:"Weeks later, where is the payment?",
         p:"The connector reads your TallyPrime and ages every open bill by its real due date. Not a guess from the ledger balance - the actual bills, with their numbers.",
-        todo:"Tap the reminder button" },
+        todo: trade==="mach" ? "Tap the reminder button" : "Tap the planner button" },
+      trade==="mach" ? (
       { ch:"Chapter 3 · The money", h:"Ask for it without damaging the relationship.",
-        p:"A ready message that shares the facts and then explicitly says you are not claiming interest. In this trade a hard reminder costs more than it collects.",
-        todo:"Scroll on" },
+        p:"If you are a Udyam-registered manufacturer, the law entitles you to interest on bills past 45 days. The message shares that as information, then says plainly that you are not claiming it. In this trade a hard reminder costs more than it collects.",
+        todo:"Scroll on" }
+      ) : (
+      { ch:"Chapter 3 · The money", h:"Decide who gets the next truck.",
+        p:"The planner reads your open orders and Tally together: whose deadline has passed, who has not had a dispatch in days, how much is left to send, and whose bills are already late. Every suggestion comes with its reasons.",
+        todo:"Scroll on" }
+      ),
       { ch:"Chapter 4 · Every morning", h:"And this is all it was for.",
         p:"One screen, before the first chai: what is pending, what you won, what is stuck, and who needs chasing today. That is the whole product.",
         todo:"You have seen it all" }

@@ -1,0 +1,898 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>TrackRakho — Product &amp; Feature Brief</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+/* Agency brief. Source of truth for the PDF - regenerate after edits:
+   Chrome --headless --print-to-pdf. Facts here are checked against
+   src/App.jsx and CLAUDE.md as of 2026-09-17. */
+:root{
+  --ink:#16201A; --ink2:#3D4A41; --ink3:#6B7A70; --line:#DCE6DD;
+  --grn:#228B22; --grn-d:#155E18; --grn-x:#3FAE45; --grn-100:#E8F4E9; --grn-50:#F4FAF4;
+  --amber:#8A5A00; --amber-bg:#FFF4E0; --red:#A63A17; --red-bg:#FFE9E2; --blue:#1D4ED8; --blue-bg:#E6EEFF;
+  --disp:'Space Grotesk',Arial,sans-serif; --sans:'Inter',Arial,sans-serif; --mono:'IBM Plex Mono',Menlo,monospace;
+}
+@page{size:A4;margin:15mm 16mm 16mm}
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff}
+body{font-family:var(--sans);color:var(--ink);font-size:10.4pt;line-height:1.55;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+h1,h2,h3,h4{font-family:var(--disp);letter-spacing:-.02em;line-height:1.15;margin:0}
+h2{font-size:20pt;color:var(--ink);margin:0 0 4mm;padding-top:1mm}
+h2 .n{color:var(--grn);font-family:var(--mono);font-size:12pt;font-weight:600;display:block;letter-spacing:.08em;margin-bottom:1.5mm}
+h3{font-size:13pt;margin:6mm 0 2mm;color:var(--grn-d)}
+h4{font-size:10.6pt;margin:3.5mm 0 1mm;color:var(--ink)}
+p{margin:0 0 2.6mm}
+ul{margin:0 0 3mm;padding-left:5mm}
+li{margin:0 0 1.2mm}
+b,strong{font-weight:600}
+/* Sections FLOW rather than each starting a new page - forced breaks left
+   five near-empty pages holding one or two spilled table rows. Only the
+   first section after the cover forces a break (.pb). */
+.section{margin-top:10mm}
+/* the rule, the section number and the title live on the h2 itself and
+   never split - otherwise Chrome left "08" and the rule stranded at the
+   foot of one page with the title on the next */
+.section > h2{border-top:3px solid var(--ink);padding-top:6mm;break-inside:avoid;page-break-inside:avoid}
+.section.pb{break-before:page;margin-top:0}
+.section.pb > h2{border-top:0;padding-top:0}
+h2,h3,h4,.lbl,.feat-h,.feat-meta{break-after:avoid}
+.feat{break-inside:auto}
+.lead{font-size:11.5pt;color:var(--ink2)}
+.mono{font-family:var(--mono)}
+.muted{color:var(--ink3)}
+.small{font-size:9pt}
+
+table{width:100%;border-collapse:collapse;margin:1mm 0 4mm;font-size:9.4pt}
+th{text-align:left;font-family:var(--mono);font-size:7.6pt;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);font-weight:600;padding:2mm 2.2mm;border-bottom:1.5px solid var(--ink)}
+td{padding:2mm 2.2mm;border-bottom:1px solid var(--line);vertical-align:top}
+tr{break-inside:avoid}
+thead{display:table-header-group}
+td.k{font-weight:600;width:30%}
+
+.pill{display:inline-block;font-family:var(--mono);font-size:7.2pt;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:.6mm 2mm;border-radius:99px;white-space:nowrap;vertical-align:1px}
+.live{background:var(--grn-100);color:var(--grn-d)}
+.beta{background:var(--amber-bg);color:var(--amber)}
+.opt{background:var(--blue-bg);color:var(--blue)}
+.concept,.notbuilt{background:var(--red-bg);color:var(--red)}
+.paused{background:#EEF0EE;color:#55605A}
+
+.box{border:1px solid var(--line);border-radius:3mm;padding:3.5mm 4.5mm;margin:2mm 0 4mm;break-inside:avoid}
+.box.g{background:var(--grn-50);border-color:#CFE3D1}
+.box.r{background:#FFF6F2;border-color:#F3C7B7}
+.box.a{background:#FFFAF0;border-color:#F0DDB0}
+.box h4{margin-top:0}
+.box :last-child{margin-bottom:0}
+
+/* feature card */
+.feat{border-top:2px solid var(--ink);padding-top:3mm;margin:6mm 0 2mm}
+.feat-h{display:flex;justify-content:space-between;align-items:baseline;gap:4mm;break-after:avoid}
+.feat-h h3{margin:0;color:var(--ink);font-size:13.5pt}
+.feat-meta{font-family:var(--mono);font-size:8pt;color:var(--ink3);margin:1mm 0 2.5mm}
+.lbl{font-family:var(--mono);font-size:7.6pt;letter-spacing:.1em;text-transform:uppercase;color:var(--grn-d);font-weight:600;margin:2.5mm 0 .8mm}
+.web{background:var(--grn-50);border-left:2px solid var(--grn);padding:2mm 3mm;margin:2mm 0 1mm;font-size:9.6pt;break-inside:avoid}
+.web b{color:var(--grn-d)}
+
+.two{display:grid;grid-template-columns:1fr 1fr;gap:5mm}
+.swatch{display:flex;align-items:center;gap:3mm;margin-bottom:2mm}
+.swatch i{width:11mm;height:8mm;border-radius:1.5mm;border:1px solid rgba(0,0,0,.08);flex:none}
+
+/* cover */
+.cover{height:262mm;display:flex;flex-direction:column;justify-content:space-between;padding:6mm 2mm 0}
+.brand{display:flex;align-items:center;gap:4mm;font-family:var(--disp);font-weight:700;font-size:20pt;letter-spacing:-.03em}
+.mark{width:13mm;height:13mm;border-radius:3.6mm;background:linear-gradient(140deg,var(--grn-x),var(--grn-d));position:relative;flex:none}
+.mark:after{content:"";position:absolute;left:3mm;right:3mm;top:3.6mm;height:.9mm;border-radius:1mm;background:rgba(255,255,255,.95);box-shadow:0 2.2mm 0 rgba(255,255,255,.6),0 4.4mm 0 rgba(255,255,255,.32)}
+.cover h1{font-size:40pt;line-height:1.02;margin:0 0 5mm}
+.cover h1 em{font-style:normal;color:var(--grn)}
+.cover .sub{font-size:13pt;color:var(--ink2);max-width:150mm}
+.cover .meta{border-top:2px solid var(--ink);padding-top:4mm;display:grid;grid-template-columns:repeat(3,1fr);gap:4mm;font-size:9.4pt}
+.cover .meta b{display:block;font-family:var(--mono);font-size:7.4pt;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);font-weight:600;margin-bottom:1mm}
+
+.toc{columns:2;column-gap:10mm;font-size:10.2pt;margin-top:3mm}
+.toc div{break-inside:avoid;padding:1.4mm 0;border-bottom:1px dotted var(--line)}
+.toc span{font-family:var(--mono);color:var(--grn);margin-right:2.5mm;font-size:9pt}
+</style>
+</head>
+<body>
+
+<!-- ============================ COVER ============================ -->
+<div class="cover">
+  <div class="brand"><span class="mark"></span>TrackRakho</div>
+  <div>
+    <div class="mono" style="font-size:9pt;letter-spacing:.16em;color:var(--grn-d);font-weight:600;margin-bottom:5mm">PRODUCT &amp; FEATURE BRIEF — FOR THE WEBSITE AGENCY</div>
+    <h1>Everything the app does,<br/><em>and how to talk about it.</em></h1>
+    <p class="sub">A complete description of TrackRakho as it exists today: every screen, who it is for, how it works, what is live and what is not — plus the brand rules, demo numbers and claims to avoid.</p>
+  </div>
+  <div class="meta">
+    <div><b>Prepared by</b>Yash Bagri, Founder<br/>TRACKRAKHO, Faridabad</div>
+    <div><b>Status as of</b>17 September 2026<br/>Early access, Delhi NCR</div>
+    <div><b>Contact</b>WhatsApp +91 99106 05207<br/>trackrakho.com</div>
+  </div>
+</div>
+
+<!-- ============================ CONTENTS + READ FIRST ============================ -->
+<div class="section pb">
+  <h2><span class="n">00</span>Read this first</h2>
+  <p class="lead">This document is the single source of truth for the website. If something in an old site, a pitch deck or a conversation disagrees with it, this document wins.</p>
+
+  <div class="box g">
+    <h4>The three things that matter most</h4>
+    <ol style="margin:0;padding-left:5mm">
+      <li><b>The website is for two trades only:</b> machine job shops, and scrap &amp; metal traders. Printing and furniture exist inside the app but are paused. Do not feature them.</li>
+      <li><b>Never claim anything that is not built.</b> Section 7 lists the exact red lines. Our buyers are older business owners who have been oversold by software salesmen before — being precise is part of the brand, not a limitation of it.</li>
+      <li><b>Use the demo numbers in Section 8</b> in every mockup, so the website, the screenshots and the live demo all show the same business.</li>
+    </ol>
+  </div>
+
+  <h4>Status labels used throughout</h4>
+  <table>
+    <thead><tr><th style="width:24%">Label</th><th>Meaning for the website</th></tr></thead>
+    <tr><td><span class="pill live">Live</span></td><td>Built, working in production. Can be marketed.</td></tr>
+    <tr><td><span class="pill beta">Beta</span></td><td>Working and tested, but new or with setup limits. Market it, and label it Beta.</td></tr>
+    <tr><td><span class="pill opt">Opt-in</span></td><td>Working, but switched off by default or needs connecting. Say "once connected" / "optional".</td></tr>
+    <tr><td><span class="pill concept">Concept</span> <span class="pill notbuilt">Not built</span></td><td>Must not be presented as a feature.</td></tr>
+    <tr><td><span class="pill paused">Paused</span></td><td>Built but not offered to new customers right now. Leave off the website.</td></tr>
+  </table>
+
+  <h4>Contents</h4>
+  <div class="toc">
+    <div><span>01</span>TrackRakho at a glance</div>
+    <div><span>02</span>Who we sell to</div>
+    <div><span>03</span>Positioning &amp; messaging</div>
+    <div><span>04</span>Product map — every module</div>
+    <div><span>05</span>Feature details (20 features)</div>
+    <div><span>06</span>Trust, data &amp; security — what we can say</div>
+    <div><span>07</span>Red lines — never claim these</div>
+    <div><span>08</span>Demo numbers for mockups</div>
+    <div><span>09</span>Brand &amp; design rules</div>
+    <div><span>10</span>Existing websites &amp; what we learned</div>
+    <div><span>11</span>Competitors</div>
+    <div><span>12</span>What the website should achieve</div>
+    <div><span>13</span>Glossary of trade &amp; Hindi terms</div>
+  </div>
+</div>
+
+<!-- ============================ 01 AT A GLANCE ============================ -->
+<div class="section">
+  <h2><span class="n">01</span>TrackRakho at a glance</h2>
+
+  <table>
+    <tr><td class="k">What it is</td><td>A phone-first business app that keeps track of quotations, orders, machines or trucks, yard stock and money owed — and reads the numbers directly from the TallyPrime the business already uses.</td></tr>
+    <tr><td class="k">Who it is for</td><td>Owner-run <b>machine job shops</b> (CNC, VMC, turning, fabrication) and <b>scrap &amp; metal traders</b>. Starting in Delhi NCR (Faridabad, Gurgaon, Delhi industrial areas).</td></tr>
+    <tr><td class="k">What it replaces</td><td>WhatsApp chats, scattered Excel sheets, the paper register and the owner's memory.</td></tr>
+    <tr><td class="k">What it does not replace</td><td><b>Tally.</b> It works alongside Tally and reads from it. It is not accounting software.</td></tr>
+    <tr><td class="k">Price</td><td><b>₹999 per month</b>, one plan, every feature included. ₹9,999 a year is offered in sales conversations. GST extra. There is no online checkout — payment is arranged directly with us over WhatsApp.</td></tr>
+    <tr><td class="k">Stage</td><td>Early access. First NCR customers are being onboarded, with the founder installing in person.</td></tr>
+    <tr><td class="k">Runs on</td><td>Any phone or computer browser at <b>trackrakho.com</b>. Can be added to the home screen like an app. No app store download.</td></tr>
+    <tr><td class="k">Languages</td><td>English, Hinglish, and Hindi (Devanagari) — switchable any time.</td></tr>
+    <tr><td class="k">The company</td><td>TRACKRAKHO — Udyam (MSME) registered, Faridabad, Haryana. Meta (Facebook/WhatsApp) business-verified.</td></tr>
+    <tr><td class="k">Support</td><td>WhatsApp <b>+91 99106 05207</b></td></tr>
+  </table>
+
+  <h3>The problem, as owners describe it</h3>
+  <p>From visits to real shops and yards:</p>
+  <ul>
+    <li><b>Quotations get forgotten.</b> A quote goes out on WhatsApp, nobody follows up, and the order goes to someone else.</li>
+    <li><b>Money is stuck and nobody knows exactly where.</b> Customers pay 60–90+ days late, and the owner cannot say which bill, how old, or how much.</li>
+    <li><b>Tally has the numbers, but Tally lives on one computer in the office.</b> The owner is on the shop floor or at the yard.</li>
+    <li><b>Machine shops cannot tell a customer when a job will finish</b>, or what a machine hour really costs them.</li>
+    <li><b>Scrap yards lose stock quietly.</b> One trader we spoke to lost around 17 tonnes over six months before anyone noticed.</li>
+    <li><b>Everything important is buried in WhatsApp.</b> Enquiries, photos of drawings, purchase orders.</li>
+  </ul>
+
+  <div class="box g">
+    <h4>The promise in one line</h4>
+    <p style="font-family:var(--disp);font-size:14pt;line-height:1.3;color:var(--grn-d)">Your whole business on one screen — what is pending, what you have won, what money is stuck, and who to chase today.</p>
+  </div>
+
+  <div class="box a">
+    <h4>The selling idea that works best</h4>
+    <p>Owners do not buy "a nice app". They respond to <b>money they are losing right now</b>: the forgotten quote, the payment stuck for 72 days, the tonnes missing from the yard. Lead with the loss, then show the screen that fixes it. In live demos, the single most convincing moment is showing an owner <i>his own</i> overdue bills from <i>his own</i> Tally.</p>
+  </div>
+</div>
+
+<!-- ============================ 02 WHO WE SELL TO ============================ -->
+<div class="section">
+  <h2><span class="n">02</span>Who we sell to</h2>
+
+  <div class="two">
+    <div class="box">
+      <h4>⚙️ Persona A — Machine job shop owner</h4>
+      <p class="small muted" style="margin-bottom:2mm">Faridabad · Gurgaon · Okhla · Bawana</p>
+      <ul class="small">
+        <li><b>Business:</b> 2–15 machines (VMC, CNC lathe, turning, fabrication). Job work for OEMs, pump, hydraulic and auto companies.</li>
+        <li><b>Person:</b> typically 40–60, runs the business from his phone, not a software user. Often has no working Gmail password.</li>
+        <li><b>Tools today:</b> Excel for quotations (clients often demand Excel), Tally on an office PC run by an accountant, WhatsApp for everything else.</li>
+        <li><b>Pains:</b> follow-ups slip; does not know his true machine-hour cost; cannot promise a finish time; payments arrive late.</li>
+        <li><b>What he liked, unprompted:</b> the pipeline view — all quotes with pending, won and lost at a glance.</li>
+        <li><b>Legal angle:</b> usually MSME/Udyam registered, so has a legal right to interest on late payments (Section 5.11).</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h4>♻️ Persona B — Scrap &amp; metal trader</h4>
+      <p class="small muted" style="margin-bottom:2mm">Mandoli · Mayapuri · Wazirpur · Faridabad</p>
+      <ul class="small">
+        <li><b>Business:</b> buys and sells MS, CI, aluminium, copper, stainless steel by the tonne. Trucks, dealers, crore-scale turnover, thin margins.</li>
+        <li><b>Person:</b> sharp with numbers, lives on the phone and at the weighbridge.</li>
+        <li><b>Tools today:</b> Tally (heavily), a register at the yard, WhatsApp with dealers and drivers.</li>
+        <li><b>Pains:</b> stock shrinkage and theft; which truck went where; dealer payments; weighbridge mismatches.</li>
+        <li><b>Important:</b> traders are <b>not</b> covered by the MSMED late-payment interest law. Never show legal or interest messaging on scrap pages.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Two other audiences the website should respect</h3>
+  <table>
+    <tr><td class="k">The accountant</td><td>The gatekeeper. His fear is software writing into Tally and corrupting the books. The answer, which should be visible on the site: <b>TrackRakho only reads Tally by default</b> and writes nothing unless the owner switches that on.</td></tr>
+    <tr><td class="k">Tally partners (resellers)</td><td>A sales channel we are building — firms that sell and service Tally and visit these businesses regularly. A partner programme exists in draft. <b>Do not publish partner terms on the website yet.</b></td></tr>
+  </table>
+
+  <h3>Paused segments</h3>
+  <p><span class="pill paused">Paused</span> <b>Printing presses</b> and <b>furniture / interiors</b> are fully built inside the app (their own categories, sample data and vocabulary) but are no longer offered to new customers. Leave them off the website entirely.</p>
+</div>
+
+<!-- ============================ 03 POSITIONING ============================ -->
+<div class="section">
+  <h2><span class="n">03</span>Positioning &amp; messaging</h2>
+
+  <div class="box g">
+    <h4>The positioning sentence</h4>
+    <p>Everyone else sells to businesses that already have systems. TrackRakho sells the <b>first</b> system to businesses that run on a register, Excel and WhatsApp — at the price of a streaming subscription, in their language, on their phone, and covering what nobody bundles: <b>quotes + follow-ups + Tally + machines or trucks.</b></p>
+  </div>
+
+  <h3>Five message pillars</h3>
+  <table>
+    <thead><tr><th style="width:30%">Pillar</th><th>What it means</th><th style="width:26%">Proof in the product</th></tr></thead>
+    <tr><td><b>1. Nothing gets forgotten</b></td><td>Every quote, from WhatsApp, Excel or a phone call, sits in one list with a follow-up date.</td><td>Pipeline, follow-ups, chase on WhatsApp</td></tr>
+    <tr><td><b>2. Know where your money is</b></td><td>Who owes what, bill by bill, and how late — read straight from Tally.</td><td>Tally insights, aging bar, bill-wise view</td></tr>
+    <tr><td><b>3. See your floor or yard from anywhere</b></td><td>Which machine finishes when; which truck is out; what the yard should hold.</td><td>Machine floor, truck board, yard stock</td></tr>
+    <tr><td><b>4. Built for how you already work</b></td><td>No new habits: WhatsApp, Excel and Tally stay; Hindi is available; it runs on the phone they already have.</td><td>Paste-to-quote, Excel import, Hindi</td></tr>
+    <tr><td><b>5. Honest and safe</b></td><td>Reads Tally only by default, data private to each business, one clear price, a founder who comes in person.</td><td>Read-only connector, per-account data</td></tr>
+  </table>
+
+  <h3>Tone of voice</h3>
+  <ul>
+    <li><b>Professional, plain English</b> on the website. Short sentences. Concrete numbers.</li>
+    <li><b>Respectful, confident, never hype.</b> No "revolutionary", "AI-powered everything", "10x".</li>
+    <li><b>Hinglish belongs inside product screenshots and chat examples only</b> — not in headlines or body copy. (A full-Hinglish marketing site was tested and rejected as feeling cheap.)</li>
+    <li><b>No fear-selling as the opener.</b> Theft stories can support the scrap page; they should not be the hero.</li>
+    <li><b>Polite about money.</b> Our payment reminders are deliberately gentle; in Indian trade, a "legal reminder" reads as a threat and damages relationships. Never use words like "recover", "legal notice", "force".</li>
+  </ul>
+
+  <h3>Sample headlines that fit the voice</h3>
+  <ul>
+    <li>Your whole shop, on one screen.</li>
+    <li>Every quote remembered. Every payment tracked.</li>
+    <li>Complete visibility over your yard, fleet and receivables.</li>
+    <li>It reads your Tally. It does not touch it.</li>
+    <li>Tracking your factory can be this easy.</li>
+  </ul>
+</div>
+
+<!-- ============================ 04 PRODUCT MAP ============================ -->
+<div class="section">
+  <h2><span class="n">04</span>Product map — every module</h2>
+  <p>Everything in the app, who sees it, and its status. Details for each follow in Section 5.</p>
+
+  <table>
+    <thead><tr><th style="width:5%">#</th><th style="width:29%">Module</th><th>What it is for</th><th style="width:16%">Trades</th><th style="width:13%">Status</th></tr></thead>
+    <tr><td class="mono">5.1</td><td><b>Login &amp; accounts</b></td><td>Log in with mobile number (code on WhatsApp) or Google; stay logged in; cloud sync</td><td>Both</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td class="mono">5.2</td><td><b>First run: trade &amp; language</b></td><td>Pick your trade; app adapts words, units and examples; English / Hinglish / Hindi</td><td>Both</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td class="mono">5.3</td><td><b>Home</b></td><td>At-a-glance numbers, today's follow-ups, shortcuts — different per trade</td><td>Both</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td class="mono">5.4</td><td><b>Pipeline</b></td><td>All quotes: pending / won / lost, follow-up dates, chase on WhatsApp</td><td>Both</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td class="mono">5.5</td><td><b>Log a quote in 30 seconds</b></td><td>Quick form + paste a WhatsApp message to auto-fill it</td><td>Both</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td class="mono">5.6</td><td><b>Incoming enquiries inbox</b></td><td>WhatsApp messages, photos, PDFs (and Gmail) arrive as cards; one tap to log</td><td>Both</td><td><span class="pill opt">Opt-in</span> <span class="pill beta">Gmail beta</span></td></tr>
+    <tr><td class="mono">5.7</td><td><b>Quotation maker &amp; true costing</b></td><td>Cost a part step by step, true machine-hour rate, PDF quotation</td><td>Machine shops</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td class="mono">5.8</td><td><b>Machine floor</b></td><td>Live board of which machine is running which job and when it finishes</td><td>Machine shops</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td class="mono">5.9</td><td><b>Tally connector</b></td><td>Small program on the Tally computer that reads the books into the app</td><td>Both</td><td><span class="pill beta">Beta</span></td></tr>
+    <tr><td class="mono">5.10</td><td><b>Tally insights</b></td><td>Money owed and owing, aging bar, bill-by-bill, dispatches, dispatch planner</td><td>Both</td><td><span class="pill beta">Beta</span></td></tr>
+    <tr><td class="mono">5.11</td><td><b>MSMED interest &amp; polite reminder</b></td><td>Estimated legal interest on late bills + a gentle WhatsApp reminder</td><td>Machine shops (Udyam)</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td class="mono">5.12</td><td><b>Truck board</b></td><td>Which truck is out, carrying what, to whom, for how long</td><td>Scrap</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td class="mono">5.13</td><td><b>Yard stock &amp; weighbridge check</b></td><td>What the yard should hold vs what is weighed — shows the shortfall</td><td>Scrap</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td class="mono">5.14</td><td><b>Analytics</b></td><td>Win rate, value trends, funnel, top customers</td><td>Both</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td class="mono">5.15</td><td><b>Excel &amp; PDF</b></td><td>Import an existing quote register; export any time</td><td>Both</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td class="mono">5.16</td><td><b>Multiple companies</b></td><td>Up to 4 firms under one login and one plan</td><td>Both</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td class="mono">5.17</td><td><b>Tutorials &amp; help</b></td><td>Guided tours you actually perform; FAQs read aloud in Hindi</td><td>Both</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td class="mono">5.18</td><td><b>Setup</b></td><td>Shop, machines, materials, categories, trucks, integrations</td><td>Both</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td class="mono">5.19</td><td><b>Works everywhere</b></td><td>Phone, tablet, laptop; add to home screen; works offline</td><td>Both</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td class="mono">5.20</td><td><b>Plan &amp; pricing</b></td><td>One plan, ₹999/month</td><td>Both</td><td><span class="pill live">Live</span></td></tr>
+    <tr><td class="mono">—</td><td>Supplier marketplace</td><td>A labelled demo inside Setup</td><td>—</td><td><span class="pill concept">Concept</span></td></tr>
+    <tr><td class="mono">—</td><td>Photo search of past jobs</td><td>"Have I made this before?" by photo</td><td>—</td><td><span class="pill notbuilt">Not built</span></td></tr>
+    <tr><td class="mono">—</td><td>Staff logins &amp; permissions</td><td>Separate accounts with roles for employees</td><td>—</td><td><span class="pill notbuilt">Not built</span></td></tr>
+    <tr><td class="mono">—</td><td>Online payment / self-serve signup to paid</td><td>Card or UPI checkout on the site</td><td>—</td><td><span class="pill notbuilt">Not built</span></td></tr>
+  </table>
+</div>
+
+<!-- ============================ 05 FEATURE DETAILS ============================ -->
+<div class="section">
+  <h2><span class="n">05</span>Feature details</h2>
+  <p class="lead">Each feature below covers what it is, how it works step by step, why owners care, its status, and how to present it on the website.</p>
+
+  <!-- 5.1 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.1 · Login &amp; accounts</h3><span class="pill live">Live</span></div>
+    <div class="feat-meta">BOTH TRADES · LIVE IN PRODUCTION SINCE 17 SEP 2026</div>
+    <div class="lbl">What it is</div>
+    <p>Owners log in with their <b>mobile number</b>. A 6-digit code arrives on <b>WhatsApp</b> from TrackRakho's verified business number. Google sign-in is available as a second option.</p>
+    <div class="lbl">How it works</div>
+    <ul>
+      <li>Type your 10-digit mobile number → tap <b>Send code</b> → a WhatsApp message with a <b>Copy code</b> button arrives → paste into the six boxes → you are in.</li>
+      <li><b>You stay logged in.</b> No code every morning — only after deliberately logging out.</li>
+      <li><b>One account, two doors:</b> in Setup → "Ways to log in", an owner can link both his phone and his Google account. Either one opens the same shop with the same data.</li>
+      <li><b>Protection against losing data by accident:</b> if someone who normally uses Google logs in with his phone for the first time, the app asks "Is this a new shop account?" and sends him back to his real data instead of showing an empty app.</li>
+      <li>Each business's data lives in <b>its own private account</b>. The app keeps a copy on the phone, works without internet, and syncs when the connection returns. Setup shows <i>Synced / Saving / Offline</i>.</li>
+    </ul>
+    <div class="lbl">Why owners care</div>
+    <p>Many owners do not have — or do not remember — a Gmail password. A mobile number and a WhatsApp code is something every one of them can do in ten seconds.</p>
+    <div class="web"><b>On the website:</b> "Log in with your mobile number" is a genuine advantage for this audience — worth a line near sign-up. Say the code comes <b>on WhatsApp</b>, not by SMS.</div>
+  </div>
+
+  <!-- 5.2 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.2 · First run: trade &amp; language</h3><span class="pill live">Live</span></div>
+    <div class="feat-meta">BOTH TRADES</div>
+    <div class="lbl">How it works</div>
+    <ul>
+      <li>A new account is asked <b>"What do you make?"</b> with two choices: <b>Machine shop / Trader</b> (CNC, turning, fabrication, trading) or <b>Scrap / Metal trading</b> (MS, CI, aluminium — tonnes &amp; trucks).</li>
+      <li>The whole app adapts: the words it uses ("part" vs "material lot"), the units (pieces vs metric tonnes), the categories, the home screen, and which modules appear.</li>
+      <li>A realistic <b>sample business is preloaded</b> so a new user sees a working example straight away. Real entries replace it; the app never overwrites real data.</li>
+      <li><b>Language:</b> English, Hinglish or Hindi (Devanagari script), switchable any time in Setup.</li>
+      <li>Categories are built in per trade (e.g. turned parts, milled parts, sheet metal, fabrication, fasteners for shops; MS, CI, aluminium, copper, stainless, plastic, e-waste for scrap) and owners can <b>add their own</b>.</li>
+    </ul>
+    <div class="web"><b>On the website:</b> "Speaks your trade" — the app is not a generic tool with the trade's name pasted on. Hindi support is worth a visible mention.</div>
+  </div>
+
+  <!-- 5.3 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.3 · Home screen</h3><span class="pill live">Live</span></div>
+    <div class="feat-meta">BOTH TRADES · DIFFERENT PER TRADE</div>
+    <div class="lbl">Common to both</div>
+    <ul>
+      <li><b>"At a glance" card</b> — pending quote value, won this month, quoted this month, and a shortcut into analytics, with a 7-day trend line. Every tile is tappable.</li>
+      <li><b>Follow-ups due today</b> — who needs chasing now.</li>
+      <li><b>"New here? Learn in 2 minutes"</b> card for first-time users (Section 5.17).</li>
+      <li>Tap the avatar to <b>switch company</b> (Section 5.16).</li>
+    </ul>
+    <div class="two">
+      <div>
+        <div class="lbl">Machine shop home</div>
+        <ul class="small">
+          <li><b>RFQ box</b> — count and value of pending quotes</li>
+          <li><b>Orders box</b> — count and value of won orders</li>
+          <li><b>Full quote</b> button → costing wizard</li>
+          <li><b>Machine floor</b> card</li>
+          <li><b>Tally</b> card</li>
+        </ul>
+      </div>
+      <div>
+        <div class="lbl">Scrap home</div>
+        <ul class="small">
+          <li>At-a-glance numbers</li>
+          <li><b>Tally</b> card</li>
+          <li><b>Truck board</b> card</li>
+          <li><b>Yard stock</b> card with a red <b>GHATA</b> (shortfall) badge when stock is missing</li>
+        </ul>
+      </div>
+    </div>
+    <div class="web"><b>On the website:</b> the home screen is the best single hero image — it answers "what will I see every morning?"</div>
+  </div>
+
+  <!-- 5.4 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.4 · Pipeline — the quote tracker</h3><span class="pill live">Live</span></div>
+    <div class="feat-meta">BOTH TRADES · THE CORE OF THE PRODUCT</div>
+    <div class="lbl">What it is</div>
+    <p>Every quotation the business has sent, in one list, each with a status and a follow-up date.</p>
+    <div class="lbl">What each quote card shows</div>
+    <ul>
+      <li>Customer, part or material, quantity, amount, and status: <b>Pending / Won / Lost</b></li>
+      <li>A photo (e.g. of the drawing or sample) or a category picture, so the list is easy to scan</li>
+      <li>A spec line (size, grade, finish) and a note</li>
+      <li>Where it came from: WhatsApp, Gmail, logged manually, or made in the quotation maker</li>
+      <li>A follow-up badge: <span style="color:var(--red)">overdue</span>, today, or upcoming</li>
+      <li>If Tally is connected: <b>"Tally baki ₹X"</b> — this customer already owes you money</li>
+    </ul>
+    <div class="lbl">What owners can do</div>
+    <ul>
+      <li>Filter by status, by follow-ups due, or by category</li>
+      <li>Change a follow-up date right on the card</li>
+      <li><b>Chase on WhatsApp</b> in one tap — a polite, pre-written message opens in WhatsApp, sent from the owner's own number</li>
+      <li>Mark won or lost; edit; add or change a photo</li>
+      <li>Machine shops: <b>"Floor pe bhejo"</b> sends a won order straight to the machine floor</li>
+    </ul>
+    <div class="lbl">Why owners care</div>
+    <p>This was the feature owners liked <b>without being prompted</b> during shop visits. Quotes stop going quiet because the follow-up date turns red when it slips.</p>
+    <div class="web"><b>On the website:</b> this is the lead feature. "Every quote remembered."</div>
+  </div>
+
+  <!-- 5.5 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.5 · Log a quote in 30 seconds</h3><span class="pill live">Live</span></div>
+    <div class="feat-meta">BOTH TRADES</div>
+    <div class="lbl">What it is</div>
+    <p>A short form for quotes made somewhere else — in Excel, on a phone call, on WhatsApp. It is the main way quotes enter the app.</p>
+    <div class="lbl">How it works</div>
+    <ul>
+      <li>Fields: customer, WhatsApp number, part/material, quantity, amount, status, follow-up date, category, spec, note, photo (camera or gallery).</li>
+      <li><b>Paste to fill:</b> paste a customer's WhatsApp message and the form fills itself — customer name, item, quantity, rate, total, phone number and the date they need it by.</li>
+      <li>It understands the way enquiries are really written, including Hinglish: <i>"Hello ji, this is Krishna Pumps. Bush 42 dia chahiye, 500 pcs. Rate 61.20/pc."</i> → Krishna Pumps · Bush Ø42 · 500 pcs · ₹61.20 · total ₹30,600.</li>
+      <li><span class="pill opt">Opt-in</span> <b>Smart reading (AI):</b> an optional setting that reads very messy messages more accurately. Off by default; phone numbers are removed before a message is sent for reading.</li>
+    </ul>
+    <div class="web"><b>On the website:</b> the "paste a message → quote appears" moment demos beautifully as a short animation.</div>
+  </div>
+
+  <!-- 5.6 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.6 · Incoming enquiries inbox</h3><span class="pill opt">Opt-in</span></div>
+    <div class="feat-meta">BOTH TRADES · NEEDS CONNECTING</div>
+    <div class="lbl">WhatsApp enquiries</div>
+    <ul>
+      <li>Once the business's <b>WhatsApp Business number is connected</b>, messages from customers appear in the app as enquiry cards — text, photos and PDF documents.</li>
+      <li>One tap on <b>"Log as quote"</b> reads the message and creates the quote.</li>
+      <li>Today, we set up this connection for each customer. A self-serve "connect your WhatsApp" button is <b>not built</b>.</li>
+    </ul>
+    <div class="lbl">Photos &amp; PDFs read automatically <span class="pill opt">Opt-in</span></div>
+    <p>When a customer sends a photo of a handwritten list, a drawing or a purchase order, the app can read it and fill the quote, saving what it read into the note. Designed to leave a field empty rather than guess a wrong price.</p>
+    <div class="lbl">Gmail RFQ inbox <span class="pill beta">Beta</span></div>
+    <p>RFQ and quotation emails can appear in the same inbox. This works but has Google-side limits during beta (it must be reconnected roughly weekly). <b>Mention it at most in passing.</b></p>
+    <div class="web"><b>On the website:</b> always write "once connected" — never imply WhatsApp messages appear automatically without setup.</div>
+  </div>
+
+  <!-- 5.7 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.7 · Quotation maker &amp; true costing</h3><span class="pill live">Live</span></div>
+    <div class="feat-meta">MACHINE SHOPS ONLY</div>
+    <div class="lbl">How it works</div>
+    <ul>
+      <li>A step-by-step flow: part &amp; customer → <b>material</b> → <b>machining</b> → <b>price</b>. The running price is visible the whole time.</li>
+      <li><b>Price per piece</b> = material (kg × ₹/kg) + machine time (cycle minutes × machine hourly rate, plus one-time setup spread across the quantity) + hands-on labour + tooling → plus overhead % → plus margin % = price per piece. Total = price × quantity, with GST shown.</li>
+      <li><b>True machine-hour rate calculator:</b> depreciation + power (kW × ₹ per unit) + operator + maintenance, divided by monthly working hours. Example: a VMC 850 works out to about <b>₹366 an hour</b>.</li>
+      <li>Built-in lists of around 19 common NCR machines and common materials (EN8, EN19, SS 304, aluminium grades…), all with editable rates.</li>
+      <li>Produces a clean <b>PDF quotation</b> to send on WhatsApp.</li>
+    </ul>
+    <div class="box r" style="margin-top:2mm">
+      <p><b>Important:</b> the owner enters the cycle time — the app does the money maths around it. <b>The app does not calculate or predict machining time.</b> Never write copy that implies it does.</p>
+    </div>
+    <div class="web"><b>On the website:</b> "Know what a machine hour really costs you." Show the worked example from Section 8 — it adds up exactly.</div>
+  </div>
+
+  <!-- 5.8 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.8 · Machine floor</h3><span class="pill live">Live</span></div>
+    <div class="feat-meta">MACHINE SHOPS ONLY</div>
+    <div class="lbl">How it works</div>
+    <ul>
+      <li>Machines are set up with a count, so "VMC 850 × 2" becomes <b>VMC 850 #1</b> and <b>#2</b>.</li>
+      <li>Start a job: part, customer, quantity, cycle minutes per piece, handling minutes per piece (loading, deburring). Pick the free machines; the quantity is split between them.</li>
+      <li>A <b>live board</b> shows each machine's % done, pieces done, time left and <b>finish time</b> ("today 6:40 pm", "tomorrow 11:00 am").</li>
+      <li>Every estimate includes an <b>8% allowance</b> for tool changes and small breakdowns — and says so on screen.</li>
+      <li><b>Pause</b> a machine; <b>move the remaining pieces</b> to another machine; all estimates recalculate.</li>
+      <li>Mark done to free the machine; completed jobs go to history. Won orders arrive here from the pipeline in one tap.</li>
+    </ul>
+    <div class="lbl">Why owners care</div>
+    <p>Customers ring asking "kab tak milega?" The owner can answer from his phone, from anywhere.</p>
+    <div class="box r"><p>Estimates come from the times the owner enters. <b>There are no sensors, no machine connections, no real-time monitoring hardware.</b></p></div>
+  </div>
+
+  <!-- 5.9 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.9 · Tally connector</h3><span class="pill beta">Beta</span></div>
+    <div class="feat-meta">BOTH TRADES · VALIDATED ON REAL TALLYPRIME</div>
+    <div class="lbl">What it is</div>
+    <p>A small program that runs on the computer where TallyPrime is installed and sends the numbers to the owner's TrackRakho account.</p>
+    <div class="lbl">Setup — about 5 minutes, 3 steps</div>
+    <ol style="padding-left:5mm">
+      <li>Copy a folder onto the Tally computer and double-click it. It installs what it needs by itself.</li>
+      <li>Paste the key shown in the app. It checks the key and prints the shop's name back, so the owner knows it is the right account.</li>
+      <li>Pick the sales ledger from a numbered list of what is actually in the books. No typing, no configuration files.</li>
+    </ol>
+    <p>After that it <b>starts by itself whenever the computer is switched on</b>, with no window on screen, and keeps a readable log.</p>
+    <div class="lbl">What it reads from Tally</div>
+    <ul>
+      <li>Customer and supplier balances</li>
+      <li><b>Bill-by-bill outstanding</b> with bill dates and due dates</li>
+      <li>The last 45 days of sales and purchase vouchers, with quantities and voucher / reference numbers</li>
+    </ul>
+    <div class="lbl">Read-only by default</div>
+    <p><b>It writes nothing into Tally.</b> An optional feature can push won orders into Tally as Sales Orders — it ships switched off and stays off until the owner turns it on himself.</p>
+    <div class="lbl">Proof</div>
+    <p>Validated against real <b>TallyPrime Release 7.x</b>, on both <b>GST and non-GST</b> books, matched <b>to the rupee</b> against Tally's own Bills Receivable report — in both directions.</p>
+    <div class="web"><b>On the website:</b> "It reads your Tally. It does not touch it." This line answers the accountant's objection before he raises it. Label the connector Beta.</div>
+  </div>
+
+  <!-- 5.10 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.10 · Tally insights</h3><span class="pill beta">Beta</span></div>
+    <div class="feat-meta">BOTH TRADES · NEEDS THE CONNECTOR · A LABELLED SAMPLE IS SHOWN WITHOUT IT</div>
+    <ul>
+      <li><b>"Aane wale paise"</b> — money customers owe you, and <b>"Dene wale paise"</b> — money you owe suppliers. Tap either for a party-by-party breakdown with share bars and each party's last transaction.</li>
+      <li><b>"Paisa kahan atka hai" (where is the money stuck):</b> a green-to-red <b>aging bar</b> — not yet due / 1–30 days / 31–60 days / 60+ days — calculated from real bill due dates, never estimated.</li>
+      <li><b>Bill-by-bill view:</b> bill number, bill date, due date, amount, received, balance, and the item and quantity on that bill. Filter by aging bucket.</li>
+      <li><b>"Maal gaya" (what was dispatched):</b> this month's sales grouped by dealer, with dates, quantities and voucher numbers, plus a 6-week dispatch chart.</li>
+      <li><b>Dispatch planner — "Who should we send to next?":</b> ranks open orders using deadline pressure, days since the customer's last dispatch, quantity remaining, and payment risk from overdue bills. Every suggestion shows its reasons, and a "Know how" toggle explains the method.</li>
+    </ul>
+    <div class="web"><b>On the website:</b> the aging bar is the most persuasive visual in the product. For the scrap page, pair receivables with dispatches.</div>
+  </div>
+
+  <!-- 5.11 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.11 · MSMED interest &amp; polite reminder</h3><span class="pill live">Live</span></div>
+    <div class="feat-meta">MACHINE SHOPS THAT ARE UDYAM-REGISTERED · SWITCHED ON IN SETUP</div>
+    <ul>
+      <li>Indian law (the MSMED Act) says a registered micro or small manufacturer's buyer must pay within <b>45 days</b>, or owe compound interest at <b>three times the RBI bank rate</b>.</li>
+      <li>For each overdue bill from Tally, the app shows the <b>estimated interest</b> the customer legally owes. The calculation is deliberately conservative — every rounding goes downward — and is always labelled an estimate.</li>
+      <li><b>"WhatsApp par narmi se yaad dilao" (remind gently on WhatsApp):</b> a ready message that mentions the interest <i>for information</i>, explicitly says the business does not want to claim it, and politely asks for payment.</li>
+      <li><b>Never shown to scrap traders</b> — traders are excluded from this law.</li>
+    </ul>
+    <div class="box r"><p><b>Tone rule:</b> present this as knowing your rights and asking respectfully. Never "legal notice", "recover dues", "take action", or anything that reads as a threat. In Indian trade that damages the relationship.</p></div>
+  </div>
+
+  <!-- 5.12 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.12 · Truck board</h3><span class="pill live">Live</span></div>
+    <div class="feat-meta">SCRAP TRADERS ONLY</div>
+    <ul>
+      <li>Set up the fleet once: truck number and capacity in tonnes.</li>
+      <li>Log a loading: truck, dealer, material, <b>weighbridge weight in MT</b>, reference number.</li>
+      <li>The board shows which trucks are <b>out</b> and for how many hours, and which are free. Tap <b>Delivered</b> to free a truck. Full history is kept.</li>
+      <li>Every dispatch automatically reduces yard stock (Section 5.13).</li>
+    </ul>
+    <div class="box r"><p>Manually logged by the owner or staff. <b>No GPS tracking, no vehicle hardware.</b></p></div>
+  </div>
+
+  <!-- 5.13 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.13 · Yard stock &amp; weighbridge check</h3><span class="pill live">Live</span></div>
+    <div class="feat-meta">SCRAP TRADERS ONLY</div>
+    <ul>
+      <li><b>Book stock</b> for each material = opening stock (or last physical count) + purchases − sales − truck dispatches.</li>
+      <li><b>"Kanta check":</b> weigh what is really in the yard and enter it. The app shows the <b>shortfall (ghata) in tonnes</b>, records it, and resets the baseline.</li>
+      <li>Home shows a red <b>GHATA</b> badge; tiles show total yard tonnage, shortfall, dispatched today and a 7-day bar chart.</li>
+      <li>Example: book stock 43.8 MT, weighed 42.0 MT → <b>−1.8 MT</b>, found this week rather than in six months.</li>
+      <li>The app does <b>not</b> convert the shortfall into rupees. If the website does, state the rate used (e.g. "about ₹59,400 at ₹33/kg").</li>
+    </ul>
+    <div class="box r"><p>A discipline tool based on regular weighing. <b>No RFID, no sensors, no automatic weighbridge integration.</b></p></div>
+  </div>
+
+  <!-- 5.14 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.14 · Analytics</h3><span class="pill live">Live</span></div>
+    <div class="feat-meta">BOTH TRADES</div>
+    <ul>
+      <li>Range: last 7 days, 30 days, or all time.</li>
+      <li>Total quoted, sent, won value, pending value.</li>
+      <li><b>Win-rate donut</b>, value trend bars with the won portion highlighted, a <b>won / pending / lost funnel</b> in rupees, and <b>top customers</b>.</li>
+    </ul>
+  </div>
+
+  <!-- 5.15 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.15 · Excel &amp; PDF</h3><span class="pill live">Live</span></div>
+    <div class="feat-meta">BOTH TRADES</div>
+    <ul>
+      <li><b>Bring quotes in:</b> import an existing register from .xlsx, .xls or .csv. Columns are matched by meaning (e.g. "party", "customer" or "client"), Indian number formats and dates are understood.</li>
+      <li><b>Take quotes out:</b> export to .xlsx or .csv at any time. Deliberately easy — the business's data leaves as easily as it arrives.</li>
+      <li><b>PDF quotations</b> from the quotation maker.</li>
+    </ul>
+    <div class="web"><b>On the website:</b> "Keep your Excel." Many clients demand quotes in Excel — TrackRakho does not ask owners to give that up.</div>
+  </div>
+
+  <!-- 5.16 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.16 · Multiple companies</h3><span class="pill live">Live</span></div>
+    <div class="feat-meta">BOTH TRADES</div>
+    <ul>
+      <li>Many owners run two firms. Up to <b>4 companies</b> can live under one login and <b>one plan — no per-firm charge</b>.</li>
+      <li>Tap the home avatar: each company shows its pending value and an Active badge. Switch in one tap.</li>
+      <li>Each company's data is kept separate. A new company carries over the machine, material and category setup so nothing is typed twice.</li>
+    </ul>
+  </div>
+
+  <!-- 5.17 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.17 · Guided tutorials &amp; help</h3><span class="pill live">Live</span></div>
+    <div class="feat-meta">BOTH TRADES</div>
+    <ul>
+      <li><b>Tutorials you actually perform:</b> spotlight tours that make the user do the steps. The WhatsApp tutorial drops a real-looking demo enquiry into the inbox; the user taps "Log as quote" and watches the quote appear.</li>
+      <li>Three tours: log a WhatsApp enquiry; using the pipeline daily; a full quotation (machine shops).</li>
+      <li><b>Help:</b> plain-language FAQs (what is cycle time, what if I don't know my machine rate, is my data private…) that can be <b>read aloud in Hindi</b>.</li>
+      <li>Short, reassuring trust notes on the login and setup screens about data privacy.</li>
+    </ul>
+  </div>
+
+  <!-- 5.18 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.18 · Setup</h3><span class="pill live">Live</span></div>
+    <div class="feat-meta">BOTH TRADES</div>
+    <p>Shop name · trade · language · ways to log in · machines &amp; hourly rates (shops) · materials &amp; rates (shops) · categories · trucks (scrap) · Tally connector key · Gmail · AI reading toggles · MSMED/Udyam toggle (shops) · Excel · plan · sync status · log out.</p>
+    <p><span class="pill concept">Concept</span> A "local suppliers" marketplace section exists as a clearly labelled demo. <b>Not a real feature — do not show it.</b></p>
+  </div>
+
+  <!-- 5.19 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.19 · Works on any device</h3><span class="pill live">Live</span></div>
+    <div class="feat-meta">BOTH TRADES</div>
+    <ul>
+      <li>Opens in any browser at <b>trackrakho.com</b> on Android, iPhone, tablet or laptop.</li>
+      <li>Can be <b>added to the home screen</b> and opens like an app. No app store download.</li>
+      <li>Keeps working <b>without internet</b> and syncs when back online.</li>
+      <li>Designed for older users: large text, big numbers, generous tap targets.</li>
+    </ul>
+  </div>
+
+  <!-- 5.20 -->
+  <div class="feat">
+    <div class="feat-h"><h3>5.20 · Plan &amp; pricing</h3><span class="pill live">Live</span></div>
+    <div class="feat-meta">BOTH TRADES</div>
+    <table>
+      <tr><td class="k">Price</td><td><b>₹999 / month</b>. ₹9,999 / year offered in sales conversations. GST extra.</td></tr>
+      <tr><td class="k">Plans</td><td>One plan. No tiers, no modules, no add-ons.</td></tr>
+      <tr><td class="k">Included</td><td>Unlimited quotes &amp; pipeline · up to 4 companies in one plan · WhatsApp + Gmail enquiries in one inbox · follow-up reminders &amp; analytics · Excel import/export &amp; PDF quotations · machine floor · Tally connector · priority WhatsApp support</td></tr>
+      <tr><td class="k">Paying</td><td>No online checkout. Payment is arranged directly with us on WhatsApp.</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ============================ 06 TRUST ============================ -->
+<div class="section">
+  <h2><span class="n">06</span>Trust, data &amp; security — what we can say</h2>
+  <p>Our buyers' biggest fear is their business data leaking, or software damaging their Tally. These statements are <b>true and safe to use</b>:</p>
+  <table>
+    <thead><tr><th style="width:45%">Safe to say</th><th>Why it is true</th></tr></thead>
+    <tr><td>Your data is private to your business account. No other shop can see it.</td><td>Each account's data is locked to that login at the database level.</td></tr>
+    <tr><td>TrackRakho reads Tally. It does not write to it unless you switch that on.</td><td>The connector ships in read-only mode.</td></tr>
+    <tr><td>Your data leaves as easily as it arrives.</td><td>Full Excel/CSV export at any time.</td></tr>
+    <tr><td>Log in with your mobile number. The code comes on WhatsApp.</td><td>Live since 17 Sep 2026.</td></tr>
+    <tr><td>Works even when the internet drops.</td><td>Local copy on the device, syncs later.</td></tr>
+    <tr><td>Validated on real TallyPrime, GST and non-GST, to the rupee.</td><td>Tested end to end on Release 7.x.</td></tr>
+    <tr><td>Founder-led setup — we come to your shop.</td><td>Current onboarding model.</td></tr>
+    <tr><td>Built in Faridabad for India's job-shops and traders.</td><td>True.</td></tr>
+  </table>
+
+  <div class="box a">
+    <h4>Do not say</h4>
+    <p>"Bank-grade security", "military-grade encryption", "ISO certified", "data stored in India", "100% secure", "GDPR compliant" or any certification. None of these have been claimed or audited.</p>
+  </div>
+</div>
+
+<!-- ============================ 07 RED LINES ============================ -->
+<div class="section">
+  <h2><span class="n">07</span>Red lines — never claim these</h2>
+  <p class="lead">Each of these is either not built or not true. A single overclaim can cost a sale with an owner who then sees the real product.</p>
+  <table>
+    <thead><tr><th style="width:44%">Never say or imply</th><th>The truth</th></tr></thead>
+    <tr><td>The app predicts or calculates machining / cycle time</td><td>The owner enters cycle time; the app does the money maths.</td></tr>
+    <tr><td>Real-time machine monitoring, IoT, sensors</td><td>Floor estimates come from entered times. No hardware.</td></tr>
+    <tr><td>GPS truck tracking</td><td>Trucks are logged manually.</td></tr>
+    <tr><td>Automatic weighbridge or RFID stock tracking</td><td>Yard stock is book stock vs manual weighing.</td></tr>
+    <tr><td>The app shows missing stock in rupees</td><td>It shows tonnes. Any rupee figure on the website must state the rate used.</td></tr>
+    <tr><td>Replaces Tally / is accounting software / files GST</td><td>Works alongside Tally and reads from it.</td></tr>
+    <tr><td>Writes into Tally automatically</td><td>Read-only by default; order push is optional and off.</td></tr>
+    <tr><td>"Have I made this before?" photo search</td><td>Not built.</td></tr>
+    <tr><td>Supplier marketplace</td><td>Concept demo only.</td></tr>
+    <tr><td>Staff logins, roles, permissions for employees</td><td>Not built. One login can be used on several phones.</td></tr>
+    <tr><td>WhatsApp enquiries appear automatically</td><td>Only once the WhatsApp Business number is connected (we set it up).</td></tr>
+    <tr><td>Connect your WhatsApp yourself in one click</td><td>Self-serve connection is not built.</td></tr>
+    <tr><td>Buy online / enter card / instant paid signup</td><td>No checkout. Demo and payment via WhatsApp.</td></tr>
+    <tr><td>Login code by SMS</td><td>The code comes on WhatsApp.</td></tr>
+    <tr><td>MSMED interest or any legal message for scrap traders</td><td>Traders are excluded from that law.</td></tr>
+    <tr><td>"Legal notice", "recover dues", "force payment"</td><td>Our reminders are deliberately polite.</td></tr>
+    <tr><td>Customer counts, "trusted by X businesses", logos, testimonials</td><td>None to show yet. Early access.</td></tr>
+    <tr><td>Result statistics ("+27% more quotes closed", "save 10 hours")</td><td>No measured data yet. If used illustratively, it must be clearly labelled as illustrative.</td></tr>
+    <tr><td>Printing or furniture features</td><td>Paused; not offered to new customers.</td></tr>
+    <tr><td>Gmail inbox as a headline feature</td><td>Beta with weekly reconnect.</td></tr>
+    <tr><td>The old name "QuoteKaro"</td><td>Renamed to TrackRakho. Must not appear anywhere.</td></tr>
+  </table>
+</div>
+
+<!-- ============================ 08 DEMO NUMBERS ============================ -->
+<div class="section">
+  <h2><span class="n">08</span>Demo numbers for mockups</h2>
+  <p>These come from the app's own sample data. Using them keeps the website, screenshots and live demos consistent. Every figure below adds up.</p>
+
+  <h3>Machine shop — "Sharma Precision Works"</h3>
+  <table>
+    <tr><td class="k">Anchor quotation</td><td>Gland Nut — 60 mm · 200 pcs · <b>₹174.39 per piece</b> · <b>₹34,878 total</b> · customer Apex Hydraulics</td></tr>
+    <tr><td class="k">How ₹174.39 is built</td><td>Material 0.6 kg EN8 × ₹85/kg = ₹51.00 · Machine ₹54.90 (VMC at ₹366/hr) · Labour + tooling ₹12.33 → +18% overhead → +25% margin = ₹174.39</td></tr>
+    <tr><td class="k">WhatsApp enquiry example</td><td>Krishna Pumps · Bush Ø42 · 500 pcs × ₹61.20 = <b>₹30,600</b> · pending, follow-up in 2 days</td></tr>
+    <tr><td class="k">Other pending quotes</td><td>Verma Enterprises · SS 304 fittings · ₹76,500 · follow up today<br/>Bharat Traders · MS Hex Bar lot · ₹1,28,000 · overdue by 1 day</td></tr>
+    <tr><td class="k">Pipeline totals</td><td>Pending <b>₹2,93,100</b> · Won this month <b>₹99,378</b></td></tr>
+    <tr><td class="k">Machines</td><td>VMC 850 #1 and VMC 850 #2 · true rate ≈ <b>₹366/hour</b></td></tr>
+    <tr><td class="k">Machine floor</td><td>A job split across both VMCs, around 60% done, each with its own finish time (shown like "aaj 6:40 pm") · 8% allowance included</td></tr>
+    <tr><td class="k">Customer names</td><td>Apex Hydraulics, Krishna Pumps, Om Forgings, Bharat Traders, Singh Auto Parts, Verma Enterprises</td></tr>
+  </table>
+
+  <h3>Scrap trader — "Mahadev Metal Traders"</h3>
+  <table>
+    <tr><td class="k">Pipeline totals</td><td>Pending <b>₹62,96,000</b> · Won this month <b>₹32,40,000</b></td></tr>
+    <tr><td class="k">Won quotes</td><td>Apex Alloys · MS scrap (HMS-1) · 50 MT · ₹33/kg · <b>₹16,50,000</b><br/>Bharat Steels · CI scrap, foundry grade · 25 MT · ₹8,50,000<br/>Gupta Industries · SS 304 sheet cutting · 5 MT · ₹7,40,000</td></tr>
+    <tr><td class="k">Pending quotes</td><td>Om Metals · aluminium wire scrap · 30 MT · ₹40,20,000<br/>JMD Enterprises · copper cable scrap · 2 MT · ₹12,20,000<br/>Shakti Traders · MS turning boring · 10 MT · ₹2,70,000<br/>(plus Verma Recyclers, Tech Recycle Co)</td></tr>
+    <tr><td class="k">Truck out</td><td>#SL/142 · Apex Alloys · MS scrap · 12.5 MT · out about 3 hours</td></tr>
+    <tr><td class="k">Yard</td><td>Total <b>72.4 MT</b> · kanta check on MS scrap: book <b>43.8 MT</b>, weighed <b>42.0 MT</b>, shortfall <b>−1.8 MT</b> (tonnes only — see 5.13)</td></tr>
+  </table>
+
+  <h3>Tally figures — the same sample appears for both trades</h3>
+  <table>
+    <tr><td class="k">Money customers owe</td><td><b>₹7,08,700</b> — Apex Alloys ₹4,12,000 · Bharat Steels ₹1,85,500 · Om Metals ₹96,000 · Shakti Traders ₹15,200. Of this, <b>₹3,96,700 is late</b>.</td></tr>
+    <tr><td class="k">Money owed to suppliers</td><td><b>₹2,78,500</b> — Yard Suppliers Co ₹2,40,000 · Highway Transport Co ₹38,500</td></tr>
+    <tr><td class="k">Aging bar split</td><td>Not yet due ₹3,12,000 (44%) · 1–30 days ₹2,49,500 (35%) · 31–60 days ₹1,05,200 (15%) · 60+ days ₹42,000 (6%)</td></tr>
+    <tr><td class="k">Late bills</td><td>Apex Alloys · <span class="mono">APX/PO-112</span> · ₹2,49,500 · 8 days late<br/>Bharat Steels · <span class="mono">BS/PO-1104</span> · ₹90,000 · 33 days late<br/>Shakti Traders · <span class="mono">ST/188</span> · ₹15,200 · 48 days late<br/>Om Metals · <span class="mono">OM/2214</span> · ₹42,000 · 71 days late</td></tr>
+    <tr><td class="k">MSMED interest example</td><td>Om Metals bill OM/2214 → about <b>₹1,341</b> (worked out by the app's own calculation). Machine-shop mockups only.</td></tr>
+    <tr><td class="k">Latest dispatch</td><td>Apex Alloys · MS scrap · 12.5 MT · ₹4,12,500 · ref <span class="mono">APX/PO-118</span> · voucher 148</td></tr>
+    <tr><td class="k">Dispatch planner</td><td>Om Metals (aluminium, 26.6 MT left, deadline passed) · Apex Alloys (MS, 17.5 MT left, 4 days) · Bharat Steels (CI, 6.8 MT left, 10 days)</td></tr>
+  </table>
+
+  <div class="box a"><p>Please do not invent new customer names, amounts or percentages for mockups. If a screen needs a number that is not here, ask us. Every figure above was checked against the app's own sample data on 17 September 2026.</p></div>
+</div>
+
+<!-- ============================ 09 BRAND ============================ -->
+<div class="section">
+  <h2><span class="n">09</span>Brand &amp; design rules</h2>
+
+  <h3>Name</h3>
+  <p><b>TrackRakho</b> (capital T and R) everywhere in marketing. The legal name is <b>TRACKRAKHO</b>. "Track rakho" is Hinglish for "keep track".</p>
+
+  <h3>Logo</h3>
+  <p><b>There is no finalised logo.</b> The current mark is a green rounded square with three white horizontal lines, fading downward (like a list or ledger). The app's login screen still shows an old placeholder tile reading "QK" from the previous name. <b>A proper logo mark is welcome as part of the agency's work.</b></p>
+
+  <div class="two">
+    <div>
+      <h3>App colours</h3>
+      <div class="swatch"><i style="background:#228B22"></i><div><b>Forest green</b> <span class="mono small">#228B22</span></div></div>
+      <div class="swatch"><i style="background:#155E18"></i><div><b>Deep green</b> <span class="mono small">#155E18</span></div></div>
+      <div class="swatch"><i style="background:#3FAE45"></i><div><b>Bright green</b> <span class="mono small">#3FAE45</span></div></div>
+      <div class="swatch"><i style="background:#16201A"></i><div><b>Ink</b> <span class="mono small">#16201A</span></div></div>
+      <div class="swatch"><i style="background:#FFFFFF"></i><div><b>White base</b> <span class="mono small">#FFFFFF</span></div></div>
+    </div>
+    <div>
+      <h3>Dark marketing variant</h3>
+      <div class="swatch"><i style="background:#070B08"></i><div><b>Near-black green</b> <span class="mono small">#070B08</span></div></div>
+      <div class="swatch"><i style="background:#7CE383"></i><div><b>Luminous green</b> <span class="mono small">#7CE383</span></div></div>
+      <p class="small muted" style="margin-top:3mm">Used on the main marketing site and the desktop walkthrough, with the app's real white-and-green screens glowing inside. Trade pages use the light app palette.</p>
+    </div>
+  </div>
+
+  <h3>Typography</h3>
+  <table>
+    <tr><td class="k" style="font-family:var(--disp)">Space Grotesk</td><td>Headlines and display numbers</td></tr>
+    <tr><td class="k">Inter</td><td>Body text and UI</td></tr>
+    <tr><td class="k mono">IBM Plex Mono</td><td>Numbers, amounts, small uppercase labels</td></tr>
+  </table>
+
+  <h3>App look</h3>
+  <p>White base, forest green, rounded cards (~22 px radius), pill-shaped buttons, a frosted-glass bottom navigation bar. <b>Readability first:</b> body text 15–17 px minimum, large numbers, big tap targets — the users are older owners.</p>
+
+  <h3>Illustration rules — learned from rejected rounds</h3>
+  <ul>
+    <li><b>Draw real-world, recognisable scenes with craft:</b> a loaded tipper truck standing on a weighbridge with its digital display, a VMC machine, a Tally screen on a monitor, a WhatsApp chat bubble.</li>
+    <li><b>No people at all</b> — no full figures, no hands holding phones. (Tried twice; both rejected.)</li>
+    <li><b>No metaphor objects</b> — no clouds, pockets, rockets, lightbulbs.</li>
+    <li><b>One unified scene per illustration</b>, not layered separate elements that drift apart at different screen sizes.</li>
+    <li><b>Text never overlaps artwork</b> — reserve a clear text area.</li>
+    <li><b>Show the real product UI</b> in its true white and green, not a stylised version.</li>
+  </ul>
+
+  <h3>What the founder liked</h3>
+  <ul>
+    <li><b>Scroll-driven storytelling</b> where scrolling reveals the story step by step (Pear-style) — without hijacking the scroll.</li>
+    <li><b>An interactive walkthrough</b> where the visitor performs the steps (paste the enquiry, save the quote, mark it won) and each step ticks green.</li>
+    <li>A <b>"everything connects to your phone" finale</b>: four vignettes (weighbridge / truck / Tally / stock — or VMC / quotation / Tally / WhatsApp) with lines drawing into a central phone.</li>
+    <li>Calm, confident, enterprise-professional tone.</li>
+  </ul>
+
+  <h3>What was tried and rejected</h3>
+  <ul>
+    <li>A dark, heavy-Hinglish scrap site opening with a theft story — felt amateur.</li>
+    <li>A generic multi-page editorial redesign — felt ordinary.</li>
+    <li>Drawn people, hands, a phone going into a trouser pocket.</li>
+    <li>Tilted 3D phone mockups on the trade pages.</li>
+    <li>Stat panels full of numbers without context in the hero.</li>
+  </ul>
+</div>
+
+<!-- ============================ 10 EXISTING SITES ============================ -->
+<div class="section">
+  <h2><span class="n">10</span>Existing websites &amp; what we learned</h2>
+  <p>All live and viewable now. They can be reused, restructured or replaced.</p>
+  <table>
+    <thead><tr><th style="width:32%">URL</th><th>What it is</th></tr></thead>
+    <tr><td class="mono small">trackrakho.com</td><td>The app itself (opens on the login screen).</td></tr>
+    <tr><td class="mono small">trackrakho.com/site/</td><td>Main marketing site. Dark premium theme, trade dropdown in the header, 3D phone hero, per-trade sections, ₹999 pricing, FAQ. <i>Note: still mentions printing and furniture — needs updating.</i></td></tr>
+    <tr><td class="mono small">trackrakho.com/site/machining/</td><td>Machine-shop page. Light theme; six feature sections; a sticky-phone "day in the shop" walkthrough; VMC line-art scene; 4-vignette finale.</td></tr>
+    <tr><td class="mono small">trackrakho.com/site/scrap/</td><td>Scrap-trader page. Light theme; weighbridge scene; truck scene; sticky-phone walkthrough; 4-vignette finale.</td></tr>
+    <tr><td class="mono small">trackrakho.com/site/desktop/</td><td>Laptop-only interactive walkthrough. 8 steps in 4 chapters, visitor performs the steps, machine-shop / scrap toggle.</td></tr>
+    <tr><td>Partner one-pager &amp; WhatsApp kit</td><td>Sales material for Tally partners. <b>Not for the public website.</b></td></tr>
+  </table>
+
+  <h3>Research that should shape the new site</h3>
+  <ul>
+    <li><b>An interactive product demo is now the single most useful thing on a B2B software website</b> — rated above pricing pages, case studies and free trials.</li>
+    <li>Best demos run <b>8–12 steps split into chapters</b>, with outcome-led titles ("A customer messages you at 11 pm") rather than button names ("Click Save").</li>
+    <li><b>Show real UI above the fold</b> — owners want to see what they will actually use.</li>
+    <li>Owners will mostly visit on a <b>phone</b>; partners and accountants often on a <b>laptop</b>. Both need to work well.</li>
+  </ul>
+</div>
+
+<!-- ============================ 11 COMPETITORS ============================ -->
+<div class="section">
+  <h2><span class="n">11</span>Competitors</h2>
+  <p>So the site can position clearly. Naming competitors on the website itself is <b>not</b> recommended.</p>
+  <table>
+    <thead><tr><th style="width:24%">Alternative</th><th>What it is</th><th style="width:40%">How TrackRakho is different</th></tr></thead>
+    <tr><td><b>Excel + WhatsApp + register</b></td><td>The real incumbent. Free, familiar, chaotic.</td><td>Structures the same work without asking owners to give up Excel — import and export freely.</td></tr>
+    <tr><td><b>TallyPrime</b></td><td>The accounting system most of our buyers already own.</td><td>Not a competitor. TrackRakho reads Tally and puts it on the phone, and covers everything before the invoice.</td></tr>
+    <tr><td><b>Biz Analyst</b> (by Khatabook)</td><td>Tally-on-mobile. ~₹3,300 per device per year. Large partner network.</td><td>It shows what is already in Tally. TrackRakho also runs what Tally never sees: quotes before invoicing, the machine floor, trucks, yard stock and weighbridge checks. One price for the whole business, not per device.</td></tr>
+    <tr><td><b>Vyapar, myBillBook</b></td><td>Billing and invoicing apps for small businesses.</td><td>Built for invoicing. No quote pipeline, no Tally reading, nothing for machines or trucks.</td></tr>
+    <tr><td><b>TranZact and SME ERPs</b></td><td>Manufacturing ERP software.</td><td>Heavier, need implementation and training. TrackRakho is phone-first and running in minutes.</td></tr>
+    <tr><td><b>Machine monitoring / Industry 4.0</b></td><td>Sensor-based OEE systems for larger factories.</td><td>Different market and price. TrackRakho uses no hardware.</td></tr>
+  </table>
+</div>
+
+<!-- ============================ 12 WEBSITE GOALS ============================ -->
+<div class="section">
+  <h2><span class="n">12</span>What the website should achieve</h2>
+  <p>Our suggestions — the agency is welcome to refine them.</p>
+
+  <table>
+    <tr><td class="k">Primary action</td><td><b>Book a demo on WhatsApp</b> → +91 99106 05207. The founder visits and shows the app on the owner's own Tally data. This converts far better than a self-serve trial.</td></tr>
+    <tr><td class="k">Secondary action</td><td>Open the app / log in at trackrakho.com.</td></tr>
+    <tr><td class="k">Two clear paths</td><td>A visitor should reach "this is for machine shops" or "this is for scrap traders" within one click.</td></tr>
+    <tr><td class="k">Show the product</td><td>Real screens with the demo numbers from Section 8. An interactive walkthrough if possible.</td></tr>
+    <tr><td class="k">Answer the three fears</td><td>"Will it mess up my Tally?" (no — read-only) · "Is my data safe?" (private per business) · "Is it complicated?" (phone-first, set up in person, Hindi available).</td></tr>
+    <tr><td class="k">Price visible</td><td>₹999/month, one plan, everything included — no "contact us for pricing".</td></tr>
+    <tr><td class="k">Mobile first</td><td>Most owners will open the link someone forwards on WhatsApp.</td></tr>
+    <tr><td class="k">Suggested pages</td><td>Home · Machine shops · Scrap &amp; metal traders · How it works with Tally · Pricing · FAQ · Contact. (An "About the founder" section helps trust with this audience.)</td></tr>
+  </table>
+
+  <h3>What we can provide</h3>
+  <ul>
+    <li>A demo login with the sample data loaded, to screenshot any screen</li>
+    <li>The source code of the four existing marketing pages</li>
+    <li>Answers on any feature within a day</li>
+  </ul>
+
+  <div class="box g" style="margin-top:6mm">
+    <h4>Contact</h4>
+    <p><b>Yash Bagri</b>, Founder — TRACKRAKHO, Faridabad<br/>WhatsApp <span class="mono">+91 99106 05207</span> · <span class="mono">trackrakho.com</span></p>
+  </div>
+</div>
+
+<!-- ============================ 13 GLOSSARY ============================ -->
+<div class="section">
+  <h2><span class="n">13</span>Glossary of trade &amp; Hindi terms</h2>
+  <p>Words that appear in the app, in screenshots and in customers' conversations.</p>
+  <table>
+    <thead><tr><th style="width:26%">Term</th><th>Meaning</th></tr></thead>
+    <tr><td><b>RFQ</b></td><td>Request for quotation — a customer asking for a price.</td></tr>
+    <tr><td><b>Pipeline</b></td><td>All open, won and lost quotes in one list.</td></tr>
+    <tr><td><b>VMC / CNC</b></td><td>Vertical machining centre / computer-controlled machine tools used in job shops.</td></tr>
+    <tr><td><b>Cycle time</b></td><td>Minutes a machine takes to make one piece.</td></tr>
+    <tr><td><b>Job work</b></td><td>Manufacturing parts to another company's drawing.</td></tr>
+    <tr><td><b>MT</b></td><td>Metric tonne (1,000 kg) — the scrap trade's unit.</td></tr>
+    <tr><td><b>MS / CI / SS</b></td><td>Mild steel / cast iron / stainless steel.</td></tr>
+    <tr><td><b>Kanta</b></td><td>Weighbridge. <b>Kanta check</b> = weighing the actual stock.</td></tr>
+    <tr><td><b>Ghata</b></td><td>Shortfall / loss — stock that should be there but is not.</td></tr>
+    <tr><td><b>Gaadi</b></td><td>Truck / vehicle.</td></tr>
+    <tr><td><b>Maal gaya</b></td><td>"Goods went out" — dispatches.</td></tr>
+    <tr><td><b>Baki</b></td><td>Balance still due.</td></tr>
+    <tr><td><b>Aane wale paise / Dene wale paise</b></td><td>Money coming in (receivables) / money going out (payables).</td></tr>
+    <tr><td><b>Paisa kahan atka hai</b></td><td>"Where is the money stuck?" — the aging view.</td></tr>
+    <tr><td><b>Byaj</b></td><td>Interest.</td></tr>
+    <tr><td><b>Narmi se yaad dilao</b></td><td>"Remind gently" — the polite payment reminder.</td></tr>
+    <tr><td><b>Floor pe bhejo</b></td><td>"Send to the floor" — start a won job on machines.</td></tr>
+    <tr><td><b>TallyPrime</b></td><td>India's most widely used business accounting software.</td></tr>
+    <tr><td><b>Bills receivable / aging</b></td><td>Unpaid customer bills, grouped by how overdue they are.</td></tr>
+    <tr><td><b>Voucher</b></td><td>A Tally transaction entry (sale, purchase, receipt).</td></tr>
+    <tr><td><b>Udyam / MSME</b></td><td>The government registration for micro, small and medium enterprises.</td></tr>
+    <tr><td><b>MSMED Act</b></td><td>The law giving registered micro and small manufacturers the right to interest on payments later than 45 days.</td></tr>
+    <tr><td><b>GST</b></td><td>Goods and Services Tax.</td></tr>
+    <tr><td><b>Tally partner</b></td><td>A firm that sells, installs and services Tally for businesses.</td></tr>
+  </table>
+  <p class="small muted" style="margin-top:6mm">Status of every feature in this brief was checked against the app's code on 17 September 2026. Features change — ask before relying on this document months from now.</p>
+</div>
+
+</body>
+</html>
