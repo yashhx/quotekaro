@@ -696,6 +696,11 @@ const seedData = () => {
    The app is trade-agnostic at its core (pipeline, log, follow-ups); industry
    only tunes vocabulary, examples and which sample data a fresh account shows.
    emoji is intentional (matches the app's existing emoji use, e.g. Won toast). */
+/* Trades OFFERED to new users (2026-09-17: focus on machining + scrap only).
+   Printing/furniture stay fully defined in INDUSTRIES below - an account
+   already set to one keeps working, and re-enabling is just adding the key
+   back here. Order = order shown in the picker and the Setup switcher. */
+const LIVE_TRADES = ["machining", "scrap"];
 const INDUSTRIES = {
   machining: { key: "machining", emoji: "⚙️", label: "Machine shop / Trader", tag: "CNC, turning, fabrication, trading", item: "Part / item", eg: "MS Hex Bar lot", unit: "pcs", tally: true,
     spec: { label: "Size / material / grade", eg: "Ø42 x 120mm · EN8" },
@@ -1433,7 +1438,7 @@ function IndustryPicker({ onPick }) {
         <div className="microlbl">WELCOME</div>
         <div className="h-disp" style={{ fontSize: 27, fontWeight: 700, margin: "4px 0 6px" }}>What do you make?</div>
         <div style={{ color: "var(--dim)", fontSize: 15, marginBottom: 22, lineHeight: 1.55 }}>Pick your trade so the app speaks your language and shows the right examples. You can change it anytime in Setup.</div>
-        {Object.values(INDUSTRIES).map((ind, i) => (
+        {LIVE_TRADES.map((k) => INDUSTRIES[k]).map((ind, i) => (
           <button key={ind.key} className={"card press anim-in st" + (i + 1)} onClick={() => onPick(ind.key)}
             style={{ display: "flex", alignItems: "center", gap: 15, width: "100%", textAlign: "left", padding: "18px 16px", marginBottom: 12, border: "1.5px solid var(--line2)", background: "#fff", cursor: "pointer" }}>
             <span style={{ width: 52, height: 52, borderRadius: 15, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 27, flexShrink: 0 }}>{ind.emoji}</span>
@@ -5029,7 +5034,10 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
       {/* trade focus - tunes labels + examples */}
       <label className="lbl anim-in st1" style={{ marginTop: 16 }}>{tx("Your trade", "Your trade", "आपका काम")}</label>
       <div className="anim-in st1" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {Object.values(INDUSTRIES).map((it) => (
+        {/* live trades only - plus the account's current trade if it is a
+            hidden one, so an existing printing/furniture shop still sees
+            its own trade selected instead of nothing */}
+        {(LIVE_TRADES.includes(ind.key) ? LIVE_TRADES : [...LIVE_TRADES, ind.key]).map((k) => INDUSTRIES[k]).map((it) => (
           <button key={it.key} className={"fpill press " + (ind.key === it.key ? "on" : "")}
             onClick={() => {
               setData((d) => {
