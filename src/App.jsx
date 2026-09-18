@@ -372,10 +372,18 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:28px; hei
 `;
 
 /* ---------------- icons ---------------- */
+/* which bottom-nav item owns each page. Work is a hub - the floor, the truck
+   board and the yard all sit under it; pages missing here (setup/help, reached
+   from the avatar sheet) hide the pill rather than leave it stranded. */
+const NAV_OF = { home: "home", quotes: "quotes", work: "work", floor: "work", trucks: "work", stock: "work", tally: "tally" };
 const I = {
   home: (p) => (<svg width="23" height="23" viewBox="0 0 24 24" fill="none" {...p}><path d="M3.5 10.5 12 3.5l8.5 7v8.2a1.8 1.8 0 0 1-1.8 1.8h-3.4v-6.1H8.7v6.1H5.3a1.8 1.8 0 0 1-1.8-1.8v-8.2Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>),
   list: (p) => (<svg width="23" height="23" viewBox="0 0 24 24" fill="none" {...p}><path d="M8.5 6.5h11M8.5 12h11M8.5 17.5h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="4.6" cy="6.5" r="1.3" fill="currentColor"/><circle cx="4.6" cy="12" r="1.3" fill="currentColor"/><circle cx="4.6" cy="17.5" r="1.3" fill="currentColor"/></svg>),
   gear: (p) => (<svg width="23" height="23" viewBox="0 0 24 24" fill="none" {...p}><circle cx="12" cy="12" r="3.2" stroke="currentColor" strokeWidth="1.8"/><path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.9 1.9M7.4 16.6l-1.9 1.9M18.5 18.5l-1.9-1.9M7.4 7.4 5.5 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>),
+  /* Work - a machine on the floor (not a gear: gear reads as settings) */
+  gear2: (p) => (<svg width="23" height="23" viewBox="0 0 24 24" fill="none" {...p}><rect x="3.3" y="5.6" width="17.4" height="8.4" rx="2.2" stroke="currentColor" strokeWidth="1.8"/><path d="M7.2 14v1.6M16.8 14v1.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="7.2" cy="18" r="2.1" stroke="currentColor" strokeWidth="1.8"/><circle cx="16.8" cy="18" r="2.1" stroke="currentColor" strokeWidth="1.8"/></svg>),
+  /* Money - a rupee */
+  rupee: (p) => (<svg width="23" height="23" viewBox="0 0 24 24" fill="none" {...p}><path d="M8.2 5.4h7.6M8.2 9.3h7.6M8.2 5.4c3.5 0 5.5 1.3 5.5 3.9s-2 3.9-5.5 3.9M8.4 13.2l6.9 5.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>),
   plus: (p) => (<svg width="27" height="27" viewBox="0 0 24 24" fill="none" {...p}><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"/></svg>),
   back: (p) => (<svg width="21" height="21" viewBox="0 0 24 24" fill="none" {...p}><path d="m14.5 6-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>),
   wa: (p) => (<svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M12 2a9.9 9.9 0 0 0-8.5 15L2 22l5.2-1.4A9.9 9.9 0 1 0 12 2Zm5.6 14c-.24.66-1.4 1.3-1.93 1.34-.52.05-1 .24-3.4-.7-2.87-1.13-4.7-4.05-4.84-4.24-.14-.19-1.16-1.55-1.16-2.95s.74-2.09 1-2.38c.26-.28.57-.35.76-.35h.55c.18 0 .42-.06.65.5.24.57.8 1.97.87 2.11.07.14.12.31.02.5-.09.19-.14.3-.28.47-.14.17-.3.37-.43.5-.14.14-.29.3-.12.58.16.28.73 1.2 1.57 1.95 1.08.96 1.99 1.26 2.27 1.4.28.14.45.12.61-.07.17-.19.7-.82.89-1.1.19-.28.38-.23.64-.14.26.1 1.65.78 1.93.92.28.14.47.21.54.33.07.12.07.66-.17 1.32Z"/></svg>),
@@ -1229,11 +1237,11 @@ function Auth({ onAuthed, authError }) {
     return (
       <div className="auth">
         <div className="auth-top">
-          <div className="auth-logo">QK</div>
+          <div className="auth-logo">TR</div>
           {/* NOT var(--grn): that is #228B22, the exact middle stop of this header's
     own gradient, so "Rakho" was invisible and the wordmark read "Track" */}
 <h1>Track<span style={{ color: "#B9F2BE" }}>Rakho</span></h1>
-          <p>Quotations in five minutes - built for India's job-shops.</p>
+          <p>{tx("Your whole business, in your pocket.", "Aapka poora business, aapki jeb mein.", "\u0906\u092A\u0915\u093E \u092A\u0942\u0930\u093E \u092C\u093F\u095B\u0928\u0947\u0938, \u0906\u092A\u0915\u0940 \u091C\u0947\u092C \u092E\u0947\u0902\u0964")}</p>
         </div>
         <div className="auth-body">
           {stage === "enter" ? (
@@ -1321,11 +1329,11 @@ function Auth({ onAuthed, authError }) {
   return (
     <div className="auth">
       <div className="auth-top">
-        <div className="auth-logo">QK</div>
+        <div className="auth-logo">TR</div>
         {/* NOT var(--grn): that is #228B22, the exact middle stop of this header's
     own gradient, so "Rakho" was invisible and the wordmark read "Track" */}
 <h1>Track<span style={{ color: "#B9F2BE" }}>Rakho</span></h1>
-        <p>Quotations in five minutes - built for India's job-shops.</p>
+        <p>{tx("Your whole business, in your pocket.", "Aapka poora business, aapki jeb mein.", "\u0906\u092A\u0915\u093E \u092A\u0942\u0930\u093E \u092C\u093F\u095B\u0928\u0947\u0938, \u0906\u092A\u0915\u0940 \u091C\u0947\u092C \u092E\u0947\u0902\u0964")}</p>
       </div>
       <div className="auth-body">
         <div className="seg">
@@ -1938,7 +1946,12 @@ export default function App() {
   useEffect(() => {
     let tries = 0, raf, t;
     const measure = () => {
-      const btn = navBtns.current[tab], bar = navRef.current;
+      /* sub-pages map onto the nav item that owns them (the floor/trucks/stock
+         all live under Work); pages with no nav home hide the pill instead of
+         leaving it stuck under the previously active item */
+      const key = NAV_OF[tab];
+      if (!key) { setPillStyle((p) => (p.opacity === 0 ? p : { opacity: 0 })); return; }
+      const btn = navBtns.current[key], bar = navRef.current;
       if (!btn || !bar) {
         /* layout not ready yet on first paint - keep retrying briefly */
         if (tries++ < 30) { t = setTimeout(measure, 40); }
@@ -2067,7 +2080,11 @@ export default function App() {
         {tab === "help" && <Help data={data} ping={ping} startTut={startTut} />}
         {tab === "analytics" && <Analytics data={data} onBack={() => setTab("home")} goQuotes={goQuotes} />}
         {tab === "tally" && <TallyInsights data={data} updateQuote={updateQuote} ping={ping} onBack={() => setTab("home")} />}
-        {tab === "floor" && <MachineFloor data={data} setData={setData} ping={ping} onBack={() => setTab("home")} goSetup={() => setTab("setup")} draft={floorDraft} clearDraft={() => setFloorDraft(null)} />}
+        {/* WORK - machine shops land straight on the floor; traders get a hub
+            for the truck board and the yard (both still open as their own tabs,
+            which NAV_OF maps back under Work) */}
+        {tab === "work" && industryOf(data).key !== "machining" && <WorkHub data={data} openTrucks={() => setTab("trucks")} openStock={() => setTab("stock")} />}
+        {(tab === "floor" || (tab === "work" && industryOf(data).key === "machining")) && <MachineFloor data={data} setData={setData} ping={ping} onBack={() => setTab("home")} goSetup={() => setTab("setup")} draft={floorDraft} clearDraft={() => setFloorDraft(null)} />}
         {tab === "trucks" && <TruckBoard data={data} setData={setData} ping={ping} onBack={() => setTab("home")} goSetup={() => setTab("setup")} />}
         {tab === "stock" && <StockYard data={data} setData={setData} ping={ping} onBack={() => setTab("home")} />}
         {tab === "subscribe" && <Subscribe account={accountView} onSubscribe={(id) => { subscribe(id); ping("You're on the " + PLANS.find(p => p.id === id).name + " plan"); setTab("home"); }} onBack={() => setTab("home")} />}
@@ -2094,6 +2111,23 @@ export default function App() {
               ))}
               <button className="btn btn-ghost press" style={{ width: "100%", marginTop: 4 }} onClick={addCompany}>+ {tx("Add a company", "Nayi company jodo", "नई कंपनी जोड़ें")}</button>
               <div className="hint" style={{ marginTop: 10, textAlign: "center" }}>{tx("Each company's quotes, Tally and settings stay fully separate.", "Har company ke quotes, Tally aur settings bilkul alag rehte hain.", "हर कंपनी का डेटा बिल्कुल अलग रहता है।")}</div>
+
+              {/* Setup and Help live here now - the bottom bar is for the four
+                  daily jobs, and these two are visited rarely */}
+              <div style={{ borderTop: "1px solid var(--line)", marginTop: 16, paddingTop: 12 }}>
+                {[["setup", <I.gear />, tx("Setup", "Setup", "सेटअप"), tx("Shop, machines, rates, Tally, login", "Shop, machines, rate, Tally, login", "दुकान, मशीन, रेट, Tally, लॉगिन")],
+                  ["help", <I.help />, tx("Help", "Help", "मदद")], ].map(([k, icon, label, sub]) => (
+                  <button key={k} className="press" onClick={() => { setCoOpen(false); setTab(k); }}
+                    style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", gap: 13, padding: "12px 4px" }}>
+                    <span style={{ width: 38, height: 38, borderRadius: 12, background: "var(--soft)", color: "var(--grn-d)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{icon}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "block", fontWeight: 600, fontSize: 15.5 }}>{label}</span>
+                      {sub && <span style={{ display: "block", fontSize: 12.5, color: "var(--dim)", marginTop: 1 }}>{sub}</span>}
+                    </span>
+                    <I.chev style={{ color: "var(--faint)", flexShrink: 0 }} />
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -2118,18 +2152,48 @@ export default function App() {
           </div>
         )}
 
-        {tab !== "new" && tab !== "analytics" && tab !== "subscribe" && tab !== "log" && tab !== "tally" && tab !== "floor" && tab !== "trucks" && tab !== "stock" && (
+        {/* Home · Quotes · + · Work · Money. Setup and Help moved into the
+            avatar sheet (top right) - the four tabs are the daily jobs. */}
+        {tab !== "new" && tab !== "analytics" && tab !== "subscribe" && tab !== "log" && (
           <nav className="navbar" ref={navRef}>
             <div className="nav-pill" style={pillStyle} />
             <button ref={setNavRef("home")} className={"nav-it " + (tab === "home" ? "on" : "")} onClick={() => setTab("home")}><I.home /><span>{tx("Home", "Home", "होम")}</span></button>
-            <button ref={setNavRef("quotes")} className={"nav-it " + (tab === "quotes" ? "on" : "")} onClick={() => setTab("quotes")}><I.list /><span>{tx("Pipeline", "Pipeline", "पाइपलाइन")}</span></button>
+            <button ref={setNavRef("quotes")} className={"nav-it " + (tab === "quotes" ? "on" : "")} onClick={() => setTab("quotes")}><I.list /><span>{tx("Quotes", "Quotes", "कोटेशन")}</span></button>
             <button className="fab press" data-tut="fab" onClick={() => (industryOf(data).key === "machining" ? setFabOpen(true) : startLog())} aria-label="Add a quote"><I.plus /></button>
-            <button ref={setNavRef("setup")} className={"nav-it " + (tab === "setup" ? "on" : "")} onClick={() => setTab("setup")}><I.gear /><span>{tx("Setup", "Setup", "सेटअप")}</span></button>
-            <button ref={setNavRef("help")} className={"nav-it " + (tab === "help" ? "on" : "")} onClick={() => setTab("help")}><I.help /><span>{tx("Help", "Help", "मदद")}</span></button>
+            <button ref={setNavRef("work")} className={"nav-it " + (NAV_OF[tab] === "work" ? "on" : "")} onClick={() => setTab("work")}><I.gear2 /><span>{tx("Work", "Work", "काम")}</span></button>
+            <button ref={setNavRef("tally")} className={"nav-it " + (tab === "tally" ? "on" : "")} onClick={() => setTab("tally")}><I.rupee /><span>{tx("Money", "Money", "पैसा")}</span></button>
           </nav>
         )}
       </div>
     </div>
+  );
+}
+
+/* ================= WORK (traders) =================
+   Machine shops get the floor itself on this tab. Traders have two work
+   surfaces instead, so this is a small hub. */
+function WorkHub({ data, openTrucks, openStock }) {
+  const out = (data.trips || []).filter((t) => !t.delivered).length;
+  const card = (onClick, emoji, title, sub, badge) => (
+    <button onClick={onClick} className="press anim-in st1" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "16px", borderRadius: 18, background: "#fff", border: "1px solid var(--line)", boxShadow: "var(--sh-s)" }}>
+      <span style={{ width: 44, height: 44, borderRadius: 14, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 21, flexShrink: 0 }}>{emoji}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontWeight: 700, fontSize: 16 }}>{title}</span>
+        <span style={{ display: "block", fontSize: 12.5, color: "var(--dim)", marginTop: 2 }}>{sub}</span>
+      </span>
+      {badge}
+      <I.chev style={{ color: "var(--faint)", flexShrink: 0 }} />
+    </button>
+  );
+  return (
+    <div className="scr"><div className="pagepad">
+      <div className="microlbl">{tx("YOUR WORK", "AAPKA KAAM", "आपका काम")}</div>
+      <div className="h-disp" style={{ fontSize: 26, fontWeight: 700, margin: "4px 0 4px" }}>{tx("The yard today", "Aaj ka kaam", "आज का काम")}</div>
+      <div style={{ color: "var(--dim)", fontSize: 14.5, lineHeight: 1.55 }}>{tx("Trucks on the road and what the yard is holding.", "Gaadiyan kahan hain aur yard mein kitna maal hai.", "गाड़ियाँ कहाँ हैं और यार्ड में कितना माल है।")}</div>
+      {card(openTrucks, "\u{1F69B}", tx("Truck board", "Truck board", "ट्रक बोर्ड"), tx("Which truck is out, carrying what, for how long.", "Kaunsi gaadi bahar hai, kya le kar, kitni der se.", "कौन सी गाड़ी बाहर है, क्या लेकर।"),
+        out > 0 ? <span className="mono" style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 700, color: "var(--amber)", background: "var(--amber-bg, #FFF4E0)", borderRadius: 999, padding: "4px 10px" }}>{out} OUT</span> : null)}
+      {card(openStock, "⚖️", tx("Yard stock", "Yard stock", "यार्ड स्टॉक"), tx("Book stock vs the kanta - catch ghata early.", "Book stock vs kanta - ghata jaldi pakdo.", "बुक स्टॉक बनाम कांटा - घाटा जल्दी पकड़ें।"), null)}
+    </div></div>
   );
 }
 
@@ -2259,18 +2323,8 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
         </div>
       )}
 
-      {/* machining: live shop floor */}
-      {isMach && (
-        <button onClick={openFloor} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "#fff", border: "1px solid var(--line)", boxShadow: "var(--sh-s)" }}>
-          <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>🛠️</span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: "block", fontWeight: 700, fontSize: 15 }}>{tx("Machine floor", "Machine floor", "मशीन फ्लोर")}</span>
-            <span style={{ display: "block", fontSize: 12.5, color: "var(--dim)" }}>{flUnits.length ? flBusy.size + "/" + flUnits.length + tx(" machines running work", " machines par kaam chal raha", " मशीनों पर काम चल रहा") : tx("Which machine is running what - live", "Kaun si machine par kya chal raha hai - live", "कौन सी मशीन पर क्या चल रहा है - लाइव")}</span>
-          </span>
-          {flActive.length > 0 && <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: "var(--grn-d)", background: "var(--grn-100)", padding: "4px 9px", borderRadius: 999, flexShrink: 0 }}>{flActive.length} ON</span>}
-          <I.chev style={{ color: "var(--faint)" }} />
-        </button>
-      )}
+      {/* machine floor now lives on the Work tab, Tally on Money -
+         home is the morning glance only */}
 
       {/* scrap: live truck board */}
       {ind.key === "scrap" && (
@@ -2309,15 +2363,6 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
         </button>
       )}
 
-      {/* Tally insights - only for trades that actually run Tally */}
-      {ind.tally && <button onClick={openTally} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "linear-gradient(135deg,#10240F,#1B5E20)", color: "#fff", boxShadow: "var(--sh-m)" }}>
-        <span style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(255,255,255,.14)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>📒</span>
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: "block", fontWeight: 700, fontSize: 15 }}>{tx("Tally - the plain picture", "Tally - seedha hisaab", "Tally - सीधा हिसाब")}</span>
-          <span style={{ display: "block", fontSize: 12.5, color: "rgba(255,255,255,.8)" }}>{tx("Money due, goods shipped, orders left - without opening Tally.", "Baki paisa, maal gaya, order kitna bacha - bina Tally khole.", "बाकी पैसा, माल गया, ऑर्डर कितना बचा - बिना Tally खोले।")}</span>
-        </span>
-        <I.chev style={{ color: "rgba(255,255,255,.8)" }} />
-      </button>}
 
       {catStats.length > 0 && (<>
         <div className="anim-in st3" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "24px 0 10px" }}>
@@ -3313,6 +3358,56 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
   const [plannerOpen, setPlannerOpen] = useState(false); // dispatch planner collapsed by default (first-look clutter)
   const [openBill, setOpenBill] = useState(null); // expanded bill key in the bills drill-down
   const [billFilter, setBillFilter] = useState("all"); // aging-bucket filter in the bills drill-down
+  /* confirm sheet before any reminder leaves - the owner reads the exact
+     words first. The message itself is msmedChaseText(), unchanged. */
+  const [nudge, setNudge] = useState(null); // {party, ref, pending, late, byaj, msg, phone}
+
+  /* built once and rendered by every view - TallyInsights returns early per
+     view, so a sheet living only in the overview return never appears in the
+     bills drill where the reminder button actually is */
+  const nudgeSheet = nudge ? (
+        <div onClick={() => setNudge(null)} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(16,26,20,.45)", backdropFilter: "blur(3px)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+          <div className="anim-in" onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: "26px 26px 0 0", padding: "20px 18px calc(18px + env(safe-area-inset-bottom))", maxHeight: "88%", overflowY: "auto", boxShadow: "0 -20px 50px -20px rgba(21,94,24,.4)" }}>
+            <div style={{ width: 40, height: 4, borderRadius: 3, background: "var(--line2)", margin: "0 auto 16px" }} />
+            <div className="h-disp" style={{ fontSize: 22, fontWeight: 700 }}>{tx("A gentle reminder", "Ek vinamra yaad", "एक विनम्र याद")}</div>
+            <div style={{ fontSize: 13.5, color: "var(--dim)", margin: "5px 0 14px", lineHeight: 1.55 }}>
+              {tx("Your customer, your words. Read it before it goes.", "Aapka customer, aapke shabd. Bhejne se pehle padh lijiye.", "आपका ग्राहक, आपके शब्द। भेजने से पहले पढ़ लें।")}
+            </div>
+
+            <div className="card" style={{ padding: "12px 14px", marginBottom: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+                <span className="mono" style={{ fontSize: 12.5, color: "var(--dim)" }}>{nudge.ref || tx("bill", "bill", "बिल")}</span>
+                <b style={{ fontSize: 14.5, textAlign: "right" }}>{nudge.party}</b>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginTop: 9, paddingTop: 9, borderTop: "1px solid var(--line)" }}>
+                <span style={{ fontSize: 13.5, color: "var(--dim)" }}>{nudge.late > 0 ? tx("Overdue by ", "Late ", "देर ") + nudge.late + tx(" days", " din", " दिन") : tx("Pending", "Baki", "बाकी")}</span>
+                <b className="mono" style={{ fontSize: 16, color: "var(--red)" }}>{inr(nudge.pending)}</b>
+              </div>
+              {nudge.byaj > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginTop: 6 }}>
+                  <span style={{ fontSize: 12.5, color: "var(--dim)" }}>{tx("MSMED interest (est.)", "Kanooni byaj (andaza)", "कानूनी ब्याज (अंदाज़ा)")}</span>
+                  <span className="mono" style={{ fontSize: 13, color: "#DC2626" }}>+{inr(nudge.byaj)}</span>
+                </div>
+              )}
+            </div>
+
+            <div style={{ background: "#EAF6EA", border: "1px solid #CFE3D1", borderRadius: "14px 14px 14px 4px", padding: "12px 13px", whiteSpace: "pre-wrap", fontSize: 13.5, lineHeight: 1.6, color: "#14261A" }}>{nudge.msg}</div>
+
+            <div style={{ display: "flex", gap: 9, alignItems: "flex-start", marginTop: 11, fontSize: 12.5, color: "var(--dim)", lineHeight: 1.55 }}>
+              <span aria-hidden="true" style={{ flexShrink: 0 }}>&#128274;</span>
+              <span>{tx("Nothing is sent yet. WhatsApp opens with this text from your own number - you can edit it there.", "Abhi kuch nahi gaya. WhatsApp aapke apne number se khulega, text aap wahan badal bhi sakte hain.", "अभी कुछ नहीं भेजा गया। WhatsApp आपके अपने नंबर से खुलेगा।")}</span>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              <button className="btn btn-ghost press" style={{ flex: 1, justifyContent: "center" }} onClick={() => setNudge(null)}>{tx("Cancel", "Rehne do", "रहने दें")}</button>
+              <a className="btn btn-grn press" style={{ flex: 1.4, justifyContent: "center", textDecoration: "none", boxSizing: "border-box" }}
+                href={waLink(nudge.phone, nudge.msg)} target="_blank" rel="noreferrer" onClick={() => setNudge(null)}>
+                {tx("Open WhatsApp", "WhatsApp kholo", "WhatsApp खोलें")}
+              </a>
+            </div>
+          </div>
+        </div>
+  ) : null;
 
   useEffect(() => {
     let alive = true;
@@ -3659,11 +3754,11 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
                       <span style={{ fontSize: 12, fontWeight: 600, color: "#991B1B" }}>{tx("MSMED interest (est.)", "Kanooni byaj (andaza)", "कानूनी ब्याज (अंदाज़ा)")} · {msmedRateNow()}{tx("% compound", "% compound", "% चक्रवृद्धि")}{late <= 0 ? tx(" (45-day rule)", " (45 din ka niyam)", " (45 दिन का नियम)") : ""}</span>
                       <b className="mono" style={{ fontSize: 13.5, color: "#DC2626", flexShrink: 0 }}>+{inr(msmedByaj(x, now))}</b>
                     </div>
-                    <a className="btn btn-grn btn-sm press" style={{ width: "100%", boxSizing: "border-box", textDecoration: "none", marginTop: 8, justifyContent: "center" }}
-                      href={waLink(phoneFor(x.party), msmedChaseText(data.shopName, x.ref, pending, late, msmedByaj(x, now)))}
-                      target="_blank" rel="noreferrer">
+                    <button className="btn btn-grn btn-sm press" style={{ width: "100%", boxSizing: "border-box", marginTop: 8, justifyContent: "center" }}
+                      onClick={() => setNudge({ party: x.party, ref: x.ref, pending, late, byaj: msmedByaj(x, now), phone: phoneFor(x.party),
+                        msg: msmedChaseText(data.shopName, x.ref, pending, late, msmedByaj(x, now)) })}>
                       {"🙏"} {tx("Send a polite reminder on WhatsApp", "WhatsApp par narmi se yaad dilao", "WhatsApp पर विनम्रता से याद दिलाएं")}
-                    </a>
+                    </button>
                   </>)}
                   <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 10, borderTop: "1px dashed var(--line)", paddingTop: 9 }}>
                     {x.party}{tx(" owes in total ", " par total baki ", " पर कुल बाकी ")}<b className="mono">{inr(balanceOf(x.party))}</b>
@@ -3679,6 +3774,7 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
           {tx("This comes from Tally's Bills Receivable - every open bill with its due date. Chasing a specific bill number gets paid faster than asking for a lump sum.", "Ye Tally ke Bills Receivable se aata hai - har khula bill uski due date ke saath. 'Bill no 142, Rs 84,500, 43 din' bol kar maangne se paisa jaldi aata hai.", "यह Tally के Bills Receivable से आता है - हर खुला बिल उसकी ड्यू डेट के साथ। खास बिल नंबर बताकर मांगने से पैसा जल्दी आता है।")}
           {showByaj && <span> {tx("Interest figures are estimates under MSMED s.16 for Udyam-registered manufacturer/service MSEs (Udyam must predate the bill); traders are not covered.", "Byaj ke aankde MSMED s.16 ka andaza hain - sirf Udyam-registered manufacturer/service MSE ke liye (Udyam bill se pehle ka ho); trader cover nahi hote.", "ब्याज के आंकड़े MSMED s.16 का अंदाज़ा हैं - सिर्फ उद्यम-पंजीकृत निर्माता/सेवा MSE के लिए (उद्यम बिल से पहले का हो); ट्रेडर कवर नहीं होते।")}</span>}
         </div>
+        {nudgeSheet}
       </div></div>
     );
   }
@@ -3938,6 +4034,11 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
         </span>
       </div>
       </>)}
+
+      {/* Read-before-you-send sheet. The message is msmedChaseText() word for
+          word - this only shows it and asks. Nothing is sent by the app: the
+          button hands the text to WhatsApp on the owner's own number. */}
+      {nudgeSheet}
     </div></div>
   );
 }
@@ -4735,7 +4836,7 @@ function NewAccountGuard({ account, onKeep }) {
     <div className="qk-root"><style>{CSS}</style><div className="app">
       <div className="auth">
         <div className="auth-top">
-          <div className="auth-logo">QK</div>
+          <div className="auth-logo">TR</div>
           <h1>{tx("One last thing", "Ek aakhri baat", "एक आखिरी बात")}</h1>
           <p>{account.phone || ""}</p>
         </div>
@@ -4831,14 +4932,18 @@ function LoginMethods({ account, ping }) {
     } catch (e) { localStorage.removeItem(LINK_FLAG); setErr(say(e)); setBusy(false); }
   };
 
-  const row = (on, label, value, action) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 0", borderTop: "1px solid var(--line)" }}>
-      <span style={{ width: 22, height: 22, borderRadius: "50%", flex: "none", display: "grid", placeItems: "center", background: on ? "var(--grn-100)" : "var(--soft)", color: on ? "var(--grn-d)" : "var(--faint)", fontSize: 12 }}>{on ? "✓" : "+"}</span>
+  /* one line per login method. `first` drops the divider so the list does not
+     open with a stray rule under the description, the tick is a fixed 26px
+     column so both rows align, and the action button never shrinks the text
+     off the card (long emails ellipsis instead). */
+  const row = (on, label, value, action, first) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 0", borderTop: first ? "none" : "1px solid var(--line)" }}>
+      <span style={{ width: 26, height: 26, borderRadius: "50%", flex: "none", display: "grid", placeItems: "center", background: on ? "var(--grn-100)" : "var(--soft)", color: on ? "var(--grn-d)" : "var(--faint)", fontSize: 13, fontWeight: 700, lineHeight: 1 }}>{on ? "✓" : "+"}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14.5, fontWeight: 600 }}>{label}</div>
-        <div style={{ fontSize: 12.5, color: "var(--dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</div>
+        <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.3 }}>{label}</div>
+        <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</div>
       </div>
-      {action}
+      {action ? <span style={{ flex: "none" }}>{action}</span> : null}
     </div>
   );
 
@@ -4851,9 +4956,10 @@ function LoginMethods({ account, ping }) {
             "दोनों जोड़ लें - दोनों से यही अकाउंट खुलेगा, सारे डेटा के साथ।")}
       </div>
 
+      <div style={{ marginTop: 12 }} />
       {row(hasPhone, tx("Phone number", "Phone number", "फोन नंबर"),
         hasPhone ? account.phone || tx("Added", "Jud gaya", "जुड़ा हुआ") : tx("Not added yet", "Abhi nahi juda", "अभी नहीं जुड़ा"),
-        !hasPhone && !openAdd ? <button className="btn btn-ghost btn-sm press" onClick={() => { setOpenAdd(true); setErr(""); }}>{tx("Add", "Jodein", "जोड़ें")}</button> : null)}
+        !hasPhone && !openAdd ? <button className="btn btn-ghost btn-sm press" onClick={() => { setOpenAdd(true); setErr(""); }}>{tx("Add", "Jodein", "जोड़ें")}</button> : null, true)}
 
       {openAdd && !hasPhone && (
         <div className="anim-in" style={{ padding: "2px 0 12px" }}>
