@@ -3023,7 +3023,7 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
   const catCounts = data.quotes.reduce((m, x) => { const k = catOf(x, ind); m[k] = (m[k] || 0) + 1; return m; }, {});
   /* a picked category stays in the list even when its last quote is gone */
   const catsPresent = (ind.cats || []).filter((c) => catCounts[c.key] || c.key === cat);
-  const catAll = { machining: tx("All processes", "Saare process", "सभी प्रोसेस"), scrap: tx("All materials", "Saara maal", "सारा माल"),
+  const catAll = { machining: tx("Processes", "Processes", "प्रोसेस"), scrap: tx("Materials", "Materials", "मटीरियल"),
     printing: tx("All job types", "Saare job", "सभी जॉब"), furniture: tx("All products", "Saare product", "सभी प्रोडक्ट") }[ind.key] || tx("All types", "Saare types", "सभी प्रकार");
   /* status counts follow the category pick, so the numbers match the list */
   const inCat = data.quotes.filter((x) => !cat || catOf(x, ind) === cat);
