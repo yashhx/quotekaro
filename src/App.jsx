@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 /* ---- Cloud accounts (Supabase), optional ----
@@ -229,6 +229,25 @@ const CSS = `
   font-family:var(--sans); font-size:13.5px; font-weight:600; padding:8px 14px; border-radius:999px;
   border:1.5px solid var(--line2); background:#fff; color:var(--dim); cursor:pointer; transition:all .15s;}
 .catchip.on{background:var(--grn-100); color:var(--grn-d); border-color:#CFE9D1;}
+/* Quotes filters: segmented status + one row (follow-ups, category dropdown) */
+.segq{display:flex; gap:2px; background:var(--soft); border:1px solid var(--line); border-radius:16px; padding:4px;}
+.segq button{flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:5px; border:none; background:none;
+  font-family:var(--sans); font-weight:600; font-size:14.5px; color:var(--dim); padding:11px 2px; border-radius:12px; cursor:pointer;
+  white-space:nowrap; transition:background .2s, color .2s, box-shadow .2s;}
+.segq button .mono{font-size:11.5px; font-weight:600; color:var(--faint);}
+.segq button.on{background:#fff; color:var(--grn-d); box-shadow:var(--sh-s);}
+.segq button.on .mono{color:var(--grn);}
+.fuchip{display:inline-flex; align-items:center; gap:7px; flex:none; height:44px; padding:0 15px; border-radius:999px;
+  font-family:var(--sans); font-size:14px; font-weight:600; border:1.5px solid var(--line2); background:#fff; color:var(--dim); cursor:pointer;}
+.fuchip.hot{border-color:#F0DCB8; color:var(--amber);}
+.fuchip.on{background:var(--amber-bg); border-color:#E8C98F; color:var(--amber);}
+.selpill{position:relative; flex:1; min-width:0; display:block;}
+.selpill select{appearance:none; -webkit-appearance:none; width:100%; height:44px; padding:0 38px 0 16px; border-radius:999px;
+  border:1.5px solid var(--line2); background:#fff; font-family:var(--sans); font-size:14px; font-weight:600; color:var(--ink);
+  cursor:pointer; outline:none; text-overflow:ellipsis; white-space:nowrap; overflow:hidden;}
+.selpill select:focus-visible{border-color:var(--grn); box-shadow:0 0 0 4px rgba(34,139,34,.12);}
+.selpill.on select{background:var(--grn-100); border-color:#CFE9D1; color:var(--grn-d);}
+.selpill svg{position:absolute; right:14px; top:50%; transform:translateY(-50%) rotate(90deg); pointer-events:none; color:var(--faint);}
 .cat-scroll{-ms-overflow-style:none; scrollbar-width:none;}
 .cat-scroll::-webkit-scrollbar{display:none;}
 .cat-tile:active{transform:scale(.98);}
@@ -375,7 +394,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:28px; hei
 /* which bottom-nav item owns each page. Work is a hub - the floor, the truck
    board and the yard all sit under it; pages missing here (setup/help, reached
    from the avatar sheet) hide the pill rather than leave it stranded. */
-const NAV_OF = { home: "home", quotes: "quotes", work: "work", floor: "work", trucks: "work", stock: "work", tally: "tally" };
+const NAV_OF = { home: "home", client: "home", quotes: "quotes", work: "work", floor: "work", trucks: "work", stock: "work", tally: "tally" };
 const I = {
   home: (p) => (<svg width="23" height="23" viewBox="0 0 24 24" fill="none" {...p}><path d="M3.5 10.5 12 3.5l8.5 7v8.2a1.8 1.8 0 0 1-1.8 1.8h-3.4v-6.1H8.7v6.1H5.3a1.8 1.8 0 0 1-1.8-1.8v-8.2Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>),
   list: (p) => (<svg width="23" height="23" viewBox="0 0 24 24" fill="none" {...p}><path d="M8.5 6.5h11M8.5 12h11M8.5 17.5h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="4.6" cy="6.5" r="1.3" fill="currentColor"/><circle cx="4.6" cy="12" r="1.3" fill="currentColor"/><circle cx="4.6" cy="17.5" r="1.3" fill="currentColor"/></svg>),
@@ -1677,6 +1696,8 @@ export default function App() {
   const [guardOk, setGuardOk] = useState(false); // brand-new phone account answered "is this really new?"
   const [account, setAccount] = useState(undefined); // undefined = loading, null = logged out, object = logged in
   const [tallyBal, setTallyBal] = useState(null); // Tally outstanding by customer name (lowercased) - filled by the opt-in connector
+  const [tallyRows, setTallyRows] = useState(null); // {vouchers, bills} from the same connector - null = no real Tally synced
+  const [client, setClient] = useState(null); // party name open on the client page
   const saveT = useRef(null);
   const cloudReadOk = useRef(false); /* cloud writes allowed only after a clean cloud read this session */
   /* ids already logged/dismissed locally - filters the poll so a card can never
@@ -1921,15 +1942,25 @@ export default function App() {
      early returns per Rules of Hooks. */
   useEffect(() => {
     setTallyBal(null); /* never carry one account's balances into the next (shared device) */
+    setTallyRows(null);
     if (!sb || !account || !account.uid) return;
     let alive = true;
     (async () => {
       try {
-        const { data: rows, error } = await sb.from("tally_ledgers").select("name,balance");
+        /* grp keeps suppliers (money WE owe) out of "customer owes you" */
+        let r0 = await sb.from("tally_ledgers").select("name,balance,grp");
+        if (r0.error) r0 = await sb.from("tally_ledgers").select("name,balance");
+        const { data: rows, error } = r0;
         if (!alive || error || !rows || !rows.length) return;
         const m = {};
-        rows.forEach((r) => { if (Number(r.balance) > 0) m[String(r.name).trim().toLowerCase()] = Number(r.balance); });
+        rows.forEach((r) => { if (Number(r.balance) > 0 && r.grp !== "creditor") m[partyKey(r.name)] = Number(r.balance); });
         setTallyBal(m);
+        /* sales vouchers + open bills feed Home's ongoing orders and the
+           client page. Missing tables (tally.sql not re-run) just mean empty. */
+        const v = await sb.from("tally_vouchers").select("vdate,vtype,party,amount,item,qty,unit,vno,ref").order("vdate", { ascending: false }).limit(400);
+        const b = await sb.from("tally_bills").select("party,ref,bdate,due,opening,pending").limit(600);
+        if (!alive) return;
+        setTallyRows({ vouchers: (!v.error && v.data) || [], bills: (!b.error && b.data) || [] });
       } catch {}
     })();
     return () => { alive = false; };
@@ -2073,20 +2104,21 @@ export default function App() {
         {toast && <div className="toast">{toast}</div>}
         {tut && <TutOverlay flow={tut.flow} step={tut.step} tick={fabOpen ? 1 : 0} onNext={tutNext} onBack={tutBack} onClose={tutClose} />}
 
-        {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} openTally={() => setTab("tally")} openFloor={() => setTab("floor")} openTrucks={() => setTab("trucks")} openStock={() => setTab("stock")} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} openCo={() => setCoOpen(true)} startTut={startTut} dismissTut={() => setData({ ...data, settings: { ...data.settings, tutHomeDone: true } })} />}
+        {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} openClient={(n) => { setClient(n); setTab("client"); }} tallyRows={tallyRows} tallyBal={tallyBal} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} openCo={() => setCoOpen(true)} startTut={startTut} dismissTut={() => setData({ ...data, settings: { ...data.settings, tutHomeDone: true } })} />}
         {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} cat={quotesCat} setCat={setQuotesCat} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} tallyBal={tallyBal} sendToFloor={sendToFloor} startTut={startTut} />}
         {tab === "log" && <QuickLog data={data} onSave={saveLogged} onExit={() => setTab("home")} ping={ping} startTut={startTut} />}
         {tab === "setup" && <Setup data={data} setData={setData} ping={ping} account={accountView} sync={sync} goSubscribe={() => setTab("subscribe")} onLogout={logout} />}
         {tab === "help" && <Help data={data} ping={ping} startTut={startTut} />}
         {tab === "analytics" && <Analytics data={data} onBack={() => setTab("home")} goQuotes={goQuotes} />}
+        {tab === "client" && client && <ClientPage data={data} name={client} tallyRows={tallyRows} tallyBal={tallyBal} onBack={() => setTab("home")} goMoney={() => setTab("tally")} goTrucks={() => setTab("trucks")} />}
         {tab === "tally" && <TallyInsights data={data} updateQuote={updateQuote} ping={ping} onBack={() => setTab("home")} />}
         {/* WORK - machine shops land straight on the floor; traders get a hub
             for the truck board and the yard (both still open as their own tabs,
             which NAV_OF maps back under Work) */}
         {tab === "work" && industryOf(data).key !== "machining" && <WorkHub data={data} openTrucks={() => setTab("trucks")} openStock={() => setTab("stock")} />}
         {(tab === "floor" || (tab === "work" && industryOf(data).key === "machining")) && <MachineFloor data={data} setData={setData} ping={ping} onBack={() => setTab("home")} goSetup={() => setTab("setup")} draft={floorDraft} clearDraft={() => setFloorDraft(null)} />}
-        {tab === "trucks" && <TruckBoard data={data} setData={setData} ping={ping} onBack={() => setTab("home")} goSetup={() => setTab("setup")} />}
-        {tab === "stock" && <StockYard data={data} setData={setData} ping={ping} onBack={() => setTab("home")} />}
+        {tab === "trucks" && <TruckBoard data={data} setData={setData} ping={ping} onBack={() => setTab("work")} goSetup={() => setTab("setup")} />}
+        {tab === "stock" && <StockYard data={data} setData={setData} ping={ping} onBack={() => setTab("work")} />}
         {tab === "subscribe" && <Subscribe account={accountView} onSubscribe={(id) => { subscribe(id); ping("You're on the " + PLANS.find(p => p.id === id).name + " plan"); setTab("home"); }} onBack={() => setTab("home")} />}
         {tab === "new" && (<Wizard data={data} draft={draft} setDraft={setDraft} step={step} setStep={setStep}
           onExit={() => setTab("home")} onSave={saveQuote} doneQuote={doneQuote} ping={ping}
@@ -2157,7 +2189,7 @@ export default function App() {
         {tab !== "new" && tab !== "analytics" && tab !== "subscribe" && tab !== "log" && (
           <nav className="navbar" ref={navRef}>
             <div className="nav-pill" style={pillStyle} />
-            <button ref={setNavRef("home")} className={"nav-it " + (tab === "home" ? "on" : "")} onClick={() => setTab("home")}><I.home /><span>{tx("Home", "Home", "होम")}</span></button>
+            <button ref={setNavRef("home")} className={"nav-it " + (NAV_OF[tab] === "home" ? "on" : "")} onClick={() => setTab("home")}><I.home /><span>{tx("Home", "Home", "होम")}</span></button>
             <button ref={setNavRef("quotes")} className={"nav-it " + (tab === "quotes" ? "on" : "")} onClick={() => setTab("quotes")}><I.list /><span>{tx("Quotes", "Quotes", "कोटेशन")}</span></button>
             <button className="fab press" data-tut="fab" onClick={() => (industryOf(data).key === "machining" ? setFabOpen(true) : startLog())} aria-label="Add a quote"><I.plus /></button>
             <button ref={setNavRef("work")} className={"nav-it " + (NAV_OF[tab] === "work" ? "on" : "")} onClick={() => setTab("work")}><I.gear2 /><span>{tx("Work", "Work", "काम")}</span></button>
@@ -2174,6 +2206,10 @@ export default function App() {
    surfaces instead, so this is a small hub. */
 function WorkHub({ data, openTrucks, openStock }) {
   const out = (data.trips || []).filter((t) => !t.delivered).length;
+  const outMT = (data.trips || []).filter((t) => !t.delivered).reduce((s, t) => s + (Number(t.qty) || 0), 0);
+  const trucks = (data.trucks || []).length;
+  /* the GHATA warning moved here with the stock card - it must stay loud */
+  const stk = stockCalc(data);
   const card = (onClick, emoji, title, sub, badge) => (
     <button onClick={onClick} className="press anim-in st1" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "16px", borderRadius: 18, background: "#fff", border: "1px solid var(--line)", boxShadow: "var(--sh-s)" }}>
       <span style={{ width: 44, height: 44, borderRadius: 14, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 21, flexShrink: 0 }}>{emoji}</span>
@@ -2190,15 +2226,191 @@ function WorkHub({ data, openTrucks, openStock }) {
       <div className="microlbl">{tx("YOUR WORK", "AAPKA KAAM", "आपका काम")}</div>
       <div className="h-disp" style={{ fontSize: 26, fontWeight: 700, margin: "4px 0 4px" }}>{tx("The yard today", "Aaj ka kaam", "आज का काम")}</div>
       <div style={{ color: "var(--dim)", fontSize: 14.5, lineHeight: 1.55 }}>{tx("Trucks on the road and what the yard is holding.", "Gaadiyan kahan hain aur yard mein kitna maal hai.", "गाड़ियाँ कहाँ हैं और यार्ड में कितना माल है।")}</div>
-      {card(openTrucks, "\u{1F69B}", tx("Truck board", "Truck board", "ट्रक बोर्ड"), tx("Which truck is out, carrying what, for how long.", "Kaunsi gaadi bahar hai, kya le kar, kitni der se.", "कौन सी गाड़ी बाहर है, क्या लेकर।"),
+      {card(openTrucks, "\u{1F69B}", tx("Truck board", "Truck board", "ट्रक बोर्ड"),
+        trucks && out ? out + "/" + trucks + tx(" trucks out · ", " gaadiyan bahar · ", " गाड़ियां बाहर · ") + fmtQty(outMT) + tx(" MT on the road", " MT raste mein", " MT रास्ते में")
+          : tx("Which truck is out, carrying what, for how long.", "Kaunsi gaadi bahar hai, kya le kar, kitni der se.", "कौन सी गाड़ी बाहर है, क्या लेकर।"),
         out > 0 ? <span className="mono" style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 700, color: "var(--amber)", background: "var(--amber-bg, #FFF4E0)", borderRadius: 999, padding: "4px 10px" }}>{out} OUT</span> : null)}
-      {card(openStock, "⚖️", tx("Yard stock", "Yard stock", "यार्ड स्टॉक"), tx("Book stock vs the kanta - catch ghata early.", "Book stock vs kanta - ghata jaldi pakdo.", "बुक स्टॉक बनाम कांटा - घाटा जल्दी पकड़ें।"), null)}
+      {card(openStock, "⚖️", tx("Yard stock", "Yard stock", "यार्ड स्टॉक"),
+        stk.total > 0 ? fmtQty(stk.total) + tx(" MT in the yard", " MT yard mein", " MT यार्ड में") + (stk.outToday > 0 ? " · " + fmtQty(stk.outToday) + tx(" MT sent today", " MT aaj gaya", " MT आज गया") : "")
+          : tx("Book stock vs the kanta - catch ghata early.", "Book stock vs kanta - ghata jaldi pakdo.", "बुक स्टॉक बनाम कांटा - घाटा जल्दी पकड़ें।"),
+        stk.ghataTotal > 0 ? <span className="mono" style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 700, color: "var(--red)", background: "var(--red-bg)", borderRadius: 999, padding: "4px 10px" }}>{tx("GHATA ", "GHATA ", "घाटा ")}{fmtQty(stk.ghataTotal)} MT</span> : null)}
+    </div></div>
+  );
+}
+
+/* ================= CLIENT PAGE =================
+   One party, everything an owner gets asked on the phone: how much money is
+   due, how much maal went, how much is still to go, and when each truck left.
+   Opened from Home's ongoing orders. Money comes from Tally only (the app
+   does not track payments) - without Tally it says so instead of guessing. */
+function ClientPage({ data, name, tallyRows, tallyBal, onBack, goMoney, goTrucks }) {
+  const ind = industryOf(data);
+  const u = ind.unit || "pcs";
+  const pv = partyView(data, name, tallyRows, tallyBal);
+  const now = Date.now();
+  const ordered = pv.orders.reduce((s, o) => s + o.qty, 0);
+  const sent = pv.orders.reduce((s, o) => s + o.sent, 0);
+  const left = pv.orders.reduce((s, o) => s + o.remaining, 0);
+  /* same aging rule as Money: from the due date, else the bill date */
+  const lateBy = (b) => Math.floor((startOfDay(now) - startOfDay(Number(b.due) || Number(b.bdate))) / DAY);
+  const bills = [...pv.bills].sort((a, b) => lateBy(b) - lateBy(a));
+  const lateAmt = bills.filter((b) => lateBy(b) > 0).reduce((s, b) => s + Number(b.pending), 0);
+  const okAmt = bills.filter((b) => lateBy(b) <= 0).reduce((s, b) => s + Number(b.pending), 0);
+  const tallyOn = pv.balance != null;
+  const others = pv.quotes.filter((q) => !pv.orders.some((o) => o.q.id === q.id));
+  const chip = (bg, c) => ({ display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 700, fontFamily: "var(--mono)", padding: "3px 9px", borderRadius: 999, background: bg, color: c, whiteSpace: "nowrap" });
+  const title = (t, sub) => (
+    <div style={{ marginBottom: 12 }}>
+      <div className="h-disp" style={{ fontSize: 16.5, fontWeight: 700 }}>{t}</div>
+      {sub && <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 1 }}>{sub}</div>}
+    </div>
+  );
+
+  return (
+    <div className="scr"><div className="pagepad">
+      <div className="anim-in" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+        <button className="iconbtn press" onClick={onBack} aria-label="Back"><I.back /></button>
+        <span className="mono" style={{ width: 44, height: 44, borderRadius: 14, background: "linear-gradient(135deg,#2E9E33,#155E18)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 600, flexShrink: 0 }}>{initialsOf(pv.name)}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="microlbl">{tx("CLIENT", "PARTY", "पार्टी")}</div>
+          <div className="h-disp" style={{ fontSize: 22, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{pv.name}</div>
+        </div>
+        {pv.sample && <span className="demo-ribbon">SAMPLE</span>}
+        {pv.phone && <a className="iconbtn press" href={waLink(pv.phone, "")} target="_blank" rel="noreferrer" aria-label="WhatsApp" style={{ color: "#128C4B", flexShrink: 0 }}><I.wa /></a>}
+      </div>
+
+      {/* money - Tally only */}
+      <div className="card anim-in st1" style={{ padding: 16, marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+          <div>
+            <div className="h-disp" style={{ fontSize: 16.5, fontWeight: 700 }}>{tx("Money due", "Paisa baki", "बाकी पैसा")}</div>
+            <div style={{ fontSize: 12, color: "var(--dim)", marginTop: 1 }}>({tx("they owe you - from Tally", "inse lena hai - Tally se", "इनसे लेना है - Tally से")})</div>
+          </div>
+          <b className="h-disp mono" style={{ fontSize: 25, color: lateAmt > 0 ? "var(--red)" : "var(--ink)", whiteSpace: "nowrap" }}>{tallyOn ? inr(pv.balance) : "-"}</b>
+        </div>
+        {tallyOn && pv.balance > 0 && bills.length > 0 && (<>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+            {lateAmt > 0 && <span style={chip("var(--red-bg)", "var(--red)")}>{inr(lateAmt)} {tx("overdue", "late", "लेट")}</span>}
+            {okAmt > 0 && <span style={chip("var(--grn-100)", "var(--grn-d)")}>{inr(okAmt)} {tx("not due yet", "abhi time hai", "अभी समय है")}</span>}
+          </div>
+          <div style={{ marginTop: 10 }}>
+            {bills.slice(0, 4).map((b, i) => {
+              const d = lateBy(b);
+              return (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 0", borderTop: "1px solid var(--line)" }}>
+                  <span style={{ minWidth: 0 }}>
+                    <span className="mono" style={{ display: "block", fontSize: 13, fontWeight: 600 }}>{b.ref ? "#" + b.ref : tx("Bill", "Bill", "बिल")}</span>
+                    <span style={{ display: "block", fontSize: 12.5, color: d > 0 ? "var(--red)" : "var(--dim)" }}>
+                      {d > 0 ? d + tx(" days late", " din late", " दिन लेट") : d === 0 ? tx("due today", "aaj due", "आज ड्यू")
+                        : tx("due in " + -d + " days", -d + " din mein due", -d + " दिन में ड्यू")}
+                    </span>
+                  </span>
+                  <b className="mono" style={{ fontSize: 15, flexShrink: 0 }}>{inr(b.pending)}</b>
+                </div>
+              );
+            })}
+          </div>
+        </>)}
+        {tallyOn && !(pv.balance > 0) && <div style={{ fontSize: 13.5, color: "var(--grn-d)", fontWeight: 600, marginTop: 8 }}>{tx("Nothing due - all clear", "Kuch baki nahi - hisaab saaf", "कुछ बाकी नहीं - हिसाब साफ")} ✓</div>}
+        {!tallyOn && <div style={{ fontSize: 13, color: "var(--dim)", lineHeight: 1.55, marginTop: 8 }}>{tx("Connect Tally and this shows what they owe, bill by bill.", "Tally jodne par yahan dikhega inka baki paisa - bill-wise.", "Tally जोड़ने पर यहां दिखेगा इनका बाकी पैसा - बिल-वार।")}</div>}
+        {tallyOn && (
+          <button className="press" onClick={goMoney} style={{ all: "unset", cursor: "pointer", display: "flex", alignItems: "center", gap: 2, marginTop: 10, fontSize: 13.5, fontWeight: 600, color: "var(--grn-d)" }}>
+            {tx("Full account on Money", "Money mein poora hisaab", "Money में पूरा हिसाब")} <I.chev style={{ width: 15 }} />
+          </button>
+        )}
+      </div>
+
+      {/* maal - orders vs dispatch */}
+      <div className="card anim-in st2" style={{ padding: 16, marginBottom: 12 }}>
+        {title(tx("Maal", "Maal", "माल"), "(" + tx("orders vs what went out", "order vs kitna gaya", "ऑर्डर बनाम कितना गया") + ")")}
+        {pv.orders.length > 0 ? (<>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+            {[[tx("ORDER", "ORDER", "ऑर्डर"), ordered, "var(--ink)"], [tx("SENT", "GAYA", "गया"), sent, "var(--grn-d)"], [tx("LEFT", "BAKI", "बाकी"), left, left > 0 ? "var(--amber)" : "var(--grn-d)"]].map(([l, v, c]) => (
+              <div key={l} style={{ background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 14, padding: "10px 11px" }}>
+                <div className="h-disp mono" style={{ fontSize: 18, fontWeight: 700, color: c, whiteSpace: "nowrap" }}>{fmtQty(v)}<span style={{ fontSize: 11.5, marginLeft: 3 }}>{u}</span></div>
+                <div className="mono" style={{ fontSize: 10.5, fontWeight: 600, color: "var(--faint)", letterSpacing: ".06em", marginTop: 2 }}>{l}</div>
+              </div>
+            ))}
+          </div>
+          {pv.orders.map((o) => {
+            const pct = o.qty ? Math.min(100, (o.sent / o.qty) * 100) : 0;
+            return (
+              <div key={o.q.id} style={{ marginTop: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 14.5, fontWeight: 600, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{o.q.part}</span>
+                  {o.done ? <span style={chip("var(--grn-100)", "var(--grn-d)")}>{tx("ALL SENT", "PURA GAYA", "पूरा गया")} ✓</span>
+                    : <span className="mono" style={{ fontSize: 12.5, fontWeight: 600, color: "var(--dim)", flexShrink: 0 }}>{Math.round(pct)}%</span>}
+                </div>
+                <div style={{ height: 8, borderRadius: 99, background: "var(--soft)", border: "1px solid var(--line)", overflow: "hidden", marginTop: 7 }}>
+                  <div style={{ height: "100%", width: pct + "%", minWidth: o.sent > 0 ? 6 : 0, borderRadius: 99, background: "linear-gradient(90deg,#2E9E33,#5DBB63)" }} />
+                </div>
+                <div className="mono" style={{ fontSize: 12, color: "var(--faint)", marginTop: 5 }}>
+                  {fmtQty(o.sent)} / {fmtQty(o.qty)} {u} · {inr(o.q.total)} · {tx("won ", "order ", "ऑर्डर ")}{fdateShort(o.q.at)}
+                </div>
+              </div>
+            );
+          })}
+        </>) : (
+          <div style={{ fontSize: 13.5, color: "var(--dim)", lineHeight: 1.55 }}>{tx("No open order with this party.", "Is party ka koi chalu order nahi.", "इस पार्टी का कोई चालू ऑर्डर नहीं।")}</div>
+        )}
+      </div>
+
+      {/* when each load left */}
+      <div className="anim-in st3" style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "22px 0 10px" }}>
+        <span className="eyebrow">{tx("Dispatches", "Kab kitna gaya", "कब कितना गया")}</span>
+        {pv.dispatches.length > 0 && <span className="mono" style={{ fontSize: 10.5, letterSpacing: ".08em", color: "var(--faint)" }}>{pv.fromTally ? tx("FROM TALLY", "TALLY SE", "TALLY से") : tx("FROM TRUCK BOARD", "TRUCK BOARD SE", "ट्रक बोर्ड से")}</span>}
+      </div>
+      {pv.dispatches.length === 0 && (
+        <div className="card-tint anim-in st3" style={{ padding: "16px 16px", fontSize: 13.5, color: "var(--dim)", lineHeight: 1.55 }}>
+          {tx("Nothing sent yet. Send a truck from the Truck board and it shows up here on its own.", "Abhi tak kuch nahi gaya. Truck board se gaadi bhejo - yahan apne aap judega.", "अभी तक कुछ नहीं गया। ट्रक बोर्ड से गाड़ी भेजें - यहां अपने आप जुड़ेगा।")}
+          {ind.key === "scrap" && <div><button className="btn btn-soft btn-sm press" style={{ marginTop: 12 }} onClick={goTrucks}>{tx("Open Truck board", "Truck board kholo", "ट्रक बोर्ड खोलें")}</button></div>}
+        </div>
+      )}
+      {pv.dispatches.slice(0, 12).map((d, i, arr) => (<Fragment key={d.id || i}>
+        {/* loads from before the first open order belong to older business -
+            listed for history, not counted in GAYA above */}
+        {!d.counted && (i === 0 || arr[i - 1].counted) && (
+          <div style={{ fontSize: 12.5, color: "var(--faint)", margin: "14px 2px 8px" }}>{tx("Earlier loads (older orders - not counted above)", "Pehle ka maal (purane orders - upar nahi gina)", "पहले का माल (पुराने ऑर्डर - ऊपर नहीं गिना)")}</div>
+        )}
+        <div className={"card anim-in st" + Math.min(8, 3 + i)} style={{ padding: "11px 14px", marginBottom: 8, display: "grid", gridTemplateColumns: "58px 1fr auto", gap: 10, alignItems: "center", opacity: d.counted ? 1 : 0.6 }}>
+          <span className="mono" style={{ fontSize: 12.5, color: "var(--dim)", whiteSpace: "nowrap" }}>{fdateShort(d.at)}</span>
+          <span style={{ minWidth: 0 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+              <span className="mono" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--grn-d)", background: "var(--grn-100)", padding: "2px 8px", borderRadius: 999, flexShrink: 0 }}>{fmtQty(d.qty)} {u}</span>
+              <span style={{ fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.item}</span>
+            </span>
+            {(d.ref || d.truck) && <span className="mono" style={{ display: "block", fontSize: 11.5, color: "var(--faint)", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{[d.ref ? "#" + d.ref : "", d.truck].filter(Boolean).join(" · ")}</span>}
+          </span>
+          <span style={{ flexShrink: 0 }}>
+            {d.src === "tally" ? <b className="mono" style={{ fontSize: 14 }}>{inr(d.amount)}</b>
+              : d.onRoad ? <span style={chip("var(--amber-bg)", "var(--amber)")}>{tx("ON ROAD", "RASTE MEIN", "रास्ते में")}</span>
+              : d.src === "truck" ? <span style={chip("var(--grn-100)", "var(--grn-d)")}>{tx("DELIVERED", "PAHUNCHA", "पहुंचा")}</span> : null}
+          </span>
+        </div>
+      </Fragment>))}
+
+      {/* the rest of the relationship - quotes that are not open orders */}
+      {others.length > 0 && (<>
+        <div className="anim-in st4" style={{ margin: "22px 0 10px" }}><span className="eyebrow">{tx("Quotes", "Quotes", "कोटेशन")}</span></div>
+        {others.map((q) => (
+          <div key={q.id} className="card anim-in st4" style={{ padding: "12px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 14.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.part}</span>
+              <span className="mono" style={{ display: "block", fontSize: 11.5, color: "var(--faint)", marginTop: 2 }}>{q.qty ? fmtQty(q.qty) + " " + u + " · " : ""}{fdateShort(q.at)}</span>
+            </span>
+            <span style={{ textAlign: "right", flexShrink: 0 }}>
+              <b className="mono" style={{ display: "block", fontSize: 14.5 }}>{inr(q.total)}</b>
+              <span className={"pill " + (q.status === "won" ? "won" : q.status === "lost" ? "lost" : "pend")} style={{ marginTop: 4 }}><i className="dot" />{q.status.toUpperCase()}</span>
+            </span>
+          </div>
+        ))}
+      </>)}
     </div></div>
   );
 }
 
 /* ================= HOME ================= */
-function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally, openFloor, openTrucks, openStock, goSetup, goSubscribe, openCo, startTut, dismissTut }) {
+function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openClient, tallyRows = null, tallyBal = null, goSetup, goSubscribe, openCo, startTut, dismissTut }) {
   const ind = industryOf(data);
   const isMach = ind.key === "machining";
   const h = new Date().getHours();
@@ -2223,20 +2435,9 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
   const dueList = data.quotes.filter((q) => { const st = followState(q); return st === "overdue" || st === "today"; })
     .sort((a, b) => a.followUp - b.followUp);
   const recent = data.quotes.slice(0, 3);
-
-  /* truck board at a glance (scrap only) */
-  const tbTrucks = data.trucks || [];
-  const tbOut = {};
-  (data.trips || []).forEach((t) => { if (!t.delivered && !tbOut[t.truckId]) tbOut[t.truckId] = t; });
-  const tbOutMT = Object.values(tbOut).reduce((s2, t) => s2 + (Number(t.qty) || 0), 0);
-
-  /* yard stock at a glance (scrap only) */
-  const stStk = ind.key === "scrap" ? stockCalc(data) : null;
-
-  /* machine floor at a glance (machining only) */
-  const flUnits = machineUnits(data);
-  const flActive = (data.jobs || []).filter((j) => !j.done);
-  const flBusy = new Set(flActive.flatMap((j) => jobAlloc(j).filter((a) => !a.stopped).map((a) => a.uid)));
+  /* scrap: the day runs on open orders - how much maal went, how much is left */
+  const isScrap = ind.key === "scrap";
+  const ongoing = isScrap ? ongoingOrders(data, tallyRows, tallyBal) : [];
 
   /* category tiles: printing shows active ones, furniture shows the full range */
   const showCats = ind.key === "printing" || ind.key === "furniture";
@@ -2323,34 +2524,8 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
         </div>
       )}
 
-      {/* machine floor now lives on the Work tab, Tally on Money -
-         home is the morning glance only */}
-
-      {/* scrap: live truck board */}
-      {ind.key === "scrap" && (
-        <button onClick={openTrucks} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "#fff", border: "1px solid var(--line)", boxShadow: "var(--sh-s)" }}>
-          <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>🚚</span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: "block", fontWeight: 700, fontSize: 15 }}>{tx("Truck board", "Truck board", "ट्रक बोर्ड")}</span>
-            <span style={{ display: "block", fontSize: 12.5, color: "var(--dim)" }}>{tbTrucks.length ? Object.keys(tbOut).length + "/" + tbTrucks.length + tx(" trucks out", " gaadiyan bahar", " गाड़ियां बाहर") + (tbOutMT > 0 ? " · " + fmtQty(tbOutMT) + tx(" MT on the road", " MT ja raha", " MT जा रहा") : "") : tx("Which truck went where - live", "Kaun si gaadi kahan gayi - live", "कौन सी गाड़ी कहां गई - लाइव")}</span>
-          </span>
-          {Object.keys(tbOut).length > 0 && <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: "var(--grn-d)", background: "var(--grn-100)", padding: "4px 9px", borderRadius: 999, flexShrink: 0 }}>{Object.keys(tbOut).length} {tx("OUT", "OUT", "बाहर")}</span>}
-          <I.chev style={{ color: "var(--faint)" }} />
-        </button>
-      )}
-
-      {/* scrap: yard stock */}
-      {ind.key === "scrap" && (
-        <button onClick={openStock} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "#fff", border: "1px solid " + (stStk && stStk.ghataTotal > 0 ? "#EFC7C2" : "var(--line)"), boxShadow: "var(--sh-s)" }}>
-          <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>⚖️</span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: "block", fontWeight: 700, fontSize: 15 }}>{tx("Stock", "Stock", "स्टॉक")}</span>
-            <span style={{ display: "block", fontSize: 12.5, color: "var(--dim)" }}>{stStk && stStk.total > 0 ? fmtQty(stStk.total) + tx(" MT in the yard", " MT yard me", " MT यार्ड में") + (stStk.outToday > 0 ? " · " + fmtQty(stStk.outToday) + tx(" MT sent today", " MT aaj gaya", " MT आज गया") : "") : tx("How much maal is in the yard - and is any missing?", "Yard me kitna maal hai - aur kitna gayab?", "यार्ड में कितना माल है - और कितना गायब?")}</span>
-          </span>
-          {stStk && stStk.ghataTotal > 0 && <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: "var(--red)", background: "var(--red-bg)", padding: "4px 9px", borderRadius: 999, flexShrink: 0 }}>{tx("GHATA ", "GHATA ", "घाटा ")}{fmtQty(stStk.ghataTotal)} MT</span>}
-          <I.chev style={{ color: "var(--faint)" }} />
-        </button>
-      )}
+      {/* machine floor, truck board and yard stock live on the Work tab,
+         Tally on Money - home is the morning glance only */}
 
       {dueList.length > 0 && (
         <button onClick={() => goQuotes("due")} className="press anim-in st3" style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", marginTop: 12, display: "flex", alignItems: "center", gap: 12, padding: "15px 16px", borderRadius: 18, background: "var(--amber-bg)", border: "1px solid #F0DCB8" }}>
@@ -2396,11 +2571,54 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openTally,
       )}
 
       <div className="anim-in st3" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "24px 0 10px" }}>
-        <span className="eyebrow">{tx("Recent quotes", "Recent quotes", "हाल के कोटेशन")}</span>
-        <button onClick={() => goQuotes("all")} style={{ background: "none", border: "none", color: "var(--grn-d)", fontWeight: 600, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center" }}>{tx("All", "All", "सभी")} <I.chev /></button>
+        <span className="eyebrow">{isScrap ? tx("Ongoing orders", "Chalu orders", "चालू ऑर्डर") : tx("Recent quotes", "Recent quotes", "हाल के कोटेशन")}</span>
+        <button onClick={() => goQuotes(isScrap ? "won" : "all")} style={{ background: "none", border: "none", color: "var(--grn-d)", fontWeight: 600, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center" }}>{tx("All", "All", "सभी")} <I.chev /></button>
       </div>
 
-      {recent.map((q, i) => (
+      {/* scrap: every open order with a sent / left bar - tap = that client's page */}
+      {isScrap && ongoing.length === 0 && (
+        <div className="card-tint anim-in st4" style={{ padding: "18px 16px", fontSize: 14, color: "var(--dim)", lineHeight: 1.55, marginBottom: 10 }}>
+          {tx("No order is open right now. Mark a quote WON and it shows up here - how much maal went, how much is left.",
+              "Abhi koi order chalu nahi. Quote ko WON karo - yahan dikhega kitna maal gaya, kitna baki.",
+              "अभी कोई ऑर्डर चालू नहीं। कोटेशन को WON करें - यहां दिखेगा कितना माल गया, कितना बाकी।")}
+        </div>
+      )}
+      {isScrap && ongoing.slice(0, 5).map((o, i) => {
+        const pct = o.qty ? Math.min(100, (o.sent / o.qty) * 100) : 0;
+        return (
+          <button key={o.q.id} onClick={() => openClient(o.q.customer)} className={"press anim-in st" + Math.min(8, 4 + i)}
+            style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "block", width: "100%", padding: "14px 15px 13px", marginBottom: 10, background: "#fff", border: "1px solid var(--line)", borderRadius: 22, boxShadow: "var(--sh-s)" }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span className="mono" style={{ width: 44, height: 44, borderRadius: 13, background: "var(--grn-100)", color: "var(--grn-d)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 600, flexShrink: 0 }}>{initialsOf(o.q.customer)}</span>
+              <span style={{ minWidth: 0, flex: 1 }}>
+                <span style={{ display: "block", fontWeight: 700, fontSize: 15.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{o.q.customer}</span>
+                <span style={{ display: "block", fontSize: 13, color: "var(--dim)", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{o.q.part}</span>
+              </span>
+              <span className="mono" style={{ fontWeight: 600, fontSize: 14.5, flexShrink: 0 }}>{fmtQty(o.qty)} {ind.unit}</span>
+              <I.chev style={{ color: "var(--faint)", flexShrink: 0 }} />
+            </span>
+            <span style={{ display: "block", height: 8, borderRadius: 99, background: "var(--soft)", border: "1px solid var(--line)", overflow: "hidden", marginTop: 12 }}>
+              <span style={{ display: "block", height: "100%", width: pct + "%", minWidth: o.sent > 0 ? 6 : 0, borderRadius: 99, background: "linear-gradient(90deg,#2E9E33,#5DBB63)" }} />
+            </span>
+            <span className="mono" style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 7, fontSize: 12.5, fontWeight: 600 }}>
+              <span style={{ color: "var(--grn-d)" }}>{fmtQty(o.sent)} {ind.unit} {tx("sent", "gaya", "गया")}</span>
+              <span style={{ color: "var(--amber)" }}>{fmtQty(o.remaining)} {ind.unit} {tx("left", "baki", "बाकी")}</span>
+            </span>
+            {o.onRoad > 0 && (
+              <span style={{ display: "block", fontSize: 12.5, color: "var(--dim)", marginTop: 4 }}>
+                {"\u{1F69A} " + fmtQty(o.onRoad) + " " + ind.unit + tx(" on the road right now", " abhi raste mein", " अभी रास्ते में")}
+              </span>
+            )}
+          </button>
+        );
+      })}
+      {isScrap && ongoing.length > 5 && (
+        <button onClick={() => goQuotes("won")} className="btn btn-ghost btn-sm press" style={{ width: "100%", marginBottom: 10 }}>
+          {"+" + (ongoing.length - 5) + tx(" more orders", " aur orders", " और ऑर्डर")}
+        </button>
+      )}
+
+      {!isScrap && recent.map((q, i) => (
         <button key={q.id} onClick={() => goQuotes("all")} className={"card press anim-in st" + (4 + i)}
           style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, padding: "14px 15px", marginBottom: 10, background: "#fff", border: "1px solid var(--line)", borderRadius: 22, width: "100%", boxShadow: "var(--sh-s)" }}>
           {q.image ? (
@@ -2803,7 +3021,14 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
     .filter((x) => !term || (x.customer + " " + x.part).toLowerCase().includes(term));
   /* categories that actually have quotes, in the trade's defined order, with counts */
   const catCounts = data.quotes.reduce((m, x) => { const k = catOf(x, ind); m[k] = (m[k] || 0) + 1; return m; }, {});
-  const catsPresent = (ind.cats || []).filter((c) => catCounts[c.key]);
+  /* a picked category stays in the list even when its last quote is gone */
+  const catsPresent = (ind.cats || []).filter((c) => catCounts[c.key] || c.key === cat);
+  const catAll = { machining: tx("All processes", "Saare process", "सभी प्रोसेस"), scrap: tx("All materials", "Saara maal", "सारा माल"),
+    printing: tx("All job types", "Saare job", "सभी जॉब"), furniture: tx("All products", "Saare product", "सभी प्रोडक्ट") }[ind.key] || tx("All types", "Saare types", "सभी प्रकार");
+  /* status counts follow the category pick, so the numbers match the list */
+  const inCat = data.quotes.filter((x) => !cat || catOf(x, ind) === cat);
+  const segCount = { all: inCat.length, pending: 0, won: 0, lost: 0 };
+  inCat.forEach((x) => { if (segCount[x.status] != null) segCount[x.status]++; });
 
   const doExport = async (kind) => {
     if (!data.quotes.length) return ping("No quotes to export yet");
@@ -2903,23 +3128,32 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
         <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--faint)" }}><I.search /></span>
       </div>
 
-      {/* filters */}
-      <div className="anim-in st1" data-tut="pipe-filters" style={{ display: "flex", gap: 8, marginBottom: catsPresent.length ? 10 : 14, flexWrap: "wrap" }}>
-        {["all", "pending", "won", "lost"].map((k) => (<button key={k} className={"fpill press " + (filter === k ? "on" : "")} onClick={() => setFilter(k)}>{k[0].toUpperCase() + k.slice(1)}</button>))}
-        <button className={"fpill press " + (filter === "due" ? "on" : "")} style={dueCount && filter !== "due" ? { borderColor: "#F0DCB8", color: "var(--amber)" } : undefined} onClick={() => setFilter("due")}>Follow-ups{dueCount ? " · " + dueCount : ""}</button>
-      </div>
-
-      {/* category chips - trade-specific, only categories that have quotes */}
-      {catsPresent.length > 0 && setCat && (
-        <div className="anim-in st1 cat-scroll" style={{ display: "flex", gap: 8, marginBottom: 14, overflowX: "auto", paddingBottom: 2 }}>
-          <button className={"catchip press " + (!cat ? "on" : "")} onClick={() => setCat(null)}>All {ind.item.split(" ")[0].toLowerCase() === "part" ? "parts" : "types"}</button>
-          {catsPresent.map((c) => (
-            <button key={c.key} className={"catchip press " + (cat === c.key ? "on" : "")} onClick={() => setCat(cat === c.key ? null : c.key)}>
-              <span style={{ fontSize: 14 }}>{c.emoji}</span> {c.label} <span className="mono" style={{ opacity: .6, fontSize: 11 }}>{catCounts[c.key]}</span>
+      {/* filters - one segmented status control, then ONE row: follow-ups
+          and a dropdown for the process/material (a wrapping pill cloud plus a
+          sideways-scrolling chip row read as clutter to owners) */}
+      <div className="anim-in st1" data-tut="pipe-filters" style={{ marginBottom: 16 }}>
+        <div className="segq" role="tablist">
+          {[["pending", tx("Pending", "Pending", "पेंडिंग")], ["won", tx("Won", "Won", "जीते")], ["lost", tx("Lost", "Lost", "गए")], ["all", tx("All", "All", "सभी")]].map(([k, l]) => (
+            <button key={k} role="tab" aria-selected={filter === k} className={"press" + (filter === k ? " on" : "")} onClick={() => setFilter(k)}>
+              {l}<span className="mono">{segCount[k]}</span>
             </button>
           ))}
         </div>
-      )}
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          <button className={"fuchip press" + (filter === "due" ? " on" : dueCount ? " hot" : "")} onClick={() => setFilter(filter === "due" ? "all" : "due")}>
+            <I.bell style={{ width: 16, height: 16 }} /> {tx("Follow-ups", "Follow-ups", "फॉलो-अप")}{dueCount ? " · " + dueCount : ""}
+          </button>
+          {catsPresent.length > 0 && setCat && (
+            <label className={"selpill" + (cat ? " on" : "")}>
+              <select aria-label={catAll} value={cat || ""} onChange={(e) => setCat(e.target.value || null)}>
+                <option value="">{catAll}</option>
+                {catsPresent.map((c) => <option key={c.key} value={c.key}>{c.emoji} {c.label} ({catCounts[c.key] || 0})</option>)}
+              </select>
+              <I.chev />
+            </label>
+          )}
+        </div>
+      </div>
 
       {/* heading above the quote list */}
       <div className="anim-in st2" data-tut="pipe-list" style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "4px 0 10px" }}>
@@ -2950,7 +3184,7 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
               )}
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 15.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.customer}</div>
-                <div style={{ fontSize: 13.5, color: "var(--dim)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.part}{q.qty ? " · " + q.qty + " pcs" : ""} · {fdate(q.at)}</div>
+                <div style={{ fontSize: 13.5, color: "var(--dim)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.part}{q.qty ? " · " + fmtQty(q.qty) + " " + (ind.unit || "pcs") : ""} · {fdate(q.at)}</div>
                 {q.spec && (
                   <div className="mono" style={{ fontSize: 11.5, color: "var(--grn-d)", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.spec}</div>
                 )}
@@ -3346,6 +3580,89 @@ const TALLY_SAMPLE = {
 const fmtQty = (n) => {
   const v = Math.round((Number(n) || 0) * 100) / 100;
   return v.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+};
+
+/* ================= ORDERS x DISPATCH =================
+   "Kitna maal gaya, kitna baki" per won order, and everything about one
+   party on the client page. Three records can show a dispatch: Truck board
+   trips, manual yard outs (stock.outs with a party) and Tally sales vouchers.
+   The yard records and Tally describe the SAME trucks, so they are never
+   added together - a party counts whichever side shows more (either can lag:
+   the bill gets made late, or a truck never got logged).
+   Sample Tally rows stand in ONLY for a party whose quotes are all sample
+   data, and only while no real Tally is synced - a real customer is never
+   shown sample money. */
+const partyKey = (s) => String(s || "").trim().toLowerCase();
+const initialsOf = (s) => String(s || "?").trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+const ORDER_WINDOW = 120 * DAY;  /* same window as the dispatch planner */
+const ORDER_DONE = 0.99;         /* 1% weighbridge / moisture cut still counts as complete */
+/* Tally quantities to tonnes; an unknown unit is skipped rather than guessed */
+const toMT = (qty, unit) => {
+  const u = String(unit || "").trim().toLowerCase().replace(/\.$/, "");
+  const n = Number(qty) || 0;
+  if (!u || /^(mt|ton|tons|tonne|tonnes|t)$/.test(u)) return n;
+  if (/^kgs?$/.test(u)) return n / 1000;
+  if (/^(qtl|qtls|quintal|quintals)$/.test(u)) return n / 10;
+  return null;
+};
+function partyView(data, name, tallyRows, tallyBal) {
+  const now = Date.now();
+  const k = partyKey(name);
+  const ind = industryOf(data);
+  const isMT = ind.unit === "MT";
+  const quotes = (data.quotes || []).filter((q) => partyKey(q.customer) === k).sort((a, b) => b.at - a.at);
+  const won = quotes.filter((q) => q.status === "won" && Number(q.qty) > 0 && q.at > now - ORDER_WINDOW).sort((a, b) => a.at - b.at);
+  const sample = !tallyRows && !tallyBal && quotes.length > 0 && quotes.every((q) => q.seed);
+  const T = sample
+    ? { vouchers: TALLY_SAMPLE.vouchers.map((x) => ({ ...x, vdate: now - x.d * DAY })),
+        bills: TALLY_SAMPLE.bills.map((x) => ({ ...x, bdate: now - x.d * DAY, due: x.dueIn == null ? null : now + x.dueIn * DAY })) }
+    : tallyRows;
+
+  const yard = [
+    ...(data.trips || []).filter((t) => partyKey(t.dealer) === k).map((t) => ({
+      id: t.id, at: t.startedAt, qty: Number(t.qty) || 0, item: t.material || "", ref: t.ref || "", src: "truck", onRoad: !t.delivered,
+      truck: ((data.trucks || []).find((x) => x.id === t.truckId) || {}).number || "" })),
+    ...(((data.stock && data.stock.outs) || []).filter((o) => partyKey(o.party) === k).map((o) => ({
+      id: o.id, at: o.at, qty: Number(o.qty) || 0, item: catMeta(ind, o.cat).label, ref: o.ref || "", src: "yard" }))),
+  ];
+  const tally = T ? (T.vouchers || []).filter((v) => !/purchase/i.test(String(v.vtype || "")) && partyKey(v.party) === k)
+    .map((v, i) => ({ id: "t" + i, at: Number(v.vdate), qty: isMT ? toMT(v.qty, v.unit) : Number(v.qty) || 0, item: v.item || "", ref: v.ref || v.vno || "", amount: Number(v.amount) || 0, src: "tally" }))
+    .filter((d) => d.qty != null && d.qty > 0) : [];
+
+  /* the oldest open order fills first. Dispatches from before the day the
+     first order was logged belong to older business (sample dates are made
+     up, so sample parties have no floor) */
+  const floor = won.length ? Math.min(...won.map((q) => (q.seed ? 0 : startOfDay(q.at)))) : Infinity;
+  const sum = (xs) => xs.reduce((s, d) => s + d.qty, 0);
+  const yardIn = yard.filter((d) => d.at >= floor), tallyIn = tally.filter((d) => d.at >= floor);
+  const fromTally = sum(tallyIn) > sum(yardIn);
+  const used = fromTally ? tallyIn : yardIn;
+  let left = sum(used);
+  const last = used.length ? Math.max(...used.map((d) => d.at)) : null;
+  const orders = won.map((q) => {
+    const qty = Number(q.qty), sent = Math.min(qty, left);
+    left -= sent;
+    return { q, qty, sent, remaining: Math.max(0, qty - sent), done: sent >= qty * ORDER_DONE, last };
+  });
+
+  const bills = T ? (T.bills || []).filter((b) => partyKey(b.party) === k && Number(b.pending) > 0) : [];
+  const ledger = sample ? TALLY_SAMPLE.ledgers.find((l) => l.grp !== "creditor" && partyKey(l.name) === k) : null;
+  const balance = sample ? (ledger ? ledger.balance : 0) : tallyBal ? (tallyBal[k] || 0) : null;
+  return {
+    name: String(name || "").trim() || (quotes[0] && quotes[0].customer) || "", quotes, orders, sample,
+    fromTally, dispatches: (fromTally ? tally : yard).map((d) => ({ ...d, counted: !won.length || d.at >= floor })).sort((a, b) => b.at - a.at),
+    onRoad: yard.filter((d) => d.onRoad).reduce((s, d) => s + d.qty, 0),
+    balance, bills, phone: (quotes.find((q) => q.phone) || {}).phone || "",
+  };
+}
+/* every open (not yet fully dispatched) won order, newest first */
+const ongoingOrders = (data, tallyRows, tallyBal) => {
+  const now = Date.now();
+  const names = [...new Set((data.quotes || []).filter((q) => q.status === "won" && Number(q.qty) > 0 && q.at > now - ORDER_WINDOW).map((q) => partyKey(q.customer)))];
+  return names.flatMap((k) => {
+    const pv = partyView(data, k, tallyRows, tallyBal);
+    return pv.orders.filter((o) => !o.done).map((o) => ({ ...o, onRoad: pv.onRoad }));
+  }).sort((a, b) => b.q.at - a.q.at);
 };
 
 function TallyInsights({ data, updateQuote, ping, onBack }) {
@@ -4947,8 +5264,9 @@ function LoginMethods({ account, ping }) {
     </div>
   );
 
+  /* .card carries no padding of its own - without this the text sat on the border */
   return (
-    <div className="card anim-in" style={{ marginTop: 18 }}>
+    <div className="card anim-in" style={{ marginTop: 18, padding: "16px 16px 4px" }}>
       <div className="h-disp" style={{ fontSize: 16.5, fontWeight: 700 }}>{tx("Ways to log in", "Login ke tareeke", "लॉगिन के तरीके")}</div>
       <div style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 3, lineHeight: 1.55 }}>
         {tx("Attach both and either one opens this same account, with all your data.",
