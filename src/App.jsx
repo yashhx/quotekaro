@@ -5323,7 +5323,9 @@ function StockYard({ data, setData, ping, onBack }) {
       </div>
 
       {/* the kanta slip itself - photo first, questions after */}
-      <input ref={parchiFile} type="file" accept="image/*" capture="environment" onChange={onParchiPick} style={{ display: "none" }} />
+      {/* no `capture` attribute on purpose: iOS would then open the camera ONLY,
+          and half these slips arrive as a photo the driver sent on WhatsApp */}
+      <input ref={parchiFile} type="file" accept="image/*" onChange={onParchiPick} style={{ display: "none" }} />
       <button className="btn btn-grn press anim-in st2" style={{ width: "100%", marginTop: 12 }} disabled={pBusy} onClick={() => parchiFile.current && parchiFile.current.click()}>
         {pBusy ? tx("Reading photo...", "Photo padh rahe hain...", "फोटो पढ़ रहे हैं...") : "\u{1F4F7} " + tx("Add a kanta parchi", "Kanta parchi daalo", "कांटा पर्ची डालें")}
       </button>
