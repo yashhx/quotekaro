@@ -68,6 +68,30 @@ async function aiParseEnquiry(text) {
 /* AI photo/PDF reader: the server fetches the WhatsApp media by id and shows it
    to Claude vision (handwriting-aware). Caption is redacted like any text.
    Any failure returns null -> the caption/regex path is used instead. */
+/* reads a kanta parchi the owner just photographed. The image goes to our own
+   function and on to Claude vision; nothing is saved server-side. Any failure
+   returns a reason so the sheet can say why it stayed manual. */
+async function aiReadParchi(blob) {
+  try {
+    const b64 = await new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(String(fr.result || "").replace(/^data:[^,]+,/, ""));
+      fr.onerror = () => rej(new Error("read failed"));
+      fr.readAsDataURL(blob);
+    });
+    const r = await fetch(WA_API + "/read-parchi", {
+      method: "POST", headers: { "content-type": "application/json", ...(await authHeaders()) },
+      body: JSON.stringify({ image: b64, mime: blob.type || "image/jpeg" }),
+    });
+    const ct = r.headers.get("content-type") || "";
+    if (!ct.includes("application/json")) return { fields: null, why: "backend missing" };
+    const d = await r.json().catch(() => null);
+    if (d && d.ok && d.fields) return { fields: d.fields };
+    const why = r.status === 401 ? "login needed" : r.status === 501 ? "AI not set up" : r.status === 429 ? "AI busy, try again" : "could not read it";
+    return { fields: null, why };
+  } catch { return { fields: null, why: "no internet" }; }
+}
+
 async function aiReadMedia(mediaId, caption) {
   try {
     const redacted = String(caption || "").replace(/(?:\+?91[\s\-]?)?[6-9]\d{4}[\s\-]?\d{5}(?!\d)/g, "[phone]");
@@ -5074,6 +5098,7 @@ function StockYard({ data, setData, ping, onBack }) {
   const [pDraft, setPDraft] = useState(null); /* {photo, dir, cat, gross, tare, kg, manualNet, party, ref, vehicle, at, apply} */
   const [viewP, setViewP] = useState(null);   /* parchi open full-screen */
   const [pBusy, setPBusy] = useState(false);
+  const [pRead, setPRead] = useState(null); /* {busy} | {ok, mismatch} | {why} - AI reading of the slip */
   const parchiFile = useRef(null);
   const [pay, setPay] = useState(null); /* dene-wale total, cloud or sample */
   useEffect(() => {
@@ -5164,8 +5189,36 @@ function StockYard({ data, setData, ping, onBack }) {
     if (!photo) return ping(tx("Could not read that photo", "Photo nahi padh paye", "फोटो नहीं पढ़ पाए"));
     if (pDraft && pDraft.url) URL.revokeObjectURL(pDraft.url);
     setPDraft({ blob: photo, url: URL.createObjectURL(photo), dir: "", cat: "", gross: "", tare: "", kg: "", manualNet: false, party: "", ref: "", vehicle: "", at: startOfDay(Date.now()) + 12 * 3600000, apply: true });
+    setPRead(null);
+    if (data.settings && data.settings.aiParse) runRead(photo);
   };
-  const closeDraft = () => { if (pDraft && pDraft.url) URL.revokeObjectURL(pDraft.url); setPDraft(null); };
+  const closeDraft = () => { if (pDraft && pDraft.url) URL.revokeObjectURL(pDraft.url); setPDraft(null); setPRead(null); };
+  /* Claude reads the slip and PRE-FILLS - it never saves anything by itself.
+     A weighbridge slip cannot say whether the maal came in or went out, so
+     that question is still the owner's, and every number stays editable. */
+  const runRead = async (blob) => {
+    setPRead({ busy: true });
+    const { fields, why } = await aiReadParchi(blob);
+    if (!fields) { setPRead({ why: why || "could not read it" }); return; }
+    const mul = fields.unit === "mt" ? 1000 : fields.unit === "qtl" ? 100 : 1;
+    const kgOf = (v) => (v ? String(Math.round(Number(v) * mul * 100) / 100) : "");
+    const cat = fields.material ? guessCategory(fields.material, "scrap") : "";
+    setPDraft((d) => (d ? {
+      ...d,
+      gross: d.gross || kgOf(fields.gross),
+      tare: d.tare || kgOf(fields.tare),
+      /* net is only kept when the slip printed it and gross/tare did not
+         already give us the subtraction */
+      kg: d.kg || (fields.gross && fields.tare ? "" : kgOf(fields.net)),
+      manualNet: d.manualNet || (!(fields.gross && fields.tare) && !!fields.net),
+      party: d.party || fields.party || "",
+      ref: d.ref || fields.slipNo || "",
+      vehicle: d.vehicle || fields.vehicle || "",
+      cat: d.cat || (cats.some((c) => c.key === cat) ? cat : ""),
+      at: fields.date ? new Date(fields.date + "T12:00:00").getTime() : d.at,
+    } : d));
+    setPRead({ ok: true, mismatch: !!fields.mismatch });
+  };
   const draftKg = (d) => {
     if (d.manualNet) return Number(d.kg) || 0;
     const g = Number(d.gross) || 0, t = Number(d.tare) || 0;
@@ -5455,7 +5508,36 @@ function StockYard({ data, setData, ping, onBack }) {
           <div className="h-disp" style={{ fontSize: 21, fontWeight: 700 }}>{tx("Kanta parchi", "Kante ki parchi", "\u0915\u093E\u0902\u091F\u0947 \u0915\u0940 \u092A\u0930\u094D\u091A\u0940")}</div>
           <img src={pDraft.url} alt="" onClick={() => setViewP({ id: "draft", photo: pDraft.url })}
             style={{ width: "100%", height: 150, objectFit: "cover", borderRadius: 14, margin: "12px 0 4px", border: "1px solid var(--line2)", cursor: "zoom-in" }} />
-          <div className="hint" style={{ textAlign: "center", marginBottom: 12 }}>{tx("Tap the photo to read it full-size", "Photo dabao - poori dikhegi", "\u092B\u094B\u091F\u094B \u0926\u092C\u093E\u090F\u0902 - \u092A\u0942\u0930\u0940 \u0926\u093F\u0916\u0947\u0917\u0940")}</div>
+          {/* what the AI made of it - or why it stayed manual */}
+          {pRead && pRead.busy && (
+            <div style={{ display: "flex", alignItems: "center", gap: 9, margin: "10px 0 2px", padding: "10px 12px", borderRadius: 12, background: "var(--soft)", border: "1px solid var(--line)", fontSize: 13, color: "var(--dim)" }}>
+              <span className="mono" style={{ color: "var(--grn-d)" }}>AI</span>
+              {tx("Reading the parchi...", "Parchi padh rahe hain...", "पर्ची पढ़ रहे हैं...")}
+            </div>
+          )}
+          {pRead && pRead.ok && (
+            <div style={{ margin: "10px 0 2px", padding: "10px 12px", borderRadius: 12, background: pRead.mismatch ? "var(--amber-bg)" : "#F3FBF4", border: "1px solid " + (pRead.mismatch ? "#F0DCB8" : "#CFE9D1"), fontSize: 12.5, lineHeight: 1.5, color: pRead.mismatch ? "#7A5510" : "var(--grn-d)" }}>
+              {pRead.mismatch
+                ? tx("AI read the slip but gross - tare does not match the net it read. Check all three against the paper.", "AI ne parchi padhi, par gross - tare aur net aapas me match nahi kar rahe. Teeno number parchi se milaa lijiye.", "AI ने पर्ची पढ़ी, पर गिनती मेल नहीं खा रही - तीनों नंबर मिला लें।")
+                : tx("AI read the slip - check the numbers against the paper before saving.", "AI ne parchi padh li - save karne se pehle number parchi se milaa lijiye.", "AI ने पर्ची पढ़ ली - सेव करने से पहले नंबर मिला लें।")}
+            </div>
+          )}
+          {pRead && pRead.why && (
+            <div style={{ margin: "10px 0 2px", padding: "10px 12px", borderRadius: 12, background: "var(--soft)", border: "1px solid var(--line)", fontSize: 12.5, lineHeight: 1.5, color: "var(--dim)" }}>
+              {tx("Could not read it (", "Parchi padhi nahi ja saki (", "पर्ची पढ़ी नहीं जा सकी (") + pRead.why + tx(") - fill it in by hand.", ") - haath se bhar dijiye.", ") - हाथ से भरें।")}
+            </div>
+          )}
+          {!pRead && (
+            <button className="btn btn-soft btn-sm press" style={{ width: "100%", marginTop: 10 }} onClick={() => runRead(pDraft.blob)}>
+              {"\u{1F4D6} " + tx("Let AI read this parchi", "AI se parchi padhwao", "AI से पर्ची पढ़वाएं")}
+            </button>
+          )}
+          {!pRead && (
+            <div className="hint" style={{ textAlign: "center", marginTop: 6 }}>
+              {tx("The photo is sent to our server to be read. Turn on Smart reading in Setup to do this automatically.", "Padhne ke liye photo humare server par jaayegi. Setup me 'Smart reading' on karo to har parchi apne aap padhi jayegi.", "पढ़ने के लिए फोटो हमारे सर्वर पर जाएगी।")}
+            </div>
+          )}
+          <div className="hint" style={{ textAlign: "center", marginBottom: 12, marginTop: 8 }}>{tx("Tap the photo to read it full-size", "Photo dabao - poori dikhegi", "\u092B\u094B\u091F\u094B \u0926\u092C\u093E\u090F\u0902 - \u092A\u0942\u0930\u0940 \u0926\u093F\u0916\u0947\u0917\u0940")}</div>
 
           <div className="lbl" style={{ marginBottom: 7 }}>{tx("1. Is this maal coming IN or going OUT?", "1. Ye maal aa raha hai ya ja raha hai?", "1. \u092F\u0939 \u092E\u093E\u0932 \u0906 \u0930\u0939\u093E \u0939\u0948 \u092F\u093E \u091C\u093E \u0930\u0939\u093E \u0939\u0948?")}</div>
           <div style={{ display: "flex", gap: 10 }}>
@@ -5474,13 +5556,13 @@ function StockYard({ data, setData, ping, onBack }) {
             <div className="lbl" style={{ margin: "16px 0 7px" }}>{tx("3. Weight from the slip (kg)", "3. Parchi ka weight (kg)", "3. \u092A\u0930\u094D\u091A\u0940 \u0915\u093E \u0935\u091C\u093C\u0928 (kg)")}</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Gross (loaded)", "Gross (bhara)", "\u0917\u094D\u0930\u0949\u0938 (\u092D\u0930\u093E)")}</label>
-                <input className="input mono" type="number" inputMode="decimal" placeholder="16540" value={pDraft.gross} onChange={(e) => setPDraft({ ...pDraft, gross: e.target.value, manualNet: false })} /></div>
+                <input className="input mono" type="number" inputMode="decimal" placeholder={tx("e.g. 16540", "jaise 16540", "जैसे 16540")} value={pDraft.gross} onChange={(e) => setPDraft({ ...pDraft, gross: e.target.value, manualNet: false })} /></div>
               <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Tare (empty)", "Tare (khaali)", "\u091F\u0947\u092F\u0930 (\u0916\u093E\u0932\u0940)")}</label>
-                <input className="input mono" type="number" inputMode="decimal" placeholder="4000" value={pDraft.tare} onChange={(e) => setPDraft({ ...pDraft, tare: e.target.value, manualNet: false })} /></div>
+                <input className="input mono" type="number" inputMode="decimal" placeholder={tx("e.g. 4000", "jaise 4000", "जैसे 4000")} value={pDraft.tare} onChange={(e) => setPDraft({ ...pDraft, tare: e.target.value, manualNet: false })} /></div>
             </div>
             <div style={{ marginTop: 10 }}>
               <label className="lbl" style={{ fontSize: 12.5 }}>{tx("Net (maal only)", "Net (sirf maal)", "\u0928\u0947\u091F (\u0938\u093F\u0930\u094D\u092B \u092E\u093E\u0932)")}</label>
-              <input className="input mono" type="number" inputMode="decimal" placeholder="12540" value={pDraft.manualNet ? pDraft.kg : (kgNow || "")}
+              <input className="input mono" type="number" inputMode="decimal" placeholder={tx("e.g. 12540", "jaise 12540", "जैसे 12540")} value={pDraft.manualNet ? pDraft.kg : (kgNow || "")}
                 onChange={(e) => setPDraft({ ...pDraft, kg: e.target.value, manualNet: true })} />
               <span className="hint">{tx("Net = gross - tare. If the slip already prints net, just type that.", "Net = gross - tare. Parchi par net likha ho to seedha wahi daalo.", "\u0928\u0947\u091F = \u0917\u094D\u0930\u0949\u0938 - \u091F\u0947\u092F\u0930\u0964")}</span>
             </div>
@@ -5493,7 +5575,7 @@ function StockYard({ data, setData, ping, onBack }) {
               <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Party", "Party", "\u092A\u093E\u0930\u094D\u091F\u0940")}</label>
                 <input className="input" list="qk-parties" placeholder="Apex Alloys" value={pDraft.party} onChange={(e) => setPDraft({ ...pDraft, party: e.target.value })} /></div>
               <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Slip no", "Parchi no", "\u092A\u0930\u094D\u091A\u0940 \u0928\u0902\u092C\u0930")}</label>
-                <input className="input mono" placeholder="4821" value={pDraft.ref} onChange={(e) => setPDraft({ ...pDraft, ref: e.target.value })} /></div>
+                <input className="input mono" placeholder={tx("e.g. 4821", "jaise 4821", "जैसे 4821")} value={pDraft.ref} onChange={(e) => setPDraft({ ...pDraft, ref: e.target.value })} /></div>
               <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Vehicle no", "Gaadi no", "\u0917\u093E\u0921\u093C\u0940 \u0928\u0902\u092C\u0930")}</label>
                 <input className="input mono" placeholder="HR 38 AB 1234" value={pDraft.vehicle} onChange={(e) => setPDraft({ ...pDraft, vehicle: e.target.value })} /></div>
               <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Date on the slip", "Parchi ki date", "\u092A\u0930\u094D\u091A\u0940 \u0915\u0940 \u0924\u093E\u0930\u0940\u0916")}</label>
