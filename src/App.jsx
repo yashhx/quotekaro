@@ -152,18 +152,25 @@ const CSS = `
   --sh-l:0 4px 10px rgba(22,32,26,.06), 0 36px 80px -28px rgba(21,94,24,.3);
 }
 *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
-.qk-root{min-height:100vh; width:100%; display:flex; justify-content:center;
+html,body{height:100%;}
+/* iOS: the DOCUMENT must never scroll - only .scr does. 100vh is the
+   toolbar-HIDDEN height there, so min-height:100vh left the page taller than
+   the visible area and the whole app (nav bar included) slid up as you dragged. */
+body{overflow:hidden; overscroll-behavior:none;}
+.qk-root{height:100dvh; width:100%; display:flex; justify-content:center; overflow:hidden;
   background:radial-gradient(60% 40% at 50% 0%, rgba(34,139,34,.07), transparent 70%), linear-gradient(180deg,#F7FAF7,#EEF5EF);
   font-family:var(--sans); color:var(--ink);}
-.app{width:100%; max-width:440px; height:100vh; height:100dvh; background:var(--bg);
+.app{width:100%; max-width:440px; height:100%; background:var(--bg);
   display:flex; flex-direction:column; position:relative; overflow:hidden;
+  padding-top:env(safe-area-inset-top);
   box-shadow:0 0 0 1px var(--line), 0 50px 120px -40px rgba(21,94,24,.35);}
-@media(min-width:520px){.app{height:min(100dvh, 940px); margin:auto 0; border-radius:34px;}
+@media(min-width:520px){.app{height:min(calc(100dvh - 36px), 940px); margin:auto 0; border-radius:34px;}
   .qk-root{align-items:center; padding:18px 0;}}
 
-.scr{flex:1; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
+.scr{flex:1; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none;
+  overscroll-behavior:contain;}
 .scr::-webkit-scrollbar{display:none;}
-.pagepad{padding:20px 18px 130px;}
+.pagepad{padding:20px 18px calc(130px + env(safe-area-inset-bottom));}
 
 .h-disp{font-family:var(--disp); letter-spacing:-.025em; line-height:1.08;}
 .mono{font-family:var(--mono);}
@@ -253,7 +260,7 @@ const CSS = `
 .cat-tile:active{transform:scale(.98);}
 
 /* ---- liquid glass nav (Apple-style) ---- */
-.navbar{position:absolute; left:14px; right:14px; bottom:14px; z-index:40; isolation:isolate;
+.navbar{position:absolute; left:14px; right:14px; bottom:calc(14px + env(safe-area-inset-bottom)); z-index:40; isolation:isolate;
   background:linear-gradient(180deg, rgba(255,255,255,.1) 0%, rgba(255,255,255,.03) 100%);
   backdrop-filter:blur(22px) saturate(1.8) brightness(1.02);
   -webkit-backdrop-filter:blur(22px) saturate(1.8) brightness(1.02);
@@ -919,7 +926,7 @@ const buildSampleQuotes = (key) => {
 /* downscale a picked image to a small JPEG data URL for the pipeline thumbnail.
    Kept tiny (~240px) so many photos fit in localStorage / the synced blob;
    full-resolution photo storage -> Supabase Storage is the documented next step. */
-const downscaleImage = (file, max = 240, quality = 0.55) => new Promise((resolve) => {
+const downscaleImage = (file, max = 820, quality = 0.6) => new Promise((resolve) => {
   if (!file || !/^image\//.test(file.type || "")) return resolve(null);
   const img = new Image();
   const url = URL.createObjectURL(file);
@@ -1923,7 +1930,15 @@ export default function App() {
     if (!data) return;
     clearTimeout(saveT.current);
     saveT.current = setTimeout(async () => {
-      if (!sb || !account) { storage.set(KEY, JSON.stringify(data)).catch(() => {}); return; }
+      /* a full localStorage (parchi photos are the heavy thing) must never fail
+         silently - the owner would keep working and lose the lot */
+      if (!sb || !account) {
+        storage.set(KEY, JSON.stringify(data)).catch(() => ping(tx(
+          "Phone storage is full - could not save. Remove some parchi photos.",
+          "Phone ki storage bhar gayi - save nahi hua. Kuch parchi photos hata dijiye.",
+          "फोन की स्टोरेज भर गई - सेव नहीं हुआ। कुछ पर्ची फोटो हटाएं।")));
+        return;
+      }
       try { localStorage.setItem(KEY + ":" + account.uid, JSON.stringify(data)); } catch {}
       /* never push to the cloud in a session that couldn't read it - a stale
          cache or fresh seed must not clobber the user's real row */
@@ -2655,7 +2670,7 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openClient
         <button key={q.id} onClick={() => goQuotes("all")} className={"card press anim-in st" + (4 + i)}
           style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, padding: "14px 15px", marginBottom: 10, background: "#fff", border: "1px solid var(--line)", borderRadius: 22, width: "100%", boxShadow: "var(--sh-s)" }}>
           {q.image ? (
-            <img src={q.image} alt="" style={{ width: 44, height: 44, borderRadius: 12, objectFit: "cover", flexShrink: 0, border: "1px solid var(--line2)" }} />
+            <img src={q.image} alt="" style={{ width: 54, height: 54, borderRadius: 13, objectFit: "cover", flexShrink: 0, border: "1px solid var(--line2)" }} />
           ) : (
             <span style={{ width: 44, height: 44, borderRadius: 12, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{catMeta(ind, catOf(q, ind)).emoji}</span>
           )}
@@ -3211,9 +3226,9 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
               <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
               {q.image ? (
                 <img src={q.image} alt="" onClick={(ev) => { ev.stopPropagation(); setViewImg(q.image); }}
-                  style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover", flexShrink: 0, border: "1px solid var(--line2)", cursor: "zoom-in" }} />
+                  style={{ width: 62, height: 62, borderRadius: 14, objectFit: "cover", flexShrink: 0, border: "1px solid var(--line2)", cursor: "zoom-in" }} />
               ) : (
-                <span style={{ width: 48, height: 48, borderRadius: 12, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{catMeta(ind, catOf(q, ind)).emoji}</span>
+                <span style={{ width: 62, height: 62, borderRadius: 14, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>{catMeta(ind, catOf(q, ind)).emoji}</span>
               )}
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 15.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.customer}</div>
@@ -4593,7 +4608,7 @@ function MachineFloor({ data, setData, ping, onBack, goSetup, draft, clearDraft 
   };
 
   return (
-    <div className="scr"><div className="pagepad" style={{ paddingBottom: 40 }}>
+    <div className="scr"><div className="pagepad">
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
         <button className="iconbtn press" onClick={onBack}><I.back /></button>
         <div style={{ flex: 1 }}>
@@ -4770,6 +4785,15 @@ function MachineFloor({ data, setData, ping, onBack, goSetup, draft, clearDraft 
    material's baseline date are excluded - a physical count resets the clock.
    Ghata (shrinkage/theft) events are logged when a count disagrees with book. */
 const tripCat = (t) => t.cat || guessCategory(t.material || "", "scrap");
+/* ---- kanta parchi (weighbridge slip) ----
+   A dharam kanta prints KILOGRAMS: gross (loaded truck), tare (the same truck
+   empty, weighed again after unloading) and net = gross - tare, with a slip
+   serial, the vehicle number and a timestamp. The yard works in tonnes, so a
+   parchi is entered exactly as the slip reads and converted in ONE place. */
+const KG_PER_MT = 1000;
+const parchiMT = (p) => Math.round(((Number(p && p.kg) || 0) / KG_PER_MT) * 1000) / 1000;
+/* rough bytes held by the photos - data URLs are base64, so ~3/4 of the string */
+const parchiBytes = (list) => (list || []).reduce((n, p) => n + (p.photo ? p.photo.length * 0.75 : 0), 0);
 const stockCalc = (data) => {
   const st = data.stock || {};
   const open = st.open || {};
@@ -4827,7 +4851,7 @@ function TruckBoard({ data, setData, ping, onBack, goSetup }) {
   };
 
   return (
-    <div className="scr"><div className="pagepad" style={{ paddingBottom: 40 }}>
+    <div className="scr"><div className="pagepad">
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
         <button className="iconbtn press" onClick={onBack}><I.back /></button>
         <div style={{ flex: 1 }}>
@@ -4939,6 +4963,11 @@ function StockYard({ data, setData, ping, onBack }) {
   const [countFor, setCountFor] = useState(null); /* cat key being counted */
   const [f, setF] = useState({ cat: "", qty: "", party: "", ref: "" });
   const [cQty, setCQty] = useState("");
+  /* kanta parchi: the photo of the slip, then the questions it cannot answer */
+  const [pDraft, setPDraft] = useState(null); /* {photo, dir, cat, gross, tare, kg, manualNet, party, ref, vehicle, at, apply} */
+  const [viewP, setViewP] = useState(null);   /* parchi open full-screen */
+  const [pBusy, setPBusy] = useState(false);
+  const parchiFile = useRef(null);
   const [pay, setPay] = useState(null); /* dene-wale total, cloud or sample */
   useEffect(() => {
     let alive = true;
@@ -4963,7 +4992,8 @@ function StockYard({ data, setData, ping, onBack }) {
   const hasAny = Object.keys(stk.cats).length > 0;
   const dmax = Math.max(0.001, ...stk.days);
 
-  const save = (patch) => setData({ ...data, stock: { open: {}, ins: [], outs: [], counts: [], ...st, ...patch } });
+  const save = (patch) => setData({ ...data, stock: { open: {}, ins: [], outs: [], counts: [], parchis: [], ...st, ...patch } });
+  const parchis = st.parchis || [];
   const logIn = () => {
     if (!f.cat) return ping(tx("Pick the material", "Maal chuno", "माल चुनें"));
     if (!(+f.qty > 0)) return ping(tx("Weighbridge weight (MT)?", "Kanta weight (MT) likho", "कांटा वज़न (MT) लिखें"));
@@ -4991,6 +5021,76 @@ function StockYard({ data, setData, ping, onBack }) {
     if (ghata > 0.05) ping(tx("GHATA of " + fmtQty(ghata) + " MT recorded!", "GHATA " + fmtQty(ghata) + " MT - record ho gaya!", "घाटा " + fmtQty(ghata) + " MT - दर्ज हुआ!"));
     else ping(tx("Stock verified - all good", "Kanta check done - sab barabar", "कांटा चेक हुआ - सब बराबर"));
   };
+  /* ---- parchi handlers ----
+     Nothing touches the yard total until the owner answers both questions:
+     which way the maal moved, and whether this slip should move the stock. */
+  const onParchiPick = async (e) => {
+    const file = e.target.files && e.target.files[0]; e.target.value = "";
+    if (!file) return;
+    setPBusy(true);
+    /* bigger than a quote thumbnail - the slip's numbers have to stay readable */
+    const photo = await downscaleImage(file, 1100, 0.62);
+    setPBusy(false);
+    if (!photo) return ping(tx("Could not read that photo", "Photo nahi padh paye", "फोटो नहीं पढ़ पाए"));
+    setPDraft({ photo, dir: "", cat: "", gross: "", tare: "", kg: "", manualNet: false, party: "", ref: "", vehicle: "", at: startOfDay(Date.now()) + 12 * 3600000, apply: true });
+  };
+  const draftKg = (d) => {
+    if (d.manualNet) return Number(d.kg) || 0;
+    const g = Number(d.gross) || 0, t = Number(d.tare) || 0;
+    return g > 0 && t > 0 ? Math.max(0, g - t) : (Number(d.kg) || 0);
+  };
+  /* create / remove the stock entry a parchi stands behind. The entry carries
+     the parchi id, so the two can never drift apart. */
+  const linkParchi = (pc, on, list) => {
+    const key = pc.dir === "in" ? "ins" : "outs";
+    const src = list || parchis;
+    if (on) {
+      const lid = uid();
+      return {
+        [key]: [{ id: lid, cat: pc.cat, qty: parchiMT(pc), party: pc.party, ref: pc.ref, at: pc.at, fromParchi: pc.id }, ...(st[key] || [])],
+        parchis: src.map((x) => (x.id === pc.id ? { ...x, linkId: lid } : x)),
+      };
+    }
+    return {
+      [key]: (st[key] || []).filter((x) => x.id !== pc.linkId),
+      parchis: src.map((x) => (x.id === pc.id ? { ...x, linkId: null } : x)),
+    };
+  };
+  const saveParchi = () => {
+    const d = pDraft;
+    if (!d.dir) return ping(tx("Is the maal coming in or going out?", "Maal aa raha hai ya ja raha hai?", "माल आ रहा है या जा रहा है?"));
+    if (!d.cat) return ping(tx("Pick the material", "Maal chuno", "माल चुनें"));
+    const kg = draftKg(d);
+    if (!(kg > 0)) return ping(tx("Write the weight from the slip", "Parchi ka weight likho", "पर्ची का वज़न लिखें"));
+    const pc = { id: uid(), photo: d.photo, dir: d.dir, cat: d.cat, kg, gross: Number(d.gross) || 0, tare: Number(d.tare) || 0,
+      party: d.party.trim(), ref: d.ref.trim(), vehicle: d.vehicle.trim().toUpperCase(), at: d.at, addedAt: Date.now(), linkId: null };
+    const list = [pc, ...parchis];
+    save(d.apply ? { parchis: list, ...linkParchi(pc, true, list) } : { parchis: list });
+    setPDraft(null);
+    const mt = fmtQty(parchiMT(pc));
+    if (!d.apply) return ping(tx("Parchi saved - stock not changed", "Parchi save - stock nahi badla", "पर्ची सेव - स्टॉक नहीं बदला"));
+    ping(d.dir === "in" ? tx(mt + " MT added to stock", mt + " MT stock me juda", mt + " MT स्टॉक में जुड़ा")
+      : tx(mt + " MT removed from stock", mt + " MT stock se ghata", mt + " MT स्टॉक से घटा"));
+  };
+  const toggleParchi = (pc) => {
+    const on = !pc.linkId;
+    save(linkParchi(pc, on));
+    setViewP({ ...pc, linkId: on ? "x" : null });
+    ping(on ? (pc.dir === "in" ? tx("Added to stock", "Stock me juda", "स्टॉक में जुड़ा") : tx("Removed from stock", "Stock se ghata", "स्टॉक से घटा"))
+      : tx("Stock change undone - parchi kept", "Stock wapas - parchi rahegi", "स्टॉक वापस - पर्ची रहेगी"));
+  };
+  const delParchi = (pc) => {
+    const key = pc.dir === "in" ? "ins" : "outs";
+    save({ parchis: parchis.filter((x) => x.id !== pc.id), [key]: (st[key] || []).filter((x) => x.id !== pc.linkId) });
+    setViewP(null);
+    ping(tx("Parchi deleted", "Parchi hat gayi", "पर्ची हट गई"));
+  };
+  const dropPhoto = (pc) => {
+    save({ parchis: parchis.map((x) => (x.id === pc.id ? { ...x, photo: "" } : x)) });
+    setViewP({ ...pc, photo: "" });
+    ping(tx("Photo removed - the entry stays", "Photo hata - entry rahegi", "फोटो हटा - एंट्री रहेगी"));
+  };
+
   const sampleStock = () => {
     const now = Date.now();
     save({
@@ -5019,8 +5119,29 @@ function StockYard({ data, setData, ping, onBack }) {
     </div>
   );
 
-  return (
-    <div className="scr"><div className="pagepad" style={{ paddingBottom: 40 }}>
+  const kgNow = pDraft ? draftKg(pDraft) : 0;
+  const mtNow = Math.round((kgNow / KG_PER_MT) * 1000) / 1000;
+  const parties = [...new Set([...(data.quotes || []).map((q) => q.customer), ...(data.trips || []).map((t) => t.dealer), ...parchis.map((x) => x.party)].filter(Boolean))].slice(0, 25);
+  /* three things that quietly corrupt a yard total, said out loud */
+  const dupSlip = !!(pDraft && pDraft.ref.trim() && parchis.some((x) => x.ref && x.ref.toLowerCase() === pDraft.ref.trim().toLowerCase()));
+  const truckSameDay = !!(pDraft && pDraft.dir === "out" && pDraft.party.trim() && (data.trips || []).some((t) =>
+    partyKey(t.dealer) === partyKey(pDraft.party) && startOfDay(t.startedAt) === startOfDay(pDraft.at)));
+  const beforeCount = !!(pDraft && pDraft.cat && st.open && st.open[pDraft.cat] && Number(st.open[pDraft.cat].at) > pDraft.at);
+  const warn = (text) => (
+    <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 10, padding: "10px 12px", borderRadius: 12, background: "var(--amber-bg)", border: "1px solid #F0DCB8", fontSize: 12.5, color: "#7A5510", lineHeight: 1.5 }}>
+      <span aria-hidden="true" style={{ flexShrink: 0 }}>{"\u26A0\uFE0F"}</span><span>{text}</span>
+    </div>
+  );
+  const dirBtn = (key, label, sub) => (
+    <button className="press" onClick={() => setPDraft({ ...pDraft, dir: key })} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", flex: 1, textAlign: "center", padding: "14px 10px", borderRadius: 16,
+      border: "1.5px solid " + (pDraft.dir === key ? "var(--grn-x)" : "var(--line2)"), background: pDraft.dir === key ? "#F3FBF4" : "#fff" }}>
+      <span style={{ display: "block", fontWeight: 700, fontSize: 15.5, color: pDraft.dir === key ? "var(--grn-d)" : "var(--ink)" }}>{label}</span>
+      <span style={{ display: "block", fontSize: 12, color: "var(--dim)", marginTop: 2 }}>{sub}</span>
+    </button>
+  );
+
+  return (<>
+    <div className="scr"><div className="pagepad">
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
         <button className="iconbtn press" onClick={onBack}><I.back /></button>
         <div style={{ flex: 1 }}>
@@ -5060,6 +5181,15 @@ function StockYard({ data, setData, ping, onBack }) {
           <div className="h-disp mono" style={{ fontSize: 24, fontWeight: 700, color: "var(--amber)", marginTop: 4 }}>{pay == null ? "-" : inr(pay)}</div>
           <div className="mono" style={{ fontSize: 10, color: "var(--faint)", marginTop: 2 }}>{sb ? tx("from Tally", "Tally se", "Tally से") : tx("sample", "sample", "सैंपल")}</div>
         </div>
+      </div>
+
+      {/* the kanta slip itself - photo first, questions after */}
+      <input ref={parchiFile} type="file" accept="image/*" capture="environment" onChange={onParchiPick} style={{ display: "none" }} />
+      <button className="btn btn-grn press anim-in st2" style={{ width: "100%", marginTop: 12 }} disabled={pBusy} onClick={() => parchiFile.current && parchiFile.current.click()}>
+        {pBusy ? tx("Reading photo...", "Photo padh rahe hain...", "फोटो पढ़ रहे हैं...") : "\u{1F4F7} " + tx("Add a kanta parchi", "Kanta parchi daalo", "कांटा पर्ची डालें")}
+      </button>
+      <div className="hint" style={{ textAlign: "center", marginTop: 6 }}>
+        {tx("Photograph the weighbridge slip. The app asks in or out, then adds or subtracts it here.", "Kante ki parchi ki photo lo. App poochhega maal aaya ya gaya - phir yahi se juda ya ghata dega.", "कांटे की पर्ची की फोटो लें। ऐप पूछेगा माल आया या गया - फिर यहीं जोड़ या घटा देगा।")}
       </div>
 
       {(inOpen || outOpen) && (
@@ -5124,9 +5254,175 @@ function StockYard({ data, setData, ping, onBack }) {
         <button className="btn btn-ghost press" style={{ width: "100%", marginTop: 12 }} onClick={() => { setOutOpen(!outOpen); setInOpen(false); }}>{outOpen ? tx("Close", "Close", "बंद") : tx("- Maal gaya (without truck)", "- Maal gaya (bina gaadi)", "- माल गया (बिना गाड़ी)")}</button>
       )}
 
+      {/* every parchi ever taken, newest day first */}
+      {parchis.length > 0 && (() => {
+        const days = {};
+        [...parchis].sort((a2, b2) => b2.at - a2.at).forEach((pc) => { const d = startOfDay(pc.at); (days[d] = days[d] || []).push(pc); });
+        const today = startOfDay(Date.now()), mb = parchiBytes(parchis) / 1048576;
+        return (
+          <div style={{ marginTop: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+              <span className="eyebrow">{tx("Parchi folder", "Kante ki parchiyan", "कांटे की पर्चियां")}</span>
+              <span className="mono" style={{ fontSize: 10.5, color: "var(--faint)" }}>{parchis.length}{mb >= 0.3 ? " \u00b7 " + mb.toFixed(1) + " MB" : ""}</span>
+            </div>
+            {mb > 3 && (
+              <div className="card" style={{ padding: "11px 13px", marginBottom: 10, background: "var(--amber-bg)", borderColor: "#F0DCB8", fontSize: 12.5, color: "#7A5510", lineHeight: 1.5 }}>
+                {tx("The photos are stored with your data and it is getting heavy. Open an old parchi and remove just its photo - the entry stays.", "Photos aapke data ke saath hi rehti hain aur ab bhaari ho raha hai. Purani parchi kholo aur sirf photo hata do - entry rahegi.", "फोटो आपके डेटा के साथ रहती हैं और अब भारी हो रहा है। पुरानी पर्ची खोलकर सिर्फ फोटो हटाएं - एंट्री रहेगी।")}
+              </div>
+            )}
+            {Object.keys(days).sort((a2, b2) => b2 - a2).map((d) => (
+              <div key={d} style={{ marginBottom: 6 }}>
+                <div className="mono" style={{ fontSize: 11, color: "var(--faint)", letterSpacing: ".08em", margin: "10px 2px 6px" }}>
+                  {Number(d) === today ? tx("TODAY", "AAJ", "आज") : Number(d) === today - DAY ? tx("YESTERDAY", "KAL", "कल") : fdateShort(Number(d)).toUpperCase()}
+                </div>
+                {days[d].map((pc) => (
+                  <button key={pc.id} className="press" onClick={() => setViewP(pc)} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", alignItems: "center", gap: 11, width: "100%", padding: "10px 12px", marginBottom: 8, background: "#fff", border: "1px solid var(--line)", borderRadius: 16, boxShadow: "var(--sh-s)" }}>
+                    {pc.photo
+                      ? <img src={pc.photo} alt="" style={{ width: 46, height: 46, borderRadius: 11, objectFit: "cover", flexShrink: 0, border: "1px solid var(--line2)" }} />
+                      : <span style={{ width: 46, height: 46, borderRadius: 11, background: "var(--soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{"\u{1F4C4}"}</span>}
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                        <span className="mono" style={{ fontSize: 13.5, fontWeight: 700 }}>{fmtQty(parchiMT(pc))} MT</span>
+                        <span className="mono" style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 999, background: pc.dir === "in" ? "var(--grn-100)" : "var(--amber-bg)", color: pc.dir === "in" ? "var(--grn-d)" : "var(--amber)" }}>
+                          {pc.dir === "in" ? tx("IN", "AAYA", "आया") : tx("OUT", "GAYA", "गया")}
+                        </span>
+                      </span>
+                      <span style={{ display: "block", fontSize: 12.5, color: "var(--dim)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {[meta(pc.cat).label, pc.party, pc.ref ? "#" + pc.ref : "", pc.vehicle].filter(Boolean).join(" \u00b7 ")}
+                      </span>
+                    </span>
+                    <span className="mono" style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 700, letterSpacing: ".06em", color: pc.linkId ? "var(--grn-d)" : "var(--faint)" }}>
+                      {pc.linkId ? tx("IN STOCK", "STOCK ME", "स्टॉक में") : tx("RECORD ONLY", "SIRF RECORD", "सिर्फ रिकॉर्ड")}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {hasAny && <div style={{ marginTop: 14, textAlign: "center" }}><span className="hint" style={{ display: "inline" }}>{tx("Truck board dispatches subtract from stock automatically. Do a kanta check weekly - ghata hides in months, not days.", "Truck board ki nikasi stock se apne aap kat-ti hai. Hafte me ek baar kanta check karo - ghata mahino me chhupta hai, dino me nahi.", "ट्रक बोर्ड की निकासी स्टॉक से अपने आप कटती है। हफ्ते में एक बार कांटा चेक करें।")}</span></div>}
     </div></div>
-  );
+
+    {/* ---- the questions a photo cannot answer ---- */}
+    {pDraft && (
+      <div onClick={() => setPDraft(null)} style={{ position: "absolute", inset: 0, zIndex: 70, background: "rgba(16,26,20,.45)", backdropFilter: "blur(3px)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+        <div className="anim-in" onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: "26px 26px 0 0", padding: "18px 18px calc(18px + env(safe-area-inset-bottom))", maxHeight: "92%", overflowY: "auto", boxShadow: "0 -20px 50px -20px rgba(21,94,24,.4)" }}>
+          <div style={{ width: 40, height: 4, borderRadius: 3, background: "var(--line2)", margin: "0 auto 14px" }} />
+          <div className="h-disp" style={{ fontSize: 21, fontWeight: 700 }}>{tx("Kanta parchi", "Kante ki parchi", "\u0915\u093E\u0902\u091F\u0947 \u0915\u0940 \u092A\u0930\u094D\u091A\u0940")}</div>
+          <img src={pDraft.photo} alt="" onClick={() => setViewP({ id: "draft", photo: pDraft.photo })}
+            style={{ width: "100%", height: 150, objectFit: "cover", borderRadius: 14, margin: "12px 0 4px", border: "1px solid var(--line2)", cursor: "zoom-in" }} />
+          <div className="hint" style={{ textAlign: "center", marginBottom: 12 }}>{tx("Tap the photo to read it full-size", "Photo dabao - poori dikhegi", "\u092B\u094B\u091F\u094B \u0926\u092C\u093E\u090F\u0902 - \u092A\u0942\u0930\u0940 \u0926\u093F\u0916\u0947\u0917\u0940")}</div>
+
+          <div className="lbl" style={{ marginBottom: 7 }}>{tx("1. Is this maal coming IN or going OUT?", "1. Ye maal aa raha hai ya ja raha hai?", "1. \u092F\u0939 \u092E\u093E\u0932 \u0906 \u0930\u0939\u093E \u0939\u0948 \u092F\u093E \u091C\u093E \u0930\u0939\u093E \u0939\u0948?")}</div>
+          <div style={{ display: "flex", gap: 10 }}>
+            {dirBtn("in", tx("Maal AAYA", "Maal AAYA", "\u092E\u093E\u0932 \u0906\u092F\u093E"), tx("into the yard", "yard me andar", "\u092F\u093E\u0930\u094D\u0921 \u092E\u0947\u0902 \u0905\u0902\u0926\u0930"))}
+            {dirBtn("out", tx("Maal GAYA", "Maal GAYA", "\u092E\u093E\u0932 \u0917\u092F\u093E"), tx("out of the yard", "yard se bahar", "\u092F\u093E\u0930\u094D\u0921 \u0938\u0947 \u092C\u093E\u0939\u0930"))}
+          </div>
+
+          {pDraft.dir && (<>
+            <div className="lbl" style={{ margin: "16px 0 7px" }}>{tx("2. Which material?", "2. Kaunsa maal?", "2. \u0915\u094C\u0928 \u0938\u093E \u092E\u093E\u0932?")}</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {cats.map((c) => (
+                <button key={c.key} className={"fpill press " + (pDraft.cat === c.key ? "on" : "")} onClick={() => setPDraft({ ...pDraft, cat: c.key })}>{c.emoji} {c.label}</button>
+              ))}
+            </div>
+
+            <div className="lbl" style={{ margin: "16px 0 7px" }}>{tx("3. Weight from the slip (kg)", "3. Parchi ka weight (kg)", "3. \u092A\u0930\u094D\u091A\u0940 \u0915\u093E \u0935\u091C\u093C\u0928 (kg)")}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Gross (loaded)", "Gross (bhara)", "\u0917\u094D\u0930\u0949\u0938 (\u092D\u0930\u093E)")}</label>
+                <input className="input mono" type="number" inputMode="decimal" placeholder="16540" value={pDraft.gross} onChange={(e) => setPDraft({ ...pDraft, gross: e.target.value, manualNet: false })} /></div>
+              <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Tare (empty)", "Tare (khaali)", "\u091F\u0947\u092F\u0930 (\u0916\u093E\u0932\u0940)")}</label>
+                <input className="input mono" type="number" inputMode="decimal" placeholder="4000" value={pDraft.tare} onChange={(e) => setPDraft({ ...pDraft, tare: e.target.value, manualNet: false })} /></div>
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <label className="lbl" style={{ fontSize: 12.5 }}>{tx("Net (maal only)", "Net (sirf maal)", "\u0928\u0947\u091F (\u0938\u093F\u0930\u094D\u092B \u092E\u093E\u0932)")}</label>
+              <input className="input mono" type="number" inputMode="decimal" placeholder="12540" value={pDraft.manualNet ? pDraft.kg : (kgNow || "")}
+                onChange={(e) => setPDraft({ ...pDraft, kg: e.target.value, manualNet: true })} />
+              <span className="hint">{tx("Net = gross - tare. If the slip already prints net, just type that.", "Net = gross - tare. Parchi par net likha ho to seedha wahi daalo.", "\u0928\u0947\u091F = \u0917\u094D\u0930\u0949\u0938 - \u091F\u0947\u092F\u0930\u0964")}</span>
+            </div>
+            <div className="card" style={{ padding: "12px 14px", marginTop: 10, background: "#F3FBF4", borderColor: "#CFE9D1", display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={{ fontSize: 13.5, color: "var(--dim)" }}>{fmtQty(kgNow)} kg =</span>
+              <b className="h-disp mono" style={{ fontSize: 22, color: "var(--grn-d)" }}>{fmtQty(mtNow)} MT</b>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+              <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Party", "Party", "\u092A\u093E\u0930\u094D\u091F\u0940")}</label>
+                <input className="input" list="qk-parties" placeholder="Apex Alloys" value={pDraft.party} onChange={(e) => setPDraft({ ...pDraft, party: e.target.value })} /></div>
+              <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Slip no", "Parchi no", "\u092A\u0930\u094D\u091A\u0940 \u0928\u0902\u092C\u0930")}</label>
+                <input className="input mono" placeholder="4821" value={pDraft.ref} onChange={(e) => setPDraft({ ...pDraft, ref: e.target.value })} /></div>
+              <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Vehicle no", "Gaadi no", "\u0917\u093E\u0921\u093C\u0940 \u0928\u0902\u092C\u0930")}</label>
+                <input className="input mono" placeholder="HR 38 AB 1234" value={pDraft.vehicle} onChange={(e) => setPDraft({ ...pDraft, vehicle: e.target.value })} /></div>
+              <div><label className="lbl" style={{ fontSize: 12.5 }}>{tx("Date on the slip", "Parchi ki date", "\u092A\u0930\u094D\u091A\u0940 \u0915\u0940 \u0924\u093E\u0930\u0940\u0916")}</label>
+                <input className="input mono" type="date" value={new Date(pDraft.at).toLocaleDateString("en-CA")}
+                  onChange={(e) => { const v = e.target.value; if (v) setPDraft({ ...pDraft, at: new Date(v + "T12:00:00").getTime() }); }} /></div>
+            </div>
+            <datalist id="qk-parties">{parties.map((d2) => <option key={d2} value={d2} />)}</datalist>
+
+            {dupSlip && warn(tx("A parchi with this slip number is already saved - check you are not entering it twice.", "Is parchi number ki entry pehle se hai - do baar to nahi daal rahe?", "\u0907\u0938 \u092A\u0930\u094D\u091A\u0940 \u0928\u0902\u092C\u0930 \u0915\u0940 \u090F\u0902\u091F\u094D\u0930\u0940 \u092A\u0939\u0932\u0947 \u0938\u0947 \u0939\u0948\u0964"))}
+            {truckSameDay && warn(tx("The Truck board already has a trip for this party today and that one already subtracts from stock. Keep this as record only if it is the same load.", "Aaj isi party ki gaadi Truck board par bhi hai - wo pehle hi stock se kat chuki hai. Same load hai to 'sirf record' rakho.", "\u0906\u091C \u0907\u0938\u0940 \u092A\u093E\u0930\u094D\u091F\u0940 \u0915\u0940 \u0917\u093E\u0921\u093C\u0940 \u091F\u094D\u0930\u0915 \u092C\u094B\u0930\u094D\u0921 \u092A\u0930 \u092D\u0940 \u0939\u0948\u0964"))}
+            {beforeCount && warn(tx("This parchi is older than the last kanta check for this material, so it will not change today's stock.", "Ye parchi is maal ke aakhri kanta check se purani hai - isse aaj ka stock nahi badlega.", "\u092F\u0939 \u092A\u0930\u094D\u091A\u0940 \u0906\u0916\u093F\u0930\u0940 \u0915\u093E\u0902\u091F\u093E \u091A\u0947\u0915 \u0938\u0947 \u092A\u0941\u0930\u093E\u0928\u0940 \u0939\u0948\u0964"))}
+
+            <div className="lbl" style={{ margin: "16px 0 7px" }}>
+              {pDraft.dir === "in" ? tx("4. Add this to the yard stock?", "4. Isko yard stock me jodein?", "4. \u0907\u0938\u0947 \u092F\u093E\u0930\u094D\u0921 \u0938\u094D\u091F\u0949\u0915 \u092E\u0947\u0902 \u091C\u094B\u0921\u093C\u0947\u0902?")
+                : tx("4. Subtract this from the yard stock?", "4. Isko yard stock me se ghatayein?", "4. \u0907\u0938\u0947 \u092F\u093E\u0930\u094D\u0921 \u0938\u094D\u091F\u0949\u0915 \u0938\u0947 \u0918\u091F\u093E\u090F\u0902?")}
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button className="press" onClick={() => setPDraft({ ...pDraft, apply: true })} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", flex: 1, textAlign: "center", padding: "12px 10px", borderRadius: 14, border: "1.5px solid " + (pDraft.apply ? "var(--grn-x)" : "var(--line2)"), background: pDraft.apply ? "#F3FBF4" : "#fff", fontWeight: 700, fontSize: 14.5, color: pDraft.apply ? "var(--grn-d)" : "var(--ink)" }}>
+                {tx("Yes", "Haan", "\u0939\u093E\u0902")} \u00b7 {pDraft.dir === "in" ? "+" : "-"}{fmtQty(mtNow)} MT
+              </button>
+              <button className="press" onClick={() => setPDraft({ ...pDraft, apply: false })} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", flex: 1, textAlign: "center", padding: "12px 10px", borderRadius: 14, border: "1.5px solid " + (!pDraft.apply ? "var(--ink)" : "var(--line2)"), background: !pDraft.apply ? "var(--soft)" : "#fff", fontWeight: 700, fontSize: 14.5 }}>
+                {tx("No - record only", "Nahi - sirf record", "\u0928\u0939\u0940\u0902 - \u0938\u093F\u0930\u094D\u092B \u0930\u093F\u0915\u0949\u0930\u094D\u0921")}
+              </button>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              <button className="btn btn-ghost press" style={{ flex: 1, justifyContent: "center" }} onClick={() => setPDraft(null)}>{tx("Cancel", "Rehne do", "\u0930\u0939\u0928\u0947 \u0926\u0947\u0902")}</button>
+              <button className="btn btn-grn press" style={{ flex: 1.5, justifyContent: "center" }} onClick={saveParchi}>{tx("Save parchi", "Parchi save karo", "\u092A\u0930\u094D\u091A\u0940 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902")}</button>
+            </div>
+          </>)}
+        </div>
+      </div>
+    )}
+
+    {/* ---- one parchi, full size ---- */}
+    {viewP && (
+      <div onClick={() => setViewP(null)} style={{ position: "absolute", inset: 0, zIndex: 80, background: "rgba(8,14,10,.92)", display: "flex", flexDirection: "column", padding: "calc(16px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom))", overflowY: "auto" }}>
+        {viewP.photo
+          ? <img src={viewP.photo} alt="" onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxHeight: viewP.id === "draft" ? "100%" : "56%", objectFit: "contain", borderRadius: 12 }} />
+          : <div style={{ padding: 30, textAlign: "center", color: "rgba(255,255,255,.6)", fontSize: 14 }}>{tx("Photo was removed", "Photo hata di gayi thi", "\u092B\u094B\u091F\u094B \u0939\u091F\u093E \u0926\u0940 \u0917\u0908 \u0925\u0940")}</div>}
+        {viewP.id !== "draft" && (
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 20, padding: 16, marginTop: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+              <b className="h-disp mono" style={{ fontSize: 22 }}>{fmtQty(parchiMT(viewP))} MT</b>
+              <span className="mono" style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: viewP.dir === "in" ? "var(--grn-100)" : "var(--amber-bg)", color: viewP.dir === "in" ? "var(--grn-d)" : "var(--amber)" }}>
+                {viewP.dir === "in" ? "MAAL AAYA" : "MAAL GAYA"}
+              </span>
+            </div>
+            <div className="mono" style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 6, lineHeight: 1.7 }}>
+              {fmtQty(viewP.kg)} kg{viewP.gross > 0 && viewP.tare > 0 ? " (" + fmtQty(viewP.gross) + " - " + fmtQty(viewP.tare) + ")" : ""}<br />
+              {[meta(viewP.cat).label, viewP.party, viewP.ref ? "#" + viewP.ref : "", viewP.vehicle].filter(Boolean).join(" \u00b7 ")}<br />
+              {fdateShort(viewP.at)}
+            </div>
+            <div style={{ fontSize: 13, color: viewP.linkId ? "var(--grn-d)" : "var(--faint)", fontWeight: 600, marginTop: 8 }}>
+              {viewP.linkId ? (viewP.dir === "in" ? tx("Counted in the yard stock", "Yard stock me juda hua hai", "\u092F\u093E\u0930\u094D\u0921 \u0938\u094D\u091F\u0949\u0915 \u092E\u0947\u0902 \u091C\u0941\u0921\u093C\u093E \u0939\u0948") : tx("Subtracted from the yard stock", "Yard stock se ghata hua hai", "\u092F\u093E\u0930\u094D\u0921 \u0938\u094D\u091F\u0949\u0915 \u0938\u0947 \u0918\u091F\u093E \u0939\u0948"))
+                : tx("Record only - stock not changed", "Sirf record - stock nahi badla", "\u0938\u093F\u0930\u094D\u092B \u0930\u093F\u0915\u0949\u0930\u094D\u0921 - \u0938\u094D\u091F\u0949\u0915 \u0928\u0939\u0940\u0902 \u092C\u0926\u0932\u093E")}
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+              <button className="btn btn-sm btn-grn press" onClick={() => toggleParchi(viewP)}>
+                {viewP.linkId ? tx("Undo stock change", "Stock se wapas lo", "\u0938\u094D\u091F\u0949\u0915 \u0938\u0947 \u0935\u093E\u092A\u0938 \u0932\u0947\u0902")
+                  : viewP.dir === "in" ? tx("Add to stock", "Stock me jodo", "\u0938\u094D\u091F\u0949\u0915 \u092E\u0947\u0902 \u091C\u094B\u0921\u093C\u0947\u0902") : tx("Subtract from stock", "Stock se ghatao", "\u0938\u094D\u091F\u0949\u0915 \u0938\u0947 \u0918\u091F\u093E\u090F\u0902")}
+              </button>
+              {viewP.photo && <button className="btn btn-sm btn-soft press" onClick={() => dropPhoto(viewP)}>{tx("Remove photo", "Photo hatao", "\u092B\u094B\u091F\u094B \u0939\u091F\u093E\u090F\u0902")}</button>}
+              <button className="btn btn-sm btn-ghost press" style={{ color: "var(--red)" }} onClick={() => delParchi(viewP)}><I.trash /></button>
+            </div>
+          </div>
+        )}
+        <button className="btn btn-ghost press" style={{ marginTop: 14, background: "rgba(255,255,255,.14)", color: "#fff", border: "none", justifyContent: "center" }} onClick={() => setViewP(null)}>{tx("Close", "Band karo", "\u092C\u0902\u0926 \u0915\u0930\u0947\u0902")}</button>
+      </div>
+    )}
+  </>);
 }
 
 /* ================= LOGIN METHODS (cloud mode only) =================
