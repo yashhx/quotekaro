@@ -929,6 +929,52 @@ const buildSampleQuotes = (key) => {
 /* downscale a picked image to a small JPEG data URL for the pipeline thumbnail.
    Kept tiny (~240px) so many photos fit in localStorage / the synced blob;
    full-resolution photo storage -> Supabase Storage is the documented next step. */
+/* ================= PHOTO STORE (IndexedDB) =================
+   Parchi photos are binary and there can be hundreds of them. Kept as base64
+   inside the data blob they cost ~33% for the encoding plus 2 bytes per
+   character in Safari's UTF-16 localStorage, and in cloud mode the whole blob
+   - photos and all - is rewritten on every save. Here they are plain Blobs in
+   IndexedDB: no encoding tax, far more room, and the synced blob stays small.
+   The trade, stated in the UI: these images live on THIS device. The parchi
+   entry itself (weight, party, slip no, date) still syncs normally.
+   Every call degrades to false/null so a private window just falls back to
+   the old inline photo. */
+const IDB_NAME = "trackrakho", IDB_STORE = "photos";
+let idbConn = null;
+const idbOpen = () => {
+  if (idbConn) return idbConn;
+  idbConn = new Promise((res) => {
+    try {
+      if (!window.indexedDB) return res(null);
+      const r = indexedDB.open(IDB_NAME, 1);
+      r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains(IDB_STORE)) r.result.createObjectStore(IDB_STORE); };
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => res(null);
+      r.onblocked = () => res(null);
+    } catch { res(null); }
+  });
+  return idbConn;
+};
+const idbRun = async (mode, fn) => {
+  const db = await idbOpen();
+  if (!db) return null;
+  return new Promise((res) => {
+    try {
+      const tx = db.transaction(IDB_STORE, mode);
+      const req = fn(tx.objectStore(IDB_STORE));
+      tx.onabort = tx.onerror = () => res(null);
+      tx.oncomplete = () => res(req ? req.result : true);
+    } catch { res(null); }
+  });
+};
+const photoPut = (key, blob) => idbRun("readwrite", (os) => os.put(blob, key));
+const photoGet = (key) => idbRun("readonly", (os) => os.get(key));
+const photoDel = (key) => idbRun("readwrite", (os) => os.delete(key));
+const blobToDataUrl = (blob) => new Promise((res) => {
+  try { const fr = new FileReader(); fr.onload = () => res(String(fr.result || "")); fr.onerror = () => res(""); fr.readAsDataURL(blob); }
+  catch { res(""); }
+});
+
 /* WebP encodes the same picture ~30% smaller than JPEG. Safari only learned to
    ENCODE it in 16 - older phones fall back to JPEG, so this is asked once and
    never assumed. */
@@ -976,7 +1022,9 @@ const downscaleImage = (file, max = 820, quality = 0.6, opts = {}) => new Promis
           } catch {}
         }
       }
-      resolve(cv.toDataURL(webpEncodes() ? "image/webp" : "image/jpeg", quality));
+      const type = webpEncodes() ? "image/webp" : "image/jpeg";
+      if (opts.blob) cv.toBlob((b2) => resolve(b2 || null), type, quality);
+      else resolve(cv.toDataURL(type, quality));
     } catch { resolve(null); }
   };
   img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
@@ -4831,7 +4879,7 @@ const tripCat = (t) => t.cat || guessCategory(t.material || "", "scrap");
 const KG_PER_MT = 1000;
 const parchiMT = (p) => Math.round(((Number(p && p.kg) || 0) / KG_PER_MT) * 1000) / 1000;
 /* rough bytes held by the photos - data URLs are base64, so ~3/4 of the string */
-const parchiBytes = (list) => (list || []).reduce((n, p) => n + (p.photo ? p.photo.length * 0.75 : 0), 0);
+const parchiBytes = (list) => (list || []).reduce((n, p) => n + (Number(p.bytes) || (p.photo ? p.photo.length * 0.75 : 0)), 0);
 const stockCalc = (data) => {
   const st = data.stock || {};
   const open = st.open || {};
@@ -4991,6 +5039,27 @@ function TruckBoard({ data, setData, ping, onBack, goSetup }) {
   );
 }
 
+/* Renders a parchi photo from wherever it lives: an IndexedDB blob (`img`) or
+   an inline data URL (`photo`, how the first version saved them). */
+function ParchiImg({ pc, style, onClick, alt = "" }) {
+  const [src, setSrc] = useState(pc && pc.photo ? pc.photo : "");
+  const key = pc ? (pc.photo ? "inline" : pc.img || "") : "";
+  useEffect(() => {
+    let dead = false, made = "";
+    if (!pc) return undefined;
+    if (pc.photo) { setSrc(pc.photo); return undefined; }
+    if (!pc.img) { setSrc(""); return undefined; }
+    photoGet(pc.img).then((blob) => {
+      if (dead || !blob) return;
+      made = URL.createObjectURL(blob);
+      setSrc(made);
+    });
+    return () => { dead = true; if (made) URL.revokeObjectURL(made); };
+  }, [key]);
+  if (!src) return <span style={{ ...style, background: "var(--soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{"\u{1F4C4}"}</span>;
+  return <img src={src} alt={alt} onClick={onClick} style={style} />;
+}
+
 /* ================= YARD STOCK (scrap only) =================
    One page: kitna maal hai, roz kitna gaya, dene wale, aur GHATA -
    book stock vs kanta check. Built after a real yard lost ~17 MT to
@@ -5025,6 +5094,28 @@ function StockYard({ data, setData, ping, onBack }) {
   const ind = industryOf(data);
   const cats = (ind.cats || []).filter((c) => c.key !== "other");
   const meta = (k) => cats.find((c) => c.key === k) || { key: k, label: k, emoji: "📦" };
+  /* photos saved by the first version sit inline in the synced blob - move
+     them into IndexedDB once, quietly, so the blob shrinks on its own */
+  const migrated = useRef(false);
+  useEffect(() => {
+    if (migrated.current) return;
+    const old = ((data.stock && data.stock.parchis) || []).filter((x) => x.photo && !x.img);
+    if (!old.length) return;
+    migrated.current = true;
+    (async () => {
+      const done = {};
+      for (const x of old) {
+        try {
+          const blob = await (await fetch(x.photo)).blob();
+          const key = "ph_" + x.id;
+          if (await photoPut(key, blob)) done[x.id] = { img: key, bytes: blob.size };
+        } catch {}
+      }
+      if (Object.keys(done).length) {
+        setData((d) => ({ ...d, stock: { ...(d.stock || {}), parchis: ((d.stock && d.stock.parchis) || []).map((x) => (done[x.id] ? { ...x, ...done[x.id], photo: "" } : x)) } }));
+      }
+    })();
+  }, [data.stock && data.stock.parchis]);
   const stk = stockCalc(data);
   const st = data.stock || { open: {}, ins: [], outs: [], counts: [] };
   const hasAny = Object.keys(stk.cats).length > 0;
@@ -5066,12 +5157,15 @@ function StockYard({ data, setData, ping, onBack }) {
     const file = e.target.files && e.target.files[0]; e.target.value = "";
     if (!file) return;
     setPBusy(true);
-    /* bigger than a quote thumbnail - the slip's numbers have to stay readable */
-    const photo = await downscaleImage(file, 1100, 0.55, { gray: true });
+    /* bigger than a quote thumbnail - the slip's numbers have to stay readable,
+       and kept as a Blob so it can go straight into IndexedDB on save */
+    const photo = await downscaleImage(file, 1100, 0.55, { gray: true, blob: true });
     setPBusy(false);
     if (!photo) return ping(tx("Could not read that photo", "Photo nahi padh paye", "फोटो नहीं पढ़ पाए"));
-    setPDraft({ photo, dir: "", cat: "", gross: "", tare: "", kg: "", manualNet: false, party: "", ref: "", vehicle: "", at: startOfDay(Date.now()) + 12 * 3600000, apply: true });
+    if (pDraft && pDraft.url) URL.revokeObjectURL(pDraft.url);
+    setPDraft({ blob: photo, url: URL.createObjectURL(photo), dir: "", cat: "", gross: "", tare: "", kg: "", manualNet: false, party: "", ref: "", vehicle: "", at: startOfDay(Date.now()) + 12 * 3600000, apply: true });
   };
+  const closeDraft = () => { if (pDraft && pDraft.url) URL.revokeObjectURL(pDraft.url); setPDraft(null); };
   const draftKg = (d) => {
     if (d.manualNet) return Number(d.kg) || 0;
     const g = Number(d.gross) || 0, t = Number(d.tare) || 0;
@@ -5094,17 +5188,22 @@ function StockYard({ data, setData, ping, onBack }) {
       parchis: src.map((x) => (x.id === pc.id ? { ...x, linkId: null } : x)),
     };
   };
-  const saveParchi = () => {
+  const saveParchi = async () => {
     const d = pDraft;
     if (!d.dir) return ping(tx("Is the maal coming in or going out?", "Maal aa raha hai ya ja raha hai?", "माल आ रहा है या जा रहा है?"));
     if (!d.cat) return ping(tx("Pick the material", "Maal chuno", "माल चुनें"));
     const kg = draftKg(d);
     if (!(kg > 0)) return ping(tx("Write the weight from the slip", "Parchi ka weight likho", "पर्ची का वज़न लिखें"));
-    const pc = { id: uid(), photo: d.photo, dir: d.dir, cat: d.cat, kg, gross: Number(d.gross) || 0, tare: Number(d.tare) || 0,
+    const id = uid(), key = "ph_" + id;
+    /* the image goes to IndexedDB - only its key rides in the synced blob.
+       No IndexedDB (private window) falls back to the old inline data URL. */
+    const stored = await photoPut(key, d.blob);
+    const inline = stored ? "" : await blobToDataUrl(d.blob);
+    const pc = { id, img: stored ? key : "", photo: inline, bytes: d.blob.size, dir: d.dir, cat: d.cat, kg, gross: Number(d.gross) || 0, tare: Number(d.tare) || 0,
       party: d.party.trim(), ref: d.ref.trim(), vehicle: d.vehicle.trim().toUpperCase(), at: d.at, addedAt: Date.now(), linkId: null };
     const list = [pc, ...parchis];
     save(d.apply ? { parchis: list, ...linkParchi(pc, true, list) } : { parchis: list });
-    setPDraft(null);
+    closeDraft();
     const mt = fmtQty(parchiMT(pc));
     if (!d.apply) return ping(tx("Parchi saved - stock not changed", "Parchi save - stock nahi badla", "पर्ची सेव - स्टॉक नहीं बदला"));
     ping(d.dir === "in" ? tx(mt + " MT added to stock", mt + " MT stock me juda", mt + " MT स्टॉक में जुड़ा")
@@ -5119,13 +5218,15 @@ function StockYard({ data, setData, ping, onBack }) {
   };
   const delParchi = (pc) => {
     const key = pc.dir === "in" ? "ins" : "outs";
+    if (pc.img) photoDel(pc.img);
     save({ parchis: parchis.filter((x) => x.id !== pc.id), [key]: (st[key] || []).filter((x) => x.id !== pc.linkId) });
     setViewP(null);
     ping(tx("Parchi deleted", "Parchi hat gayi", "पर्ची हट गई"));
   };
   const dropPhoto = (pc) => {
-    save({ parchis: parchis.map((x) => (x.id === pc.id ? { ...x, photo: "" } : x)) });
-    setViewP({ ...pc, photo: "" });
+    if (pc.img) photoDel(pc.img);
+    save({ parchis: parchis.map((x) => (x.id === pc.id ? { ...x, photo: "", img: "", bytes: 0 } : x)) });
+    setViewP({ ...pc, photo: "", img: "" });
     ping(tx("Photo removed - the entry stays", "Photo hata - entry rahegi", "फोटो हटा - एंट्री रहेगी"));
   };
 
@@ -5303,9 +5404,12 @@ function StockYard({ data, setData, ping, onBack }) {
               <span className="eyebrow">{tx("Parchi folder", "Kante ki parchiyan", "कांटे की पर्चियां")}</span>
               <span className="mono" style={{ fontSize: 10.5, color: "var(--faint)" }}>{parchis.length}{mb >= 0.3 ? " \u00b7 " + mb.toFixed(1) + " MB" : ""}</span>
             </div>
-            {mb > 3 && (
+            <div className="hint" style={{ marginTop: -4, marginBottom: 10 }}>
+              {tx("The slips are kept on this phone. The entries themselves sync normally.", "Parchi ki photo isi phone me rehti hai - entry (weight, party, date) har jagah sync hoti hai.", "पर्ची की फोटो इसी फोन में रहती है।")}
+            </div>
+            {mb > 120 && (
               <div className="card" style={{ padding: "11px 13px", marginBottom: 10, background: "var(--amber-bg)", borderColor: "#F0DCB8", fontSize: 12.5, color: "#7A5510", lineHeight: 1.5 }}>
-                {tx("The photos are stored with your data and it is getting heavy. Open an old parchi and remove just its photo - the entry stays.", "Photos aapke data ke saath hi rehti hain aur ab bhaari ho raha hai. Purani parchi kholo aur sirf photo hata do - entry rahegi.", "फोटो आपके डेटा के साथ रहती हैं और अब भारी हो रहा है। पुरानी पर्ची खोलकर सिर्फ फोटो हटाएं - एंट्री रहेगी।")}
+                {tx("The photos are taking a lot of room on this phone. Open an old parchi and remove just its photo - the entry stays.", "Photos is phone me kaafi jagah le rahi hain. Purani parchi kholo aur sirf photo hata do - entry rahegi.", "फोटो इस फोन में काफी जगह ले रही हैं।")}
               </div>
             )}
             {Object.keys(days).sort((a2, b2) => b2 - a2).map((d) => (
@@ -5315,9 +5419,7 @@ function StockYard({ data, setData, ping, onBack }) {
                 </div>
                 {days[d].map((pc) => (
                   <button key={pc.id} className="press" onClick={() => setViewP(pc)} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", alignItems: "center", gap: 11, width: "100%", padding: "10px 12px", marginBottom: 8, background: "#fff", border: "1px solid var(--line)", borderRadius: 16, boxShadow: "var(--sh-s)" }}>
-                    {pc.photo
-                      ? <img src={pc.photo} alt="" style={{ width: 46, height: 46, borderRadius: 11, objectFit: "cover", flexShrink: 0, border: "1px solid var(--line2)" }} />
-                      : <span style={{ width: 46, height: 46, borderRadius: 11, background: "var(--soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{"\u{1F4C4}"}</span>}
+                    <ParchiImg pc={pc} style={{ width: 46, height: 46, borderRadius: 11, objectFit: "cover", flexShrink: 0, border: "1px solid var(--line2)" }} />
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
                         <span className="mono" style={{ fontSize: 13.5, fontWeight: 700 }}>{fmtQty(parchiMT(pc))} MT</span>
@@ -5345,11 +5447,11 @@ function StockYard({ data, setData, ping, onBack }) {
 
     {/* ---- the questions a photo cannot answer ---- */}
     {pDraft && (
-      <div onClick={() => setPDraft(null)} style={{ position: "absolute", inset: 0, zIndex: 70, background: "rgba(16,26,20,.45)", backdropFilter: "blur(3px)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+      <div onClick={closeDraft} style={{ position: "absolute", inset: 0, zIndex: 70, background: "rgba(16,26,20,.45)", backdropFilter: "blur(3px)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
         <div className="anim-in" onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: "26px 26px 0 0", padding: "18px 18px calc(18px + env(safe-area-inset-bottom))", maxHeight: "92%", overflowY: "auto", boxShadow: "0 -20px 50px -20px rgba(21,94,24,.4)" }}>
           <div style={{ width: 40, height: 4, borderRadius: 3, background: "var(--line2)", margin: "0 auto 14px" }} />
           <div className="h-disp" style={{ fontSize: 21, fontWeight: 700 }}>{tx("Kanta parchi", "Kante ki parchi", "\u0915\u093E\u0902\u091F\u0947 \u0915\u0940 \u092A\u0930\u094D\u091A\u0940")}</div>
-          <img src={pDraft.photo} alt="" onClick={() => setViewP({ id: "draft", photo: pDraft.photo })}
+          <img src={pDraft.url} alt="" onClick={() => setViewP({ id: "draft", photo: pDraft.url })}
             style={{ width: "100%", height: 150, objectFit: "cover", borderRadius: 14, margin: "12px 0 4px", border: "1px solid var(--line2)", cursor: "zoom-in" }} />
           <div className="hint" style={{ textAlign: "center", marginBottom: 12 }}>{tx("Tap the photo to read it full-size", "Photo dabao - poori dikhegi", "\u092B\u094B\u091F\u094B \u0926\u092C\u093E\u090F\u0902 - \u092A\u0942\u0930\u0940 \u0926\u093F\u0916\u0947\u0917\u0940")}</div>
 
@@ -5416,7 +5518,7 @@ function StockYard({ data, setData, ping, onBack }) {
             </div>
 
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-              <button className="btn btn-ghost press" style={{ flex: 1, justifyContent: "center" }} onClick={() => setPDraft(null)}>{tx("Cancel", "Rehne do", "\u0930\u0939\u0928\u0947 \u0926\u0947\u0902")}</button>
+              <button className="btn btn-ghost press" style={{ flex: 1, justifyContent: "center" }} onClick={closeDraft}>{tx("Cancel", "Rehne do", "\u0930\u0939\u0928\u0947 \u0926\u0947\u0902")}</button>
               <button className="btn btn-grn press" style={{ flex: 1.5, justifyContent: "center" }} onClick={saveParchi}>{tx("Save parchi", "Parchi save karo", "\u092A\u0930\u094D\u091A\u0940 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902")}</button>
             </div>
           </>)}
@@ -5427,8 +5529,8 @@ function StockYard({ data, setData, ping, onBack }) {
     {/* ---- one parchi, full size ---- */}
     {viewP && (
       <div onClick={() => setViewP(null)} style={{ position: "absolute", inset: 0, zIndex: 80, background: "rgba(8,14,10,.92)", display: "flex", flexDirection: "column", padding: "calc(16px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom))", overflowY: "auto" }}>
-        {viewP.photo
-          ? <img src={viewP.photo} alt="" onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxHeight: viewP.id === "draft" ? "100%" : "56%", objectFit: "contain", borderRadius: 12 }} />
+        {viewP.photo || viewP.img
+          ? <ParchiImg pc={viewP} onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxHeight: viewP.id === "draft" ? "100%" : "56%", objectFit: "contain", borderRadius: 12 }} />
           : <div style={{ padding: 30, textAlign: "center", color: "rgba(255,255,255,.6)", fontSize: 14 }}>{tx("Photo was removed", "Photo hata di gayi thi", "\u092B\u094B\u091F\u094B \u0939\u091F\u093E \u0926\u0940 \u0917\u0908 \u0925\u0940")}</div>}
         {viewP.id !== "draft" && (
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 20, padding: 16, marginTop: 14 }}>
@@ -5452,7 +5554,7 @@ function StockYard({ data, setData, ping, onBack }) {
                 {viewP.linkId ? tx("Undo stock change", "Stock se wapas lo", "\u0938\u094D\u091F\u0949\u0915 \u0938\u0947 \u0935\u093E\u092A\u0938 \u0932\u0947\u0902")
                   : viewP.dir === "in" ? tx("Add to stock", "Stock me jodo", "\u0938\u094D\u091F\u0949\u0915 \u092E\u0947\u0902 \u091C\u094B\u0921\u093C\u0947\u0902") : tx("Subtract from stock", "Stock se ghatao", "\u0938\u094D\u091F\u0949\u0915 \u0938\u0947 \u0918\u091F\u093E\u090F\u0902")}
               </button>
-              {viewP.photo && <button className="btn btn-sm btn-soft press" onClick={() => dropPhoto(viewP)}>{tx("Remove photo", "Photo hatao", "\u092B\u094B\u091F\u094B \u0939\u091F\u093E\u090F\u0902")}</button>}
+              {(viewP.photo || viewP.img) && <button className="btn btn-sm btn-soft press" onClick={() => dropPhoto(viewP)}>{tx("Remove photo", "Photo hatao", "\u092B\u094B\u091F\u094B \u0939\u091F\u093E\u090F\u0902")}</button>}
               <button className="btn btn-sm btn-ghost press" style={{ color: "var(--red)" }} onClick={() => delParchi(viewP)}><I.trash /></button>
             </div>
           </div>
