@@ -929,7 +929,23 @@ const buildSampleQuotes = (key) => {
 /* downscale a picked image to a small JPEG data URL for the pipeline thumbnail.
    Kept tiny (~240px) so many photos fit in localStorage / the synced blob;
    full-resolution photo storage -> Supabase Storage is the documented next step. */
-const downscaleImage = (file, max = 820, quality = 0.6) => new Promise((resolve) => {
+/* WebP encodes the same picture ~30% smaller than JPEG. Safari only learned to
+   ENCODE it in 16 - older phones fall back to JPEG, so this is asked once and
+   never assumed. */
+let WEBP_ENC = null;
+const webpEncodes = () => {
+  if (WEBP_ENC == null) {
+    try {
+      const c = document.createElement("canvas"); c.width = c.height = 1;
+      WEBP_ENC = c.toDataURL("image/webp").indexOf("data:image/webp") === 0;
+    } catch { WEBP_ENC = false; }
+  }
+  return WEBP_ENC;
+};
+/* opts.gray: for a kanta parchi - black print on white paper carries no colour
+   information, and dropping it (plus a light contrast lift) shrinks the file a
+   long way further while the digits stay crisp. */
+const downscaleImage = (file, max = 820, quality = 0.6, opts = {}) => new Promise((resolve) => {
   if (!file || !/^image\//.test(file.type || "")) return resolve(null);
   const img = new Image();
   const url = URL.createObjectURL(file);
@@ -940,8 +956,27 @@ const downscaleImage = (file, max = 820, quality = 0.6) => new Promise((resolve)
     else if (h > w && h > max) { w = Math.round(w * max / h); h = max; }
     try {
       const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
-      cv.getContext("2d").drawImage(img, 0, 0, w, h);
-      resolve(cv.toDataURL("image/jpeg", quality));
+      const cx = cv.getContext("2d");
+      if (opts.gray && "filter" in cx) {
+        cx.filter = "grayscale(1) contrast(1.08)";
+        cx.drawImage(img, 0, 0, w, h);
+        cx.filter = "none";
+      } else {
+        cx.drawImage(img, 0, 0, w, h);
+        /* older Safari has no canvas filter - do the luminance pass by hand */
+        if (opts.gray) {
+          try {
+            const d = cx.getImageData(0, 0, w, h);
+            const px = d.data;
+            for (let i = 0; i < px.length; i += 4) {
+              const g = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+              px[i] = px[i + 1] = px[i + 2] = g;
+            }
+            cx.putImageData(d, 0, 0);
+          } catch {}
+        }
+      }
+      resolve(cv.toDataURL(webpEncodes() ? "image/webp" : "image/jpeg", quality));
     } catch { resolve(null); }
   };
   img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
@@ -5032,7 +5067,7 @@ function StockYard({ data, setData, ping, onBack }) {
     if (!file) return;
     setPBusy(true);
     /* bigger than a quote thumbnail - the slip's numbers have to stay readable */
-    const photo = await downscaleImage(file, 1100, 0.62);
+    const photo = await downscaleImage(file, 1100, 0.55, { gray: true });
     setPBusy(false);
     if (!photo) return ping(tx("Could not read that photo", "Photo nahi padh paye", "फोटो नहीं पढ़ पाए"));
     setPDraft({ photo, dir: "", cat: "", gross: "", tare: "", kg: "", manualNet: false, party: "", ref: "", vehicle: "", at: startOfDay(Date.now()) + 12 * 3600000, apply: true });
