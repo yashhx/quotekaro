@@ -2110,7 +2110,7 @@ export default function App() {
         {tab === "setup" && <Setup data={data} setData={setData} ping={ping} account={accountView} sync={sync} goSubscribe={() => setTab("subscribe")} onLogout={logout} />}
         {tab === "help" && <Help data={data} ping={ping} startTut={startTut} />}
         {tab === "analytics" && <Analytics data={data} onBack={() => setTab("home")} goQuotes={goQuotes} />}
-        {tab === "client" && client && <ClientPage data={data} name={client} tallyRows={tallyRows} tallyBal={tallyBal} onBack={() => setTab("home")} goMoney={() => setTab("tally")} goTrucks={() => setTab("trucks")} />}
+        {tab === "client" && client && <ClientPage data={data} name={client} tallyRows={tallyRows} tallyBal={tallyBal} updateQuote={updateQuote} ping={ping} onBack={() => setTab("home")} goMoney={() => setTab("tally")} goTrucks={() => setTab("trucks")} />}
         {tab === "tally" && <TallyInsights data={data} updateQuote={updateQuote} ping={ping} onBack={() => setTab("home")} />}
         {/* WORK - machine shops land straight on the floor; traders get a hub
             for the truck board and the yard (both still open as their own tabs,
@@ -2243,14 +2243,20 @@ function WorkHub({ data, openTrucks, openStock }) {
    due, how much maal went, how much is still to go, and when each truck left.
    Opened from Home's ongoing orders. Money comes from Tally only (the app
    does not track payments) - without Tally it says so instead of guessing. */
-function ClientPage({ data, name, tallyRows, tallyBal, onBack, goMoney, goTrucks }) {
+function ClientPage({ data, name, tallyRows, tallyBal, updateQuote, ping, onBack, goMoney, goTrucks }) {
   const ind = industryOf(data);
   const u = ind.unit || "pcs";
   const pv = partyView(data, name, tallyRows, tallyBal);
   const now = Date.now();
-  const ordered = pv.orders.reduce((s, o) => s + o.qty, 0);
-  const sent = pv.orders.reduce((s, o) => s + o.sent, 0);
-  const left = pv.orders.reduce((s, o) => s + o.remaining, 0);
+  /* the tiles answer "what is still running", so closed orders sit in their
+     own list below instead of skewing ORDER / GAYA / BAKI */
+  const live = pv.orders.filter((o) => !o.closed);
+  const shut = pv.orders.filter((o) => o.closed);
+  const closeOrder = (o) => { updateQuote(o.q.id, { closedAt: Date.now(), closedSent: o.sent }); ping(tx("Order closed - off your Home screen", "Order band. Home se hat gaya.", "ऑर्डर बंद - होम से हट गया")); };
+  const reopenOrder = (o) => { updateQuote(o.q.id, { closedAt: null, closedSent: null }); ping(tx("Order is open again", "Order phir se chalu", "ऑर्डर फिर से चालू")); };
+  const ordered = live.reduce((s, o) => s + o.qty, 0);
+  const sent = live.reduce((s, o) => s + o.sent, 0);
+  const left = live.reduce((s, o) => s + o.remaining, 0);
   /* same aging rule as Money: from the due date, else the bill date */
   const lateBy = (b) => Math.floor((startOfDay(now) - startOfDay(Number(b.due) || Number(b.bdate))) / DAY);
   const bills = [...pv.bills].sort((a, b) => lateBy(b) - lateBy(a));
@@ -2323,7 +2329,7 @@ function ClientPage({ data, name, tallyRows, tallyBal, onBack, goMoney, goTrucks
       {/* maal - orders vs dispatch */}
       <div className="card anim-in st2" style={{ padding: 16, marginBottom: 12 }}>
         {title(tx("Maal", "Maal", "माल"), "(" + tx("orders vs what went out", "order vs kitna gaya", "ऑर्डर बनाम कितना गया") + ")")}
-        {pv.orders.length > 0 ? (<>
+        {live.length > 0 ? (<>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
             {[[tx("ORDER", "ORDER", "ऑर्डर"), ordered, "var(--ink)"], [tx("SENT", "GAYA", "गया"), sent, "var(--grn-d)"], [tx("LEFT", "BAKI", "बाकी"), left, left > 0 ? "var(--amber)" : "var(--grn-d)"]].map(([l, v, c]) => (
               <div key={l} style={{ background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 14, padding: "10px 11px" }}>
@@ -2332,7 +2338,7 @@ function ClientPage({ data, name, tallyRows, tallyBal, onBack, goMoney, goTrucks
               </div>
             ))}
           </div>
-          {pv.orders.map((o) => {
+          {live.map((o) => {
             const pct = o.qty ? Math.min(100, (o.sent / o.qty) * 100) : 0;
             return (
               <div key={o.q.id} style={{ marginTop: 14 }}>
@@ -2347,6 +2353,14 @@ function ClientPage({ data, name, tallyRows, tallyBal, onBack, goMoney, goTrucks
                 <div className="mono" style={{ fontSize: 12, color: "var(--faint)", marginTop: 5 }}>
                   {fmtQty(o.sent)} / {fmtQty(o.qty)} {u} · {inr(o.q.total)} · {tx("won ", "order ", "ऑर्डर ")}{fdateShort(o.q.at)}
                 </div>
+                {/* the owner's own full stop: a part-cancelled or settled order
+                    leaves Home without pretending the rest of the maal went */}
+                {updateQuote && (
+                  <button className="btn btn-ghost btn-sm press" style={{ marginTop: 9 }} onClick={() => closeOrder(o)}>
+                    {o.done ? tx("Close this order", "Order band karo", "ऑर्डर बंद करें")
+                      : tx("Order finished - close it", "Order poora hua - band karo", "ऑर्डर पूरा हुआ - बंद करें")}
+                  </button>
+                )}
               </div>
             );
           })}
@@ -2354,6 +2368,25 @@ function ClientPage({ data, name, tallyRows, tallyBal, onBack, goMoney, goTrucks
           <div style={{ fontSize: 13.5, color: "var(--dim)", lineHeight: 1.55 }}>{tx("No open order with this party.", "Is party ka koi chalu order nahi.", "इस पार्टी का कोई चालू ऑर्डर नहीं।")}</div>
         )}
       </div>
+
+      {/* closed by hand - kept visible so a wrong tap is one tap back */}
+      {shut.length > 0 && (
+        <div className="card anim-in st2" style={{ padding: 16, marginBottom: 12 }}>
+          <div className="h-disp" style={{ fontSize: 15.5, fontWeight: 700, marginBottom: 2 }}>{tx("Closed orders", "Band kiye orders", "बंद किए ऑर्डर")}</div>
+          <div style={{ fontSize: 12, color: "var(--dim)", marginBottom: 4 }}>{tx("Not counted above and not on Home.", "Upar aur Home par nahi ginte.", "ऊपर और होम पर नहीं गिने जाते।")}</div>
+          {shut.map((o) => (
+            <div key={o.q.id} style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 11, marginTop: 11, borderTop: "1px solid var(--line)" }}>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: 14.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{o.q.part}</span>
+                <span className="mono" style={{ display: "block", fontSize: 11.5, color: "var(--faint)", marginTop: 2 }}>
+                  {fmtQty(o.sent)} / {fmtQty(o.qty)} {u} {tx("sent", "gaya", "गया")} · {tx("closed ", "band ", "बंद ")}{fdateShort(o.q.closedAt)}
+                </span>
+              </span>
+              {updateQuote && <button className="btn btn-ghost btn-sm press" style={{ flexShrink: 0 }} onClick={() => reopenOrder(o)}>{tx("Reopen", "Wapas kholo", "फिर खोलें")}</button>}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* when each load left */}
       <div className="anim-in st3" style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "22px 0 10px" }}>
@@ -3640,9 +3673,15 @@ function partyView(data, name, tallyRows, tallyBal) {
   let left = sum(used);
   const last = used.length ? Math.max(...used.map((d) => d.at)) : null;
   const orders = won.map((q) => {
-    const qty = Number(q.qty), sent = Math.min(qty, left);
+    const qty = Number(q.qty);
+    /* an order the owner closed by hand keeps exactly the maal it had at that
+       moment (q.closedSent) and claims nothing more - without the freeze the
+       next order would swallow those same trucks and read as already sent */
+    const claim = q.closedAt ? Math.min(qty, Number(q.closedSent) || 0) : qty;
+    const sent = Math.min(claim, left);
     left -= sent;
-    return { q, qty, sent, remaining: Math.max(0, qty - sent), done: sent >= qty * ORDER_DONE, last };
+    return { q, qty, sent, closed: !!q.closedAt, remaining: q.closedAt ? 0 : Math.max(0, qty - sent),
+      done: !!q.closedAt || sent >= qty * ORDER_DONE, last };
   });
 
   const bills = T ? (T.bills || []).filter((b) => partyKey(b.party) === k && Number(b.pending) > 0) : [];
@@ -3831,7 +3870,7 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
         lastDispatchAt: now - p.lastDays * DAY, balance: p.balance,
       }))
     : (data.quotes || [])
-      .filter((q) => q.status === "won" && q.qty > 0 && q.at > now - 120 * DAY)
+      .filter((q) => q.status === "won" && q.qty > 0 && !q.closedAt && q.at > now - 120 * DAY)
       .map((q) => {
         const ship = V.filter((x) => isSale(x.vtype) && x.vdate >= q.at &&
           String(x.party).trim().toLowerCase() === String(q.customer).trim().toLowerCase());
