@@ -260,7 +260,10 @@ body{overflow:hidden; overscroll-behavior:none;}
 .cat-tile:active{transform:scale(.98);}
 
 /* ---- liquid glass nav (Apple-style) ---- */
-.navbar{position:absolute; left:14px; right:14px; bottom:calc(14px + env(safe-area-inset-bottom)); z-index:40; isolation:isolate;
+/* sits just above the screen edge. The home-indicator inset (~34px) must NOT
+   be added on top of a gap - that left the bar floating halfway up the phone;
+   the bar's own 8px padding already keeps the buttons off the indicator. */
+.navbar{position:absolute; left:14px; right:14px; bottom:max(10px, calc(env(safe-area-inset-bottom) - 16px)); z-index:40; isolation:isolate;
   background:linear-gradient(180deg, rgba(255,255,255,.1) 0%, rgba(255,255,255,.03) 100%);
   backdrop-filter:blur(22px) saturate(1.8) brightness(1.02);
   -webkit-backdrop-filter:blur(22px) saturate(1.8) brightness(1.02);
