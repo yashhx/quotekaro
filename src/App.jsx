@@ -953,6 +953,168 @@ const buildSampleQuotes = (key) => {
 /* downscale a picked image to a small JPEG data URL for the pipeline thumbnail.
    Kept tiny (~240px) so many photos fit in localStorage / the synced blob;
    full-resolution photo storage -> Supabase Storage is the documented next step. */
+/* ================= SHOP FLOOR (worker device) =================
+   A paired floor phone holds ONE thing: a device token. It reads a narrow
+   board (machines + running jobs, no money, no quotes) and appends events.
+   It never touches shop_data - the owner's app stays the single writer of
+   that blob, which is what keeps two devices from destroying each other's
+   work (the blob is saved last-write-wins).
+
+   `floorView` is deliberately shared: the worker's phone and the owner's app
+   both fold the same event log over the same board, so they can never show
+   different answers about which machine is down or how many pieces are done. */
+const FLOOR_KEY = "trackrakho:floor:v1";
+const floorSession = () => { try { return JSON.parse(localStorage.getItem(FLOOR_KEY) || "null"); } catch { return null; } };
+const floorSave = (v) => { try { v ? localStorage.setItem(FLOOR_KEY, JSON.stringify(v)) : localStorage.removeItem(FLOOR_KEY); } catch {} };
+
+/* the eight stop reasons, kept short on purpose: a long list turns the
+   breakdown report to mush, and changeover / no-material cost a shop more
+   hours than true breakdowns do */
+const FLOOR_REASONS = [
+  { key: "breakdown", emoji: "\u{1F527}", en: "Machine broke down", hi: "Machine kharab" },
+  { key: "tool", emoji: "\u{1FA9B}", en: "Tool broke", hi: "Tool toot gaya" },
+  { key: "power", emoji: "\u26A1", en: "No power", hi: "Bijli nahi" },
+  { key: "material", emoji: "\u{1F4E6}", en: "No material", hi: "Maal nahi aaya" },
+  { key: "operator", emoji: "\u{1F464}", en: "No operator", hi: "Operator nahi" },
+  { key: "setting", emoji: "\u{1F6E0}\uFE0F", en: "Setting / setup", hi: "Setting chal rahi" },
+  { key: "quality", emoji: "\u{1F50D}", en: "Quality check", hi: "Quality check" },
+  { key: "break", emoji: "\u2615", en: "Break", hi: "Break" },
+];
+const reasonOf = (k) => FLOOR_REASONS.find((r) => r.key === k) || { key: k, emoji: "\u23F8\uFE0F", en: k, hi: k };
+
+const floorApi = async (path, opts = {}) => {
+  const sess = floorSession();
+  const r = await fetch(WA_API + path, {
+    ...opts,
+    headers: { "content-type": "application/json", "x-floor-token": (sess && sess.token) || "", ...(opts.headers || {}) },
+  });
+  const ct = r.headers.get("content-type") || "";
+  if (!ct.includes("application/json")) throw new Error("backend missing");
+  const d = await r.json();
+  if (!d.ok) throw new Error(d.error || "failed");
+  return d;
+};
+
+/* ---- Web Push for the owner ----
+   Only breakdowns push. iOS delivers these only to a PWA added to the home
+   screen; everywhere else the browser handles it. Every step degrades to a
+   readable reason instead of a dead button. */
+const pushSupported = () => typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const urlB64ToUint8 = (b64) => {
+  const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+};
+async function pushCurrent() {
+  if (!pushSupported()) return null;
+  try { const reg = await navigator.serviceWorker.ready; return await reg.pushManager.getSubscription(); } catch { return null; }
+}
+async function pushEnable() {
+  if (!pushSupported()) return { ok: false, why: "not supported on this phone" };
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") return { ok: false, why: "permission refused" };
+    const kr = await fetch(WA_API + "/push-subscribe");
+    const kd = await kr.json().catch(() => ({}));
+    if (!kd.key) return { ok: false, why: "not set up on the server" };
+    const reg = await navigator.serviceWorker.ready;
+    const sub = (await reg.pushManager.getSubscription()) ||
+      (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(kd.key) }));
+    const r = await fetch(WA_API + "/push-subscribe", {
+      method: "POST", headers: { "content-type": "application/json", ...(await authHeaders()) },
+      body: JSON.stringify({ subscription: sub.toJSON ? sub.toJSON() : sub }),
+    });
+    const d = await r.json().catch(() => ({}));
+    return d.ok ? { ok: true } : { ok: false, why: d.error || "could not save" };
+  } catch (e) { return { ok: false, why: (e && e.message) || "failed" }; }
+}
+async function pushDisable() {
+  const sub = await pushCurrent();
+  if (!sub) return { ok: true };
+  try {
+    await fetch(WA_API + "/push-subscribe", {
+      method: "DELETE", headers: { "content-type": "application/json", ...(await authHeaders()) },
+      body: JSON.stringify({ endpoint: sub.endpoint }),
+    });
+    await sub.unsubscribe();
+  } catch {}
+  return { ok: true };
+}
+
+/* board + event log -> what is actually happening right now.
+   Rules, in order of precedence per machine:
+     1. a `down` with no later `up` wins - a stopped machine is stopped
+     2. a job running on it (from the owner's plan, or started here) shows work
+     3. otherwise free
+   Piece counts come only from what the floor entered; the owner's own
+   time-based estimate is left alone on his page. */
+function floorView(board) {
+  const b = board || {};
+  const evs = [...(b.events || [])].sort((x, y) => (x.at || 0) - (y.at || 0)); /* oldest first */
+  const machines = {};
+  (b.machines || []).forEach((m) => { machines[m.uid] = { ...m, status: "free", reason: "", since: 0, job: null, pcs: 0 }; });
+  const jobs = {};
+  (b.jobs || []).forEach((j) => {
+    jobs[j.id] = { ...j, pcs: 0, rej: 0, done: false, adhoc: false };
+    /* whatever the owner planned is already running unless the floor says otherwise */
+    (j.alloc || []).forEach((a) => {
+      if (!a.stopped && machines[a.uid]) { machines[a.uid].status = "run"; machines[a.uid].job = j.id; machines[a.uid].since = a.startedAt || j.startedAt || 0; }
+    });
+  });
+
+  evs.forEach((e) => {
+    const m = e.machine_uid ? machines[e.machine_uid] : null;
+    if (e.kind === "start") {
+      /* work the floor started itself: either one of the owner's jobs, or a
+         quick "doosra kaam" that only exists as this event */
+      if (!jobs[e.job_id]) jobs[e.job_id] = { id: e.job_id, part: e.note || "Kaam", customer: "", qty: Number(e.qty) || 0, pcs: 0, rej: 0, done: false, adhoc: true };
+      if (m && m.status !== "down") { m.status = "run"; m.job = e.job_id; m.since = e.at; }
+    } else if (e.kind === "count") {
+      if (jobs[e.job_id]) jobs[e.job_id].pcs += Number(e.qty) || 0;
+      if (m) m.pcs += Number(e.qty) || 0;
+    } else if (e.kind === "done") {
+      if (jobs[e.job_id]) { jobs[e.job_id].pcs += Number(e.qty) || 0; jobs[e.job_id].rej += Number(e.rej) || 0; jobs[e.job_id].done = true; }
+      if (m && m.job === e.job_id) { m.job = null; m.pcs = 0; if (m.status === "run") m.status = "free"; }
+    } else if (e.kind === "down") {
+      if (m) { m.status = "down"; m.reason = e.reason || "breakdown"; m.since = e.at; m.note = e.note || ""; }
+    } else if (e.kind === "up") {
+      if (m && m.status === "down") { m.status = m.job ? "run" : "free"; m.reason = ""; m.since = e.at; m.note = ""; }
+    } else if (e.kind === "move") {
+      const from = e.from_uid ? machines[e.from_uid] : null;
+      if (from && from.job === e.job_id) { from.job = null; if (from.status === "run") from.status = "free"; }
+      if (m && m.status !== "down") { m.status = "run"; m.job = e.job_id; m.since = e.at; }
+    }
+  });
+
+  const list = Object.values(machines);
+  return {
+    machines: list,
+    jobs,
+    down: list.filter((m) => m.status === "down"),
+    running: list.filter((m) => m.status === "run"),
+    free: list.filter((m) => m.status === "free"),
+    /* today's pieces, the number an owner asks for first */
+    todayPcs: evs.filter((e) => (e.kind === "count" || e.kind === "done") && e.at >= startOfDay(Date.now())).reduce((n, e) => n + (Number(e.qty) || 0), 0),
+    todayRej: evs.filter((e) => e.kind === "done" && e.at >= startOfDay(Date.now())).reduce((n, e) => n + (Number(e.rej) || 0), 0),
+  };
+}
+/* one line per event, in the owner's feed and the worker's history */
+function floorLine(e, machines) {
+  const label = (machines && machines[e.machine_uid] && machines[e.machine_uid].label) || e.machine_uid || "";
+  const from = (machines && machines[e.from_uid] && machines[e.from_uid].label) || e.from_uid || "";
+  const q = Number(e.qty) || 0;
+  if (e.kind === "start") return { icon: "\u25B6\uFE0F", text: label + ": " + (e.note || "kaam") + tx(" started", " shuru", " शुरू") };
+  if (e.kind === "count") return { icon: "\u2795", text: label + ": " + q + tx(" pieces done", " piece hue", " पीस हुए") };
+  /* qty on a `done` is what was added at the end, not the job's total - the
+     counts before it are their own lines, so say "more" and never imply a total */
+  if (e.kind === "done") return { icon: "\u2705", text: label + ": " + tx("job finished", "kaam khatam", "\u0915\u093E\u092E \u0916\u0924\u094D\u092E") + (q ? " - " + q + tx(" more ok", " aur piece sahi", " \u0914\u0930 \u092A\u0940\u0938 \u0938\u0939\u0940") : "") + (e.rej ? ", " + e.rej + tx(" reject", " reject", " \u0930\u093F\u091C\u0947\u0915\u094D\u091F") : "") };
+  if (e.kind === "down") return { icon: "\u{1F6D1}", text: label + " " + tx("stopped", "band", "बंद") + " - " + (LANG === "en" ? reasonOf(e.reason).en : reasonOf(e.reason).hi) + (e.note ? " (" + e.note + ")" : ""), bad: true };
+  if (e.kind === "up") return { icon: "\u25B6\uFE0F", text: label + " " + tx("running again", "wapas chalu", "फिर चालू") };
+  if (e.kind === "move") return { icon: "\u21AA\uFE0F", text: (q ? q + tx(" pcs ", " pcs ", " पीस ") : "") + tx("moved ", "bheja ", "भेजा ") + (from ? from + " \u2192 " : "") + label };
+  if (e.kind === "note") return { icon: "\u{1F4DD}", text: e.note || "" };
+  return { icon: "\u2022", text: e.kind };
+}
+
 /* ================= PHOTO STORE (IndexedDB) =================
    Parchi photos are binary and there can be hundreds of them. Kept as base64
    inside the data blob they cost ~33% for the encoding plus 2 bytes per
@@ -1815,6 +1977,9 @@ export default function App() {
   const [tallyBal, setTallyBal] = useState(null); // Tally outstanding by customer name (lowercased) - filled by the opt-in connector
   const [tallyRows, setTallyRows] = useState(null); // {vouchers, bills} from the same connector - null = no real Tally synced
   const [client, setClient] = useState(null); // party name open on the client page
+  const [floorMode, setFloorMode] = useState(() => !!floorSession()); // this phone is a shop-floor device
+  const [pairing, setPairing] = useState(false);
+  const [floorEvents, setFloorEvents] = useState([]); // what the floor reported (cloud mode)
   const saveT = useRef(null);
   const cloudReadOk = useRef(false); /* cloud writes allowed only after a clean cloud read this session */
   /* ids already logged/dismissed locally - filters the poll so a card can never
@@ -2091,6 +2256,44 @@ export default function App() {
     return () => { alive = false; };
   }, [account ? account.uid : null]);
 
+  /* the shop floor's own log. Read-only here: the worker's phone appends,
+     this app only folds it into the view (and may add its own entries). */
+  useEffect(() => {
+    setFloorEvents([]);
+    if (!sb || !account || !account.uid) return;
+    let alive = true, t;
+    const pull = async () => {
+      try {
+        const since = Date.now() - 3 * DAY;
+        const r = await sb.from("floor_events").select("id,kind,machine_uid,from_uid,job_id,qty,rej,reason,note,at,seen")
+          .gte("at", since).order("id", { ascending: false }).limit(300);
+        if (alive && !r.error && r.data) setFloorEvents(r.data);
+      } catch {}
+      if (alive) t = setTimeout(pull, 30000);
+    };
+    pull();
+    return () => { alive = false; clearTimeout(t); };
+  }, [account ? account.uid : null]);
+
+  const markFloorSeen = async () => {
+    const ids = floorEvents.filter((e) => !e.seen).map((e) => e.id);
+    if (!ids.length || !sb) return;
+    setFloorEvents((l) => l.map((e) => ({ ...e, seen: true })));
+    try { await sb.from("floor_events").update({ seen: true }).in("id", ids); } catch {}
+  };
+  /* the owner can answer the floor from his own phone - marking a machine back
+     up, or leaving a note. Same table, his own row, inserted under RLS. */
+  const addFloorEvent = async (ev) => {
+    if (!sb || !account || !account.uid) return;
+    const row = { user_id: account.uid, kind: ev.kind, machine_uid: ev.machineUid || null, from_uid: ev.fromUid || null,
+      job_id: ev.jobId || null, qty: ev.qty == null ? null : Number(ev.qty), rej: ev.rej == null ? null : Number(ev.rej),
+      reason: ev.reason || null, note: ev.note || null, at: Date.now(), seen: true };
+    try {
+      const r = await sb.from("floor_events").insert(row).select();
+      if (!r.error && r.data && r.data[0]) setFloorEvents((l) => [r.data[0], ...l]);
+    } catch {}
+  };
+
   const ping = (m) => { setToast(m); setTimeout(() => setToast(null), 1600); };
 
   /* measured nav pill - tracks the active button exactly. Declared BEFORE any early
@@ -2124,6 +2327,11 @@ export default function App() {
     return () => { cancelAnimationFrame(raf); clearTimeout(t); window.removeEventListener("resize", measure); };
   }, [tab, data]);
 
+  /* A paired shop-floor phone never becomes the owner's app: no account, no
+     shop data, just the board and the buttons. */
+  if (floorMode) return <FloorApp onExit={() => setFloorMode(false)} />;
+  if (pairing) return <FloorPair onPaired={() => { setPairing(false); setFloorMode(true); }} onBack={() => setPairing(false)} />;
+
   /* asked BEFORE any data is loaded or seeded, so the empty account stays
      discardable if this turns out to be a Google customer who typed his number */
   if (pendingNewAccount(account, guardOk))
@@ -2137,7 +2345,14 @@ export default function App() {
       <div className="mono" style={{ color: "var(--faint)", fontSize: 12, letterSpacing: ".2em" }}>LOADING...</div></div></div>);
 
   if (!account)
-    return (<div className="qk-root"><style>{CSS}</style><div className="app"><Auth onAuthed={saveAccount} authError={authError} /></div></div>);
+    return (<div className="qk-root"><style>{CSS}</style><div className="app">
+      <Auth onAuthed={saveAccount} authError={authError} />
+      {/* the only door a floor worker ever uses */}
+      <button className="press" onClick={() => setPairing(true)}
+        style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", position: "absolute", left: 0, right: 0, bottom: "calc(10px + env(safe-area-inset-bottom))", textAlign: "center", fontSize: 13, color: "var(--faint)", padding: 10 }}>
+        {tx("Shop floor phone? Pair it", "Shop floor ka phone? Yahan jodein", "\u0936\u0949\u092A \u092B\u094D\u0932\u094B\u0930 \u0915\u093E \u092B\u094B\u0928? \u092F\u0939\u093E\u0902 \u091C\u094B\u0921\u093C\u0947\u0902")}
+      </button>
+    </div></div>);
 
   /* first run: pick the trade. If the pipeline is still untouched seed/sample
      data, swap in this trade's examples; real data is never overwritten. */
@@ -2241,7 +2456,7 @@ export default function App() {
             for the truck board and the yard (both still open as their own tabs,
             which NAV_OF maps back under Work) */}
         {tab === "work" && industryOf(data).key !== "machining" && <WorkHub data={data} openTrucks={() => setTab("trucks")} openStock={() => setTab("stock")} />}
-        {(tab === "floor" || (tab === "work" && industryOf(data).key === "machining")) && <MachineFloor data={data} setData={setData} ping={ping} onBack={() => setTab("home")} goSetup={() => setTab("setup")} draft={floorDraft} clearDraft={() => setFloorDraft(null)} />}
+        {(tab === "floor" || (tab === "work" && industryOf(data).key === "machining")) && <MachineFloor data={data} setData={setData} ping={ping} onBack={() => setTab("home")} goSetup={() => setTab("setup")} draft={floorDraft} clearDraft={() => setFloorDraft(null)} floorEvents={floorEvents} onFloorSeen={markFloorSeen} addFloorEvent={addFloorEvent} />}
         {tab === "trucks" && <TruckBoard data={data} setData={setData} ping={ping} onBack={() => setTab("work")} goSetup={() => setTab("setup")} />}
         {tab === "stock" && <StockYard data={data} setData={setData} ping={ping} onBack={() => setTab("work")} />}
         {tab === "subscribe" && <Subscribe account={accountView} onSubscribe={(id) => { subscribe(id); ping("You're on the " + PLANS.find(p => p.id === id).name + " plan"); setTab("home"); }} onBack={() => setTab("home")} />}
@@ -2317,7 +2532,11 @@ export default function App() {
             <button ref={setNavRef("home")} className={"nav-it " + (NAV_OF[tab] === "home" ? "on" : "")} onClick={() => setTab("home")}><I.home /><span>{tx("Home", "Home", "होम")}</span></button>
             <button ref={setNavRef("quotes")} className={"nav-it " + (tab === "quotes" ? "on" : "")} onClick={() => setTab("quotes")}><I.list /><span>{tx("Quotes", "Quotes", "कोटेशन")}</span></button>
             <button className="fab press" data-tut="fab" onClick={() => (industryOf(data).key === "machining" ? setFabOpen(true) : startLog())} aria-label="Add a quote"><I.plus /></button>
-            <button ref={setNavRef("work")} className={"nav-it " + (NAV_OF[tab] === "work" ? "on" : "")} onClick={() => setTab("work")}><I.gear2 /><span>{tx("Work", "Work", "काम")}</span></button>
+            <button ref={setNavRef("work")} className={"nav-it " + (NAV_OF[tab] === "work" ? "on" : "")} onClick={() => setTab("work")} style={{ position: "relative" }}>
+              <I.gear2 />
+              {floorEvents.some((e) => !e.seen) && <i style={{ position: "absolute", top: 6, right: "50%", marginRight: -16, width: 8, height: 8, borderRadius: "50%", background: floorEvents.some((e) => !e.seen && e.kind === "down") ? "var(--red)" : "var(--grn-x)" }} />}
+              <span>{tx("Work", "Work", "काम")}</span>
+            </button>
             <button ref={setNavRef("tally")} className={"nav-it " + (tab === "tally" ? "on" : "")} onClick={() => setTab("tally")}><I.rupee /><span>{tx("Money", "Money", "पैसा")}</span></button>
           </nav>
         )}
@@ -2563,6 +2782,343 @@ function ClientPage({ data, name, tallyRows, tallyBal, updateQuote, ping, onBack
           </div>
         ))}
       </>)}
+    </div></div>
+  );
+}
+
+/* ================= FLOOR DEVICE: PAIRING =================
+   Six digits, typed once. The phone gets a device token and nothing else. */
+function FloorPair({ onPaired, onBack }) {
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const go = async () => {
+    if (code.replace(/\D/g, "").length !== 6) return setErr(tx("Enter all 6 digits", "Poore 6 digit daalein", "\u092A\u0942\u0930\u0947 6 \u0905\u0902\u0915 \u0921\u093E\u0932\u0947\u0902"));
+    setErr(""); setBusy(true);
+    try {
+      const d = await floorApi("/floor-pair", { method: "POST", body: JSON.stringify({ action: "claim", code: code.replace(/\D/g, "") }) });
+      floorSave({ token: d.token, shopName: d.shopName || "" });
+      onPaired();
+    } catch (e) {
+      const m = String((e && e.message) || "");
+      setErr(m === "code not found" ? tx("That code is wrong. Ask the owner to read it again.", "Ye code galat hai. Maalik se dobara poochhein.", "\u092F\u0939 \u0915\u094B\u0921 \u0917\u0932\u0924 \u0939\u0948\u0964")
+        : m === "code expired" ? tx("That code has expired. Ask for a new one.", "Code purana ho gaya. Naya code maangein.", "\u0915\u094B\u0921 \u092A\u0941\u0930\u093E\u0928\u093E \u0939\u094B \u0917\u092F\u093E\u0964")
+        : m === "code already used" ? tx("That code is already used.", "Ye code pehle use ho chuka hai.", "\u092F\u0939 \u0915\u094B\u0921 \u092A\u0939\u0932\u0947 \u0907\u0938\u094D\u0924\u0947\u092E\u093E\u0932 \u0939\u094B \u091A\u0941\u0915\u093E \u0939\u0948\u0964")
+        : tx("Could not connect. Check the internet.", "Connect nahi ho paya. Internet dekh lein.", "\u0915\u0928\u0947\u0915\u094D\u091F \u0928\u0939\u0940\u0902 \u0939\u0941\u0906\u0964"));
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="qk-root"><style>{CSS}</style><div className="app">
+      <div className="scr"><div className="pagepad">
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+          <button className="iconbtn press" onClick={onBack}><I.back /></button>
+          <div>
+            <div className="microlbl">{tx("SHOP FLOOR PHONE", "SHOP FLOOR PHONE", "\u0936\u0949\u092A \u092B\u094D\u0932\u094B\u0930 \u092B\u094B\u0928")}</div>
+            <div className="h-disp" style={{ fontSize: 24, fontWeight: 700 }}>{tx("Pair this phone", "Ye phone jodein", "\u092F\u0939 \u092B\u094B\u0928 \u091C\u094B\u0921\u093C\u0947\u0902")}</div>
+          </div>
+        </div>
+        <div className="card" style={{ padding: 18 }}>
+          <div style={{ fontSize: 14.5, color: "var(--dim)", lineHeight: 1.6, marginBottom: 16 }}>
+            {tx("Ask the owner for the 6-digit code from Setup > Shop floor phones.", "Maalik se 6 digit ka code maangein - Setup > Shop floor phone mein milega.", "\u092E\u093E\u0932\u093F\u0915 \u0938\u0947 6 \u0905\u0902\u0915 \u0915\u093E \u0915\u094B\u0921 \u092E\u093E\u0902\u0917\u0947\u0902\u0964")}
+          </div>
+          <input className="input mono" inputMode="numeric" maxLength={6} placeholder="123456" value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            style={{ fontSize: 30, letterSpacing: ".3em", textAlign: "center", padding: "16px 0" }} />
+          {err && <div style={{ color: "var(--red)", fontSize: 13.5, marginTop: 12, lineHeight: 1.5 }}>{err}</div>}
+          <button className="btn btn-grn press" style={{ width: "100%", marginTop: 16, padding: 16 }} disabled={busy} onClick={go}>
+            {busy ? tx("Connecting...", "Jud raha hai...", "\u091C\u0941\u0921\u093C \u0930\u0939\u093E \u0939\u0948...") : tx("Connect", "Jodein", "\u091C\u094B\u0921\u093C\u0947\u0902")}
+          </button>
+          <div className="hint" style={{ marginTop: 12, textAlign: "center" }}>
+            {tx("This phone will only show the machines and the work - no rates, no money.", "Is phone par sirf machine aur kaam dikhega - rate ya paisa kuch nahi.", "\u0907\u0938 \u092B\u094B\u0928 \u092A\u0930 \u0938\u093F\u0930\u094D\u092B \u092E\u0936\u0940\u0928 \u0914\u0930 \u0915\u093E\u092E \u0926\u093F\u0916\u0947\u0917\u093E\u0964")}
+          </div>
+        </div>
+      </div></div>
+    </div></div>
+  );
+}
+
+/* ================= FLOOR DEVICE: THE WORKER'S APP =================
+   Five things, each two taps: start work, count pieces, finish, stop a
+   machine (with a reason), move the work elsewhere. Colour carries the
+   status because it reads across a noisy floor faster than any label. */
+function FloorApp({ onExit }) {
+  const sess = floorSession() || {};
+  const [board, setBoard] = useState(null);
+  const [err, setErr] = useState("");
+  const [now, setNow] = useState(Date.now());
+  const [openM, setOpenM] = useState(null);  /* machine uid whose sheet is open */
+  const [mode, setMode] = useState("");      /* start | count | done | down | move | note */
+  const [f, setF] = useState({});
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState("");
+  const [menu, setMenu] = useState(false);
+
+  const load = async () => {
+    try { const d = await floorApi("/floor-board"); setBoard(d); setErr(""); }
+    catch (e) { setErr(String((e && e.message) || "")); }
+  };
+  useEffect(() => { load(); const t = setInterval(load, 20000); const w = () => { if (!document.hidden) load(); };
+    document.addEventListener("visibilitychange", w); return () => { clearInterval(t); document.removeEventListener("visibilitychange", w); }; }, []);
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(t); }, []);
+
+  const ping = (m) => { setToast(m); setTimeout(() => setToast(""), 1800); };
+  const view = floorView(board);
+  const byUid = {}; view.machines.forEach((m) => { byUid[m.uid] = m; });
+  const machine = openM ? byUid[openM] : null;
+  const job = machine && machine.job ? view.jobs[machine.job] : null;
+
+  const post = async (ev, okMsg) => {
+    setBusy(true);
+    try {
+      await floorApi("/floor-event", { method: "POST", body: JSON.stringify(ev) });
+      await load();
+      setOpenM(null); setMode(""); setF({});
+      ping(okMsg);
+    } catch (e) {
+      ping(tx("Not saved - check the internet", "Save nahi hua - internet dekhein", "\u0938\u0947\u0935 \u0928\u0939\u0940\u0902 \u0939\u0941\u0906"));
+    }
+    setBusy(false);
+  };
+
+  const since = (t) => {
+    if (!t) return "";
+    const mins = Math.max(0, Math.round((now - t) / 60000));
+    return mins < 60 ? mins + " min" : Math.floor(mins / 60) + " hr " + (mins % 60 ? (mins % 60) + " min" : "");
+  };
+  const COLOR = { run: { bg: "#EAF7EB", br: "#BFE3C3", fg: "var(--grn-d)" }, down: { bg: "#FBEAEA", br: "#EFC7C2", fg: "var(--red)" }, free: { bg: "#F4F8F4", br: "var(--line)", fg: "var(--faint)" } };
+  const STATUS = { run: tx("RUNNING", "CHAL RAHI", "\u091A\u0932 \u0930\u0939\u0940"), down: tx("STOPPED", "BAND", "\u092C\u0902\u0926"), free: tx("FREE", "KHAALI", "\u0916\u093E\u0932\u0940") };
+
+  const bigBtn = (label, sub, onClick, tone) => (
+    <button className="press" onClick={onClick} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", padding: "16px 16px", marginBottom: 10, borderRadius: 18, textAlign: "center",
+      background: tone === "grn" ? "linear-gradient(135deg,#1B7A20,#2E9E33)" : tone === "red" ? "var(--red-bg)" : "#fff",
+      color: tone === "grn" ? "#fff" : tone === "red" ? "var(--red)" : "var(--ink)",
+      border: tone === "grn" ? "none" : "1.5px solid " + (tone === "red" ? "#EFC7C2" : "var(--line2)") }}>
+      <span style={{ display: "block", fontWeight: 700, fontSize: 17 }}>{label}</span>
+      {sub && <span style={{ display: "block", fontSize: 13, opacity: .8, marginTop: 2 }}>{sub}</span>}
+    </button>
+  );
+
+  const sheet = (title, children) => (
+    <div onClick={() => { setMode(""); setOpenM(null); setF({}); }} style={{ position: "absolute", inset: 0, zIndex: 70, background: "rgba(16,26,20,.45)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+      <div className="anim-in" onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: "26px 26px 0 0", padding: "18px 18px calc(18px + env(safe-area-inset-bottom))", maxHeight: "90%", overflowY: "auto" }}>
+        <div style={{ width: 40, height: 4, borderRadius: 3, background: "var(--line2)", margin: "0 auto 14px" }} />
+        <div className="h-disp" style={{ fontSize: 21, fontWeight: 700, marginBottom: 14 }}>{title}</div>
+        {children}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="qk-root"><style>{CSS}</style><div className="app">
+      {toast && <div className="toast">{toast}</div>}
+      <div className="scr"><div className="pagepad" style={{ paddingBottom: 40 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
+          <div>
+            <div className="microlbl">{tx("SHOP FLOOR", "SHOP FLOOR", "\u0936\u0949\u092A \u092B\u094D\u0932\u094B\u0930")}</div>
+            <div className="h-disp" style={{ fontSize: 24, fontWeight: 700 }}>{sess.shopName || "TrackRakho"}</div>
+          </div>
+          <button className="iconbtn press" onClick={() => setMenu(true)} aria-label="Menu" style={{ flexShrink: 0 }}>&#8942;</button>
+        </div>
+
+        {/* the two numbers an owner asks for, kept in front of the worker too */}
+        <div className="card" style={{ padding: "14px 16px", marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F3FBF4", borderColor: "#CFE9D1" }}>
+          <span>
+            <span className="h-disp mono" style={{ fontSize: 24, fontWeight: 700, color: "var(--grn-d)" }}>{view.todayPcs}</span>
+            <span style={{ fontSize: 13.5, color: "var(--dim)", marginLeft: 6 }}>{tx("pieces today", "piece aaj", "\u092A\u0940\u0938 \u0906\u091C")}</span>
+          </span>
+          {view.down.length > 0 && (
+            <span className="mono" style={{ fontSize: 12, fontWeight: 700, color: "var(--red)", background: "var(--red-bg)", padding: "5px 11px", borderRadius: 999 }}>
+              {view.down.length} {tx("STOPPED", "BAND", "\u092C\u0902\u0926")}
+            </span>
+          )}
+        </div>
+
+        {err && (
+          <div className="card" style={{ padding: 16, marginBottom: 12, background: "var(--amber-bg)", borderColor: "#F0DCB8", fontSize: 13.5, color: "#7A5510", lineHeight: 1.5 }}>
+            {err === "device not paired"
+              ? tx("This phone is no longer connected to the shop. Ask the owner to pair it again.", "Ye phone ab shop se juda nahi hai. Maalik se dobara jodne ko kahein.", "\u092F\u0939 \u092B\u094B\u0928 \u0905\u092C \u0936\u0949\u092A \u0938\u0947 \u091C\u0941\u0921\u093C\u093E \u0928\u0939\u0940\u0902 \u0939\u0948\u0964")
+              : tx("No internet - showing the last update.", "Internet nahi hai - purana data dikh raha hai.", "\u0907\u0902\u091F\u0930\u0928\u0947\u091F \u0928\u0939\u0940\u0902 \u0939\u0948\u0964")}
+          </div>
+        )}
+
+        {!board && !err && <div className="mono" style={{ color: "var(--faint)", fontSize: 12, letterSpacing: ".2em", textAlign: "center", padding: 30 }}>LOADING...</div>}
+
+        {board && view.machines.length === 0 && (
+          <div className="card-tint" style={{ padding: 22, textAlign: "center", fontSize: 14, color: "var(--dim)", lineHeight: 1.6 }}>
+            {tx("The owner has not added any machines yet.", "Maalik ne abhi machine nahi jodi hain.", "\u092E\u093E\u0932\u093F\u0915 \u0928\u0947 \u0905\u092D\u0940 \u092E\u0936\u0940\u0928 \u0928\u0939\u0940\u0902 \u091C\u094B\u0921\u093C\u0940\u0902\u0964")}
+          </div>
+        )}
+
+        {/* the board itself - colour first, machine number big enough to match
+            the sticker on the machine */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {view.machines.map((m) => {
+            const c = COLOR[m.status], j = m.job ? view.jobs[m.job] : null;
+            return (
+              <button key={m.uid} className="press" onClick={() => { setOpenM(m.uid); setMode(""); setF({}); }}
+                style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", padding: "14px 13px", borderRadius: 18, minHeight: 124,
+                  background: c.bg, border: "1.5px solid " + c.br, display: "flex", flexDirection: "column" }}>
+                <span className="mono" style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".1em", color: c.fg }}>{STATUS[m.status]}</span>
+                <span className="h-disp" style={{ fontSize: 17, fontWeight: 700, marginTop: 3, lineHeight: 1.2 }}>{m.label}</span>
+                {m.status === "down" && <span style={{ fontSize: 12.5, color: "var(--red)", marginTop: 4 }}>{reasonOf(m.reason).emoji} {LANG === "en" ? reasonOf(m.reason).en : reasonOf(m.reason).hi}</span>}
+                {j && <span style={{ fontSize: 12.5, color: "var(--dim)", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{j.part}</span>}
+                {j && j.customer && <span style={{ fontSize: 11.5, color: "var(--faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{j.customer}</span>}
+                <span style={{ flex: 1 }} />
+                {m.status !== "free" && <span className="mono" style={{ fontSize: 11, color: c.fg, fontWeight: 600 }}>{j ? j.pcs + "/" + (j.qty || "?") + " pcs \u00b7 " : ""}{since(m.since)}</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* shift note + recent history */}
+        <button className="btn btn-ghost press" style={{ width: "100%", marginTop: 14 }} onClick={() => { setOpenM(""); setMode("note"); setF({}); }}>
+          {"\u{1F4DD} " + tx("Shift note", "Shift note likhein", "\u0936\u093F\u092B\u094D\u091F \u0928\u094B\u091F")}
+        </button>
+
+        {board && (board.events || []).length > 0 && (<>
+          <div style={{ margin: "22px 0 8px" }}><span className="eyebrow">{tx("Today", "Aaj", "\u0906\u091C")}</span></div>
+          {(board.events || []).slice(0, 12).map((e) => {
+            const l = floorLine(e, byUid);
+            return (
+              <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "9px 2px", borderBottom: "1px solid var(--line)" }}>
+                <span style={{ flexShrink: 0 }}>{l.icon}</span>
+                <span style={{ flex: 1, fontSize: 13.5, color: l.bad ? "var(--red)" : "var(--ink)", lineHeight: 1.45 }}>{l.text}</span>
+                <span className="mono" style={{ flexShrink: 0, fontSize: 11, color: "var(--faint)" }}>{new Date(e.at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}</span>
+              </div>
+            );
+          })}
+        </>)}
+      </div></div>
+
+      {/* ---------- machine sheet ---------- */}
+      {openM && !mode && machine && sheet(machine.label, (<>
+        {machine.status === "down" ? (<>
+          <div style={{ fontSize: 14, color: "var(--red)", marginBottom: 14 }}>
+            {reasonOf(machine.reason).emoji} {LANG === "en" ? reasonOf(machine.reason).en : reasonOf(machine.reason).hi} \u00b7 {since(machine.since)}
+          </div>
+          {bigBtn(tx("Machine is running again", "Machine wapas chalu", "\u092E\u0936\u0940\u0928 \u092B\u093F\u0930 \u091A\u093E\u0932\u0942"), "", () => post({ kind: "up", machineUid: machine.uid }, tx("Marked running", "Chalu ho gayi", "\u091A\u093E\u0932\u0942")), "grn")}
+        </>) : (<>
+          {job && (
+            <div className="card" style={{ padding: "12px 14px", marginBottom: 14, background: "var(--soft)" }}>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>{job.part}</div>
+              {job.customer && <div style={{ fontSize: 13, color: "var(--dim)" }}>{job.customer}</div>}
+              <div className="mono" style={{ fontSize: 12.5, color: "var(--grn-d)", marginTop: 4 }}>{job.pcs}{job.qty ? " / " + job.qty : ""} {tx("pieces done", "piece ho chuke", "\u092A\u0940\u0938 \u0939\u094B \u091A\u0941\u0915\u0947")}</div>
+            </div>
+          )}
+          {job
+            ? (<>
+                {bigBtn(tx("Add pieces", "Piece jodein", "\u092A\u0940\u0938 \u091C\u094B\u0921\u093C\u0947\u0902"), tx("how many since last time", "pichhli baar se kitne hue", ""), () => { setMode("count"); setF({ n: 0 }); }, "grn")}
+                {bigBtn(tx("Work finished", "Kaam khatam", "\u0915\u093E\u092E \u0916\u0924\u094D\u092E"), "", () => { setMode("done"); setF({ good: String((job && job.pcs) || ""), rej: "" }); })}
+                {bigBtn(tx("Move to another machine", "Doosri machine par bhejein", "\u0926\u0942\u0938\u0930\u0940 \u092E\u0936\u0940\u0928 \u092A\u0930"), "", () => { setMode("move"); setF({}); })}
+              </>)
+            : bigBtn(tx("Start work", "Kaam shuru karein", "\u0915\u093E\u092E \u0936\u0941\u0930\u0942"), "", () => { setMode("start"); setF({}); }, "grn")}
+          {bigBtn(tx("Machine stopped", "Machine band ho gayi", "\u092E\u0936\u0940\u0928 \u092C\u0902\u0926"), "", () => { setMode("down"); setF({}); }, "red")}
+        </>)}
+      </>))}
+
+      {/* ---------- start work ---------- */}
+      {mode === "start" && machine && sheet(tx("What is running?", "Kya bana rahe hain?", "\u0915\u094D\u092F\u093E \u092C\u0928 \u0930\u0939\u093E \u0939\u0948?"), (<>
+        {Object.values(view.jobs).filter((j) => !j.done).map((j) => (
+          <button key={j.id} className="press" onClick={() => post({ kind: "start", machineUid: machine.uid, jobId: j.id, qty: j.qty, note: j.part }, tx("Started", "Shuru ho gaya", "\u0936\u0941\u0930\u0942"))}
+            style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", padding: "14px 15px", marginBottom: 9, borderRadius: 16, border: "1.5px solid var(--line2)", background: "#fff" }}>
+            <span style={{ display: "block", fontWeight: 700, fontSize: 16 }}>{j.part}</span>
+            <span style={{ display: "block", fontSize: 13, color: "var(--dim)", marginTop: 2 }}>{[j.customer, j.qty ? j.qty + " pcs" : ""].filter(Boolean).join(" \u00b7 ")}</span>
+          </button>
+        ))}
+        <div style={{ borderTop: "1px solid var(--line)", marginTop: 12, paddingTop: 14 }}>
+          <label className="lbl">{tx("Or something else", "Ya doosra kaam", "\u092F\u093E \u0926\u0942\u0938\u0930\u093E \u0915\u093E\u092E")}</label>
+          <input className="input" placeholder={tx("part name", "part ka naam", "\u092A\u093E\u0930\u094D\u091F \u0915\u093E \u0928\u093E\u092E")} value={f.part || ""} onChange={(e) => setF({ ...f, part: e.target.value })} />
+          <input className="input mono" type="number" inputMode="numeric" placeholder={tx("how many pieces", "kitne piece", "\u0915\u093F\u0924\u0928\u0947 \u092A\u0940\u0938")} value={f.qty || ""} onChange={(e) => setF({ ...f, qty: e.target.value })} style={{ marginTop: 10 }} />
+          <button className="btn btn-grn press" style={{ width: "100%", marginTop: 12, padding: 15 }} disabled={busy || !String(f.part || "").trim()}
+            onClick={() => post({ kind: "start", machineUid: machine.uid, jobId: "fl_" + uid(), qty: Number(f.qty) || 0, note: String(f.part || "").trim() }, tx("Started", "Shuru ho gaya", "\u0936\u0941\u0930\u0942"))}>
+            {tx("Start", "Shuru karein", "\u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902")}
+          </button>
+        </div>
+      </>))}
+
+      {/* ---------- count pieces ---------- */}
+      {mode === "count" && machine && sheet(tx("How many pieces?", "Kitne piece hue?", "\u0915\u093F\u0924\u0928\u0947 \u092A\u0940\u0938 \u0939\u0941\u090F?"), (<>
+        <div className="h-disp mono" style={{ fontSize: 44, fontWeight: 700, textAlign: "center", color: "var(--grn-d)", margin: "4px 0 14px" }}>{Number(f.n) || 0}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
+          {[1, 5, 10, 50].map((n) => (
+            <button key={n} className="press" onClick={() => setF({ ...f, n: (Number(f.n) || 0) + n })}
+              style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", textAlign: "center", padding: "15px 0", borderRadius: 14, border: "1.5px solid var(--line2)", fontWeight: 700, fontSize: 16 }}>+{n}</button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input className="input mono" type="number" inputMode="numeric" value={f.n || ""} onChange={(e) => setF({ ...f, n: e.target.value })} style={{ flex: 1, fontSize: 18, textAlign: "center" }} />
+          <button className="btn btn-ghost press" onClick={() => setF({ ...f, n: 0 })}>{tx("Clear", "Mitayein", "\u092E\u093F\u091F\u093E\u090F\u0902")}</button>
+        </div>
+        <button className="btn btn-grn press" style={{ width: "100%", marginTop: 14, padding: 16 }} disabled={busy || !(Number(f.n) > 0)}
+          onClick={() => post({ kind: "count", machineUid: machine.uid, jobId: machine.job, qty: Number(f.n) }, Number(f.n) + tx(" pieces saved", " piece likh diye", " \u092A\u0940\u0938 \u0932\u093F\u0916\u0947"))}>
+          {tx("Save", "Likh dein", "\u0932\u093F\u0916 \u0926\u0947\u0902")}
+        </button>
+      </>))}
+
+      {/* ---------- finish ---------- */}
+      {mode === "done" && machine && sheet(tx("Work finished", "Kaam khatam", "\u0915\u093E\u092E \u0916\u0924\u094D\u092E"), (<>
+        <label className="lbl">{tx("Good pieces", "Sahi piece", "\u0938\u0939\u0940 \u092A\u0940\u0938")}</label>
+        <input className="input mono" type="number" inputMode="numeric" value={f.good || ""} onChange={(e) => setF({ ...f, good: e.target.value })} style={{ fontSize: 20, textAlign: "center" }} />
+        <label className="lbl" style={{ marginTop: 12 }}>{tx("Rejected pieces", "Reject piece", "\u0930\u093F\u091C\u0947\u0915\u094D\u091F \u092A\u0940\u0938")}</label>
+        <input className="input mono" type="number" inputMode="numeric" placeholder="0" value={f.rej || ""} onChange={(e) => setF({ ...f, rej: e.target.value })} style={{ fontSize: 20, textAlign: "center" }} />
+        <span className="hint">{tx("Reject count is never a complaint - it is how the owner prices the next job.", "Reject likhne par daant nahi padti - isi se maalik agla rate sahi lagata hai.", "")}</span>
+        <button className="btn btn-grn press" style={{ width: "100%", marginTop: 14, padding: 16 }} disabled={busy}
+          onClick={() => post({ kind: "done", machineUid: machine.uid, jobId: machine.job, qty: Math.max(0, (Number(f.good) || 0) - ((job && job.pcs) || 0)), rej: Number(f.rej) || 0 }, tx("Job closed", "Kaam khatam likh diya", "\u0915\u093E\u092E \u092A\u0942\u0930\u093E"))}>
+          {tx("Finish", "Khatam karein", "\u0916\u0924\u094D\u092E \u0915\u0930\u0947\u0902")}
+        </button>
+      </>))}
+
+      {/* ---------- stop the machine ---------- */}
+      {mode === "down" && machine && sheet(tx("Why did it stop?", "Machine kyun band hui?", "\u092E\u0936\u0940\u0928 \u0915\u094D\u092F\u094B\u0902 \u092C\u0902\u0926 \u0939\u0941\u0908?"), (<>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+          {FLOOR_REASONS.map((r) => (
+            <button key={r.key} className="press" onClick={() => setF({ ...f, reason: r.key })}
+              style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", textAlign: "center", padding: "15px 8px", borderRadius: 16,
+                border: "1.5px solid " + (f.reason === r.key ? "var(--red)" : "var(--line2)"), background: f.reason === r.key ? "var(--red-bg)" : "#fff" }}>
+              <span style={{ display: "block", fontSize: 22 }}>{r.emoji}</span>
+              <span style={{ display: "block", fontWeight: 700, fontSize: 13.5, marginTop: 4 }}>{LANG === "en" ? r.en : r.hi}</span>
+            </button>
+          ))}
+        </div>
+        <input className="input" placeholder={tx("anything to add (optional)", "kuch kehna hai? (optional)", "\u0915\u0941\u091B \u0915\u0939\u0928\u093E \u0939\u0948?")} value={f.note || ""} onChange={(e) => setF({ ...f, note: e.target.value })} style={{ marginTop: 12 }} />
+        <button className="btn press" style={{ width: "100%", marginTop: 14, padding: 16, background: "var(--red)", color: "#fff", border: "none" }} disabled={busy || !f.reason}
+          onClick={() => post({ kind: "down", machineUid: machine.uid, machineLabel: machine.label, reason: f.reason, note: f.note || "" }, tx("Owner has been told", "Maalik ko bata diya", "\u092E\u093E\u0932\u093F\u0915 \u0915\u094B \u092C\u0924\u093E \u0926\u093F\u092F\u093E"))}>
+          {tx("Tell the owner", "Maalik ko batayein", "\u092E\u093E\u0932\u093F\u0915 \u0915\u094B \u092C\u0924\u093E\u090F\u0902")}
+        </button>
+      </>))}
+
+      {/* ---------- move the work ---------- */}
+      {mode === "move" && machine && sheet(tx("Move to which machine?", "Kis machine par bhejein?", "\u0915\u093F\u0938 \u092E\u0936\u0940\u0928 \u092A\u0930?"), (<>
+        {view.free.length === 0 && <div style={{ fontSize: 14, color: "var(--dim)", lineHeight: 1.6 }}>{tx("No machine is free right now.", "Abhi koi machine khaali nahi hai.", "\u0905\u092D\u0940 \u0915\u094B\u0908 \u092E\u0936\u0940\u0928 \u0916\u093E\u0932\u0940 \u0928\u0939\u0940\u0902\u0964")}</div>}
+        {view.free.map((m2) => (
+          <button key={m2.uid} className="press" onClick={() => post({ kind: "move", machineUid: m2.uid, fromUid: machine.uid, jobId: machine.job, qty: Math.max(0, (job && job.qty ? job.qty : 0) - (machine.pcs || 0)) }, tx("Moved", "Bhej diya", "\u092D\u0947\u091C \u0926\u093F\u092F\u093E"))}
+            style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", padding: "16px 15px", marginBottom: 9, borderRadius: 16, border: "1.5px solid var(--line2)", background: "#fff", fontWeight: 700, fontSize: 16 }}>
+            {m2.label}
+          </button>
+        ))}
+      </>))}
+
+      {/* ---------- shift note ---------- */}
+      {mode === "note" && sheet(tx("Shift note", "Shift note", "\u0936\u093F\u092B\u094D\u091F \u0928\u094B\u091F"), (<>
+        <textarea className="input" rows={4} placeholder={tx("Anything the owner should know", "Maalik ko kya batana hai", "\u092E\u093E\u0932\u093F\u0915 \u0915\u094B \u0915\u094D\u092F\u093E \u092C\u0924\u093E\u0928\u093E \u0939\u0948")} value={f.note || ""} onChange={(e) => setF({ ...f, note: e.target.value })} style={{ resize: "none", lineHeight: 1.5 }} />
+        <button className="btn btn-grn press" style={{ width: "100%", marginTop: 12, padding: 15 }} disabled={busy || !String(f.note || "").trim()}
+          onClick={() => post({ kind: "note", note: String(f.note || "").trim() }, tx("Sent", "Bhej diya", "\u092D\u0947\u091C \u0926\u093F\u092F\u093E"))}>
+          {tx("Send to owner", "Maalik ko bhejein", "\u092E\u093E\u0932\u093F\u0915 \u0915\u094B \u092D\u0947\u091C\u0947\u0902")}
+        </button>
+      </>))}
+
+      {/* ---------- device menu ---------- */}
+      {menu && (
+        <div onClick={() => setMenu(false)} style={{ position: "absolute", inset: 0, zIndex: 80, background: "rgba(16,26,20,.45)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+          <div className="anim-in" onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: "26px 26px 0 0", padding: "18px 18px calc(18px + env(safe-area-inset-bottom))" }}>
+            <div style={{ width: 40, height: 4, borderRadius: 3, background: "var(--line2)", margin: "0 auto 16px" }} />
+            <button className="btn btn-ghost press" style={{ width: "100%", marginBottom: 10 }} onClick={() => { setMenu(false); load(); }}>{tx("Refresh", "Refresh karein", "\u0930\u093F\u092B\u094D\u0930\u0947\u0936")}</button>
+            <button className="btn btn-ghost press" style={{ width: "100%", color: "var(--red)" }} onClick={() => { floorSave(null); onExit(); }}>{tx("Remove this phone from the shop", "Is phone ko shop se hatayein", "\u0907\u0938 \u092B\u094B\u0928 \u0915\u094B \u0939\u091F\u093E\u090F\u0902")}</button>
+            <div className="hint" style={{ textAlign: "center", marginTop: 12 }}>{tx("Nothing from the shop is stored on this phone.", "Is phone par shop ka koi data nahi rakha jaata.", "\u0907\u0938 \u092B\u094B\u0928 \u092A\u0930 \u0936\u0949\u092A \u0915\u093E \u0921\u0947\u091F\u093E \u0928\u0939\u0940\u0902 \u0930\u0939\u0924\u093E\u0964")}</div>
+          </div>
+        </div>
+      )}
     </div></div>
   );
 }
@@ -4637,7 +5193,7 @@ function Help({ data, ping, startTut }) {
    Which machine is running which part, % done, time remaining.
    Pure time math off startedAt - no background process. Estimates carry a
    +8% breakdown / tool-change buffer (JOB_BUFFER). */
-function MachineFloor({ data, setData, ping, onBack, goSetup, draft, clearDraft }) {
+function MachineFloor({ data, setData, ping, onBack, goSetup, draft, clearDraft, floorEvents = [], onFloorSeen, addFloorEvent }) {
   const [now, setNow] = useState(Date.now());
   const [formOpen, setFormOpen] = useState(false);
   const [f, setF] = useState({ part: "", customer: "", cycleMin: "", qty: "", manualMin: "1", units: [] });
@@ -4654,6 +5210,17 @@ function MachineFloor({ data, setData, ping, onBack, goSetup, draft, clearDraft 
 
   const units = machineUnits(data);
   const jobs = data.jobs || [];
+  /* the SAME reducer the worker's phone runs, over the same log - the two
+     screens can never disagree about which machine is down */
+  const fview = floorView({
+    machines: units.map((u) => ({ uid: u.uid, label: u.name })),
+    jobs: (data.jobs || []).filter((j) => !j.done).map((j) => ({ id: j.id, part: j.part, customer: j.customer, qty: j.qty, startedAt: j.startedAt, alloc: jobAlloc(j) })),
+    events: floorEvents,
+  });
+  const downBy = {}; fview.down.forEach((m) => { downBy[m.uid] = m; });
+  const unseenFloor = floorEvents.filter((e) => !e.seen).length;
+  /* opening this page IS reading the feed */
+  useEffect(() => { if (unseenFloor && onFloorSeen) { const t = setTimeout(onFloorSeen, 1200); return () => clearTimeout(t); } return undefined; }, [unseenFloor]);
   const active = jobs.filter((j) => !j.done);
   const doneJobs = jobs.filter((j) => j.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0)).slice(0, 5);
   const busy = {};
@@ -4679,6 +5246,21 @@ function MachineFloor({ data, setData, ping, onBack, goSetup, draft, clearDraft 
     setF({ part: "", customer: "", cycleMin: "", qty: "", manualMin: "1", units: [] });
     setFormOpen(false);
     ping(tx("Job started - ", "Job chalu - ", "काम चालू - ") + job.part);
+  };
+  /* the floor moved work to another machine. Their view is already right; this
+     rewrites the job's allocation so this app's ETA maths agrees with it. */
+  const applyFloorMove = (jobId, toUid, pcsDone) => {
+    setJob(jobId, (j) => {
+      const t0 = Date.now();
+      const done = Math.max(0, Math.min(Number(pcsDone) || 0, j.qty || 0));
+      const rem = Math.max(0, (j.qty || 0) - done);
+      const alloc = j.alloc.map((a) => ({ ...a, share: a.uid === toUid ? a.share : Math.min(a.share, done), stopped: a.uid !== toUid, pausedAt: null }));
+      const there = alloc.find((a) => a.uid === toUid);
+      if (there) { there.share = rem; there.stopped = false; there.startedAt = t0; there.pausedMin = 0; }
+      else alloc.push({ uid: toUid, share: rem, startedAt: t0, pausedMin: 0, pausedAt: null, stopped: false });
+      return { ...j, alloc, units: alloc.filter((a) => !a.stopped).map((a) => a.uid) };
+    });
+    ping(tx("Plan updated", "Plan update ho gaya", "\u092A\u094D\u0932\u093E\u0928 \u0905\u092A\u0921\u0947\u091F"));
   };
   const markDone = (id) => { setData({ ...data, jobs: jobs.map((j) => j.id === id ? { ...j, done: true, doneAt: Date.now() } : j) }); ping(tx("Job complete!", "Job complete!", "काम पूरा हुआ!")); };
   const delJob = (id) => { setData({ ...data, jobs: jobs.filter((j) => j.id !== id) }); ping(tx("Job removed", "Job hataya", "काम हटाया")); };
@@ -4757,10 +5339,10 @@ function MachineFloor({ data, setData, ping, onBack, goSetup, draft, clearDraft 
           <label className="lbl" style={{ marginTop: 12 }}>{tx("Which machines will run it? (tap to pick)", "Kitni machines par chalega? (tap karke chuno)", "कितनी मशीनों पर चलेगा? (चुनने के लिए दबाएं)")}</label>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {units.map((u) => {
-              const taken = !!busy[u.uid];
+              const taken = !!busy[u.uid], down = !!downBy[u.uid];
               return (
-                <button key={u.uid} disabled={taken} className={"fpill press " + (f.units.includes(u.uid) ? "on" : "")} style={taken ? { opacity: 0.45 } : undefined} onClick={() => toggleUnit(u.uid)}>
-                  {u.name}{taken ? tx(" - busy", " - busy", " - व्यस्त") : ""}
+                <button key={u.uid} disabled={taken || down} className={"fpill press " + (f.units.includes(u.uid) ? "on" : "")} style={taken || down ? { opacity: 0.45 } : undefined} onClick={() => toggleUnit(u.uid)}>
+                  {u.name}{down ? tx(" - stopped", " - band", " - बंद") : taken ? tx(" - busy", " - busy", " - व्यस्त") : ""}
                 </button>
               );
             })}
@@ -4779,6 +5361,29 @@ function MachineFloor({ data, setData, ping, onBack, goSetup, draft, clearDraft 
         </div>
       )}
 
+      {/* what the floor has told you: stopped machines first, because that is
+          the one thing that costs money while you read it */}
+      {fview.down.map((m) => (
+        <div key={m.uid} className="card anim-in" style={{ padding: "14px 15px", marginBottom: 10, background: "var(--red-bg)", borderColor: "#EFC7C2" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: "block", fontWeight: 700, fontSize: 15.5, color: "var(--red)" }}>{m.label} {tx("stopped", "band hai", "बंद है")}</span>
+              <span style={{ display: "block", fontSize: 13, color: "#7A2E2E", marginTop: 2 }}>
+                {reasonOf(m.reason).emoji} {LANG === "en" ? reasonOf(m.reason).en : reasonOf(m.reason).hi}{m.note ? " - " + m.note : ""}
+              </span>
+              <span className="mono" style={{ display: "block", fontSize: 11.5, color: "#9B6B6B", marginTop: 3 }}>
+                {fmtDur(Math.max(0, (now - m.since) / 60000))} {tx("so far", "se band", "से बंद")}
+              </span>
+            </span>
+            {addFloorEvent && (
+              <button className="btn btn-sm btn-soft press" style={{ flexShrink: 0 }} onClick={() => { addFloorEvent({ kind: "up", machineUid: m.uid }); ping(tx("Marked running", "Chalu mark kiya", "चालू किया")); }}>
+                {tx("Running again", "Chalu ho gayi", "चालू")}
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+
       {units.length > 0 && active.length === 0 && !formOpen && (
         <div className="card-tint anim-in" style={{ padding: 18, textAlign: "center", marginBottom: 12 }}>
           <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{tx("Nothing is running", "Koi job nahi chal raha", "कोई काम नहीं चल रहा")}</div>
@@ -4788,7 +5393,47 @@ function MachineFloor({ data, setData, ping, onBack, goSetup, draft, clearDraft 
       )}
 
       {units.map((u) => {
-        const job = busy[u.uid];
+        const fm = fview.machines.find((x) => x.uid === u.uid);
+        /* the floor said this machine is stopped - that beats anything the
+           plan in this app believes about it */
+        if (fm && fm.status === "down") return (
+          <div key={u.uid} className="card anim-in" style={{ padding: "13px 15px", marginBottom: 9, display: "flex", alignItems: "center", gap: 12, background: "var(--red-bg)", borderColor: "#EFC7C2" }}>
+            <span style={{ width: 38, height: 38, borderRadius: 11, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>{reasonOf(fm.reason).emoji}</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: "block", fontWeight: 700, fontSize: 15, color: "var(--red)" }}>{u.name}</span>
+              <span style={{ display: "block", fontSize: 12.5, color: "#7A2E2E" }}>{LANG === "en" ? reasonOf(fm.reason).en : reasonOf(fm.reason).hi} · {fmtDur(Math.max(0, (now - fm.since) / 60000))}</span>
+            </span>
+            <span className="mono" style={{ fontSize: 10.5, letterSpacing: ".1em", color: "var(--red)" }}>{tx("STOPPED", "BAND", "\u092C\u0902\u0926")}</span>
+          </div>
+        );
+        /* the floor moved the work here, or started something itself: show
+           THEIR numbers, and offer to fold it into the plan so the ETA maths
+           (which lives on the job's alloc) starts working again */
+        const planned = busy[u.uid];
+        const floorJob = fm && fm.job ? fview.jobs[fm.job] : null;
+        if (floorJob && (!planned || planned.id !== fm.job)) {
+          const inPlan = (data.jobs || []).find((j) => j.id === fm.job && !j.done);
+          return (
+            <div key={u.uid} className="card anim-in" style={{ padding: "14px 15px", marginBottom: 9, borderColor: "#CFE9D1", background: "#F7FCF8" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                <span style={{ fontWeight: 700, fontSize: 15 }}>{u.name}</span>
+                <span className="mono" style={{ fontSize: 10, letterSpacing: ".08em", color: "var(--grn-d)", background: "var(--grn-100)", padding: "3px 8px", borderRadius: 999 }}>{tx("FROM THE FLOOR", "FLOOR SE", "\u092B\u094D\u0932\u094B\u0930 \u0938\u0947")}</span>
+              </div>
+              <div style={{ fontSize: 13.5, color: "var(--dim)", margin: "3px 0 6px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {floorJob.part}{floorJob.customer ? " \u00b7 " + floorJob.customer : ""}
+              </div>
+              <div className="mono" style={{ fontSize: 12.5, color: "var(--grn-d)" }}>{floorJob.pcs}{floorJob.qty ? " / " + floorJob.qty : ""} {tx("pieces", "piece", "\u092A\u0940\u0938")} · {fmtDur(Math.max(0, (now - fm.since) / 60000))}</div>
+              {inPlan && (
+                <button className="btn btn-sm btn-soft press" style={{ marginTop: 10 }} onClick={() => applyFloorMove(fm.job, u.uid, floorJob.pcs)}>
+                  {tx("Update the plan to match", "App ke plan mein bhi daal do", "\u092A\u094D\u0932\u093E\u0928 \u092E\u0947\u0902 \u092D\u0940 \u0921\u093E\u0932\u0947\u0902")}
+                </button>
+              )}
+            </div>
+          );
+        }
+        /* the floor moved this job elsewhere - this machine is not running it
+           any more, whatever the plan in this app still says */
+        const job = planned && (!fm || fm.job === planned.id) ? planned : null;
         if (!job) return (
           <div key={u.uid} className="card anim-in" style={{ padding: "13px 15px", marginBottom: 9, display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ width: 38, height: 38, borderRadius: 11, background: "var(--soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>💤</span>
@@ -4877,6 +5522,26 @@ function MachineFloor({ data, setData, ping, onBack, goSetup, draft, clearDraft 
             <span className="pill won" style={{ flexShrink: 0 }}><i className="dot" />DONE</span>
           </div>
         ))}
+      </>)}
+
+      {/* everything the floor reported, newest first */}
+      {floorEvents.length > 0 && (<>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "24px 0 8px" }}>
+          <span className="eyebrow">{tx("From the floor", "Floor se khabar", "फ्लोर से खबर")}</span>
+          <span className="mono" style={{ fontSize: 10.5, color: "var(--faint)" }}>
+            {fview.todayPcs > 0 ? fview.todayPcs + tx(" pcs today", " pcs aaj", " पीस आज") : ""}{fview.todayRej > 0 ? " \u00b7 " + fview.todayRej + tx(" reject", " reject", " रिजेक्ट") : ""}
+          </span>
+        </div>
+        {floorEvents.slice(0, 15).map((e) => {
+          const l = floorLine(e, Object.fromEntries(fview.machines.map((m) => [m.uid, m])));
+          return (
+            <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 2px", borderBottom: "1px solid var(--line)", opacity: e.seen ? 1 : 1 }}>
+              <span style={{ flexShrink: 0 }}>{l.icon}</span>
+              <span style={{ flex: 1, fontSize: 13.5, lineHeight: 1.45, color: l.bad ? "var(--red)" : "var(--ink)", fontWeight: e.seen ? 400 : 600 }}>{l.text}</span>
+              <span className="mono" style={{ flexShrink: 0, fontSize: 11, color: "var(--faint)" }}>{fdateShort(e.at) === fdateShort(Date.now()) ? new Date(e.at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }) : fdateShort(e.at)}</span>
+            </div>
+          );
+        })}
       </>)}
 
       {units.length > 0 && <div style={{ marginTop: 14, textAlign: "center" }}><span className="hint" style={{ display: "inline" }}>{tx("Every estimate includes a +8% breakdown / tool-change buffer.", "Har estimate me +8% breakdown / tool-change buffer juda hai.", "हर अनुमान में +8% ब्रेकडाउन / टूल-चेंज बफर जुड़ा है।")}</span></div>}
@@ -5882,8 +6547,51 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
   const [tallyBusy, setTallyBusy] = useState(false);
   const [gmail, setGmail] = useState(null);         // { connected, email, error } | null
   const [gmailBusy, setGmailBusy] = useState(false);
+  const [devices, setDevices] = useState(null);     // floor phones: null while loading
+  const [pairCode, setPairCode] = useState(null);   // { code, expires }
+  const [devBusy, setDevBusy] = useState(false);
+  const [pushOn, setPushOn] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
   const cloudGoogle = !!(sb && account && account.method === "google");
   useEffect(() => { let alive = true; if (cloudGoogle) gmailStatus().then((d) => { if (alive) setGmail(d); }); return () => { alive = false; }; }, [cloudGoogle]);
+  /* shop-floor phones + breakdown notifications (cloud mode only) */
+  const loadDevices = async () => {
+    try {
+      const r = await fetch(WA_API + "/floor-pair", { headers: { accept: "application/json", ...(await authHeaders()) } });
+      const d = await r.json().catch(() => ({}));
+      setDevices(d.ok ? d.devices : []);
+    } catch { setDevices([]); }
+  };
+  useEffect(() => { let alive = true; if (sb && account) { loadDevices(); pushCurrent().then((x) => { if (alive) setPushOn(!!x); }); } return () => { alive = false; }; }, [account ? account.uid : null]);
+  const makeCode = async () => {
+    setDevBusy(true);
+    try {
+      const r = await fetch(WA_API + "/floor-pair", { method: "POST", headers: { "content-type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ action: "create" }) });
+      const d = await r.json().catch(() => ({}));
+      if (d.ok) { setPairCode({ code: d.code, expires: d.expires }); loadDevices(); }
+      else ping(tx("Could not make a code", "Code nahi ban paya", "कोड नहीं बना"));
+    } catch { ping(tx("No internet", "Internet nahi hai", "इंटरनेट नहीं")); }
+    setDevBusy(false);
+  };
+  const dropDevice = async (id) => {
+    setDevBusy(true);
+    try {
+      await fetch(WA_API + "/floor-pair", { method: "POST", headers: { "content-type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ action: "remove", id }) });
+      await loadDevices();
+      ping(tx("Phone removed", "Phone hata diya", "फोन हटा दिया"));
+    } catch { ping(tx("Could not remove", "Hata nahi paye", "हटा नहीं पाए")); }
+    setDevBusy(false);
+  };
+  const togglePush = async () => {
+    setPushBusy(true);
+    if (pushOn) { await pushDisable(); setPushOn(false); ping(tx("Notifications off", "Notification band", "नोटिफिकेशन बंद")); }
+    else {
+      const r = await pushEnable();
+      if (r.ok) { setPushOn(true); ping(tx("You will be told when a machine stops", "Machine band hone par pata chal jayega", "मशीन बंद होने पर पता चलेगा")); }
+      else ping(tx("Could not turn on (", "Chalu nahi hua (", "चालू नहीं हुआ (") + r.why + ")");
+    }
+    setPushBusy(false);
+  };
   const s = data.settings;
   const setS = (k, v) => setData({ ...data, settings: { ...s, [k]: v } });
   const ind = industryOf(data);
@@ -6332,6 +7040,66 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
               </span>
             </>
           )}
+        </div>
+      </>)}
+
+      {/* ===== Shop floor phones (machining, cloud mode) ===== */}
+      {isMach && sb && account && (<>
+        <div className="anim-in st5" style={{ margin: "26px 0 6px" }}><span className="eyebrow">{tx("Shop floor phones", "Shop floor ke phone", "शॉप फ्लोर के फोन")}</span></div>
+        <div className="card anim-in st5" style={{ padding: 16 }}>
+          <div style={{ fontSize: 13.5, color: "var(--dim)", lineHeight: 1.6 }}>
+            {tx("Give the floor a phone of its own. It shows only the machines and the work - no rates, no money, no customers' dues - and whatever is entered there reaches you here.",
+                "Floor ko apna phone dein. Us par sirf machine aur kaam dikhta hai - rate, paisa, kisi ka baki kuch nahi - aur wahan jo likha jaata hai wo yahan aapko dikh jata hai.",
+                "फ्लोर को अपना फोन दें। उस पर सिर्फ मशीन और काम दिखता है - रेट या पैसा नहीं।")}
+          </div>
+
+          {pairCode && (
+            <div style={{ marginTop: 14, padding: "16px 14px", borderRadius: 16, background: "#F3FBF4", border: "1.5px solid #CFE9D1", textAlign: "center" }}>
+              <div className="microlbl" style={{ color: "var(--grn-d)" }}>{tx("TYPE THIS ON THAT PHONE", "US PHONE PAR YE CODE DAALEIN", "उस फोन पर यह कोड डालें")}</div>
+              <div className="h-disp mono" style={{ fontSize: 40, fontWeight: 700, letterSpacing: ".18em", color: "var(--grn-d)", margin: "8px 0 4px" }}>{pairCode.code}</div>
+              <div style={{ fontSize: 12.5, color: "var(--dim)", lineHeight: 1.5 }}>
+                {tx("On that phone open trackrakho.com and tap \"Shop floor phone? Pair it\" at the bottom. The code works once, for 15 minutes.",
+                    "Us phone par trackrakho.com kholein aur neeche \"Shop floor ka phone? Yahan jodein\" dabayein. Code ek hi baar, 15 minute ke liye chalega.",
+                    "उस फोन पर trackrakho.com खोलें और नीचे वाला बटन दबाएं। कोड एक बार, 15 मिनट चलेगा।")}
+              </div>
+            </div>
+          )}
+
+          <button className="btn btn-grn press" style={{ width: "100%", marginTop: 14 }} disabled={devBusy} onClick={makeCode}>
+            {pairCode ? tx("New code", "Naya code", "नया कोड") : "+ " + tx("Add a floor phone", "Floor phone jodein", "फ्लोर फोन जोड़ें")}
+          </button>
+
+          {(devices || []).filter((d) => d.pairedAt).map((d) => (
+            <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 12, marginTop: 12, borderTop: "1px solid var(--line)" }}>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontWeight: 600, fontSize: 14.5 }}>{d.name || tx("Floor phone", "Floor phone", "फ्लोर फोन")}</span>
+                <span className="mono" style={{ display: "block", fontSize: 11.5, color: "var(--faint)" }}>
+                  {d.lastSeen ? tx("last used ", "aakhri baar ", "आखिरी बार ") + fdateShort(Date.parse(d.lastSeen)) : tx("never used", "abhi use nahi hua", "अभी इस्तेमाल नहीं")}
+                </span>
+              </span>
+              <button className="btn btn-sm btn-ghost press" style={{ color: "var(--red)", flexShrink: 0 }} disabled={devBusy} onClick={() => dropDevice(d.id)}>
+                {tx("Remove", "Hatao", "हटाएं")}
+              </button>
+            </div>
+          ))}
+          {devices && devices.filter((d) => d.pairedAt).length === 0 && !pairCode && (
+            <div className="hint" style={{ marginTop: 10, textAlign: "center" }}>{tx("No floor phone yet.", "Abhi koi floor phone nahi juda.", "अभी कोई फ्लोर फोन नहीं जुड़ा।")}</div>
+          )}
+        </div>
+
+        {/* breakdown alerts */}
+        <div className="card anim-in st5" style={{ padding: 16, marginTop: 10, display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", fontWeight: 700, fontSize: 15 }}>{tx("Tell me when a machine stops", "Machine band ho to batao", "मशीन बंद हो तो बताएं")}</span>
+            <span style={{ display: "block", fontSize: 12.5, color: "var(--dim)", marginTop: 2, lineHeight: 1.5 }}>
+              {tx("A notification on this phone the moment the floor reports a stopped machine. Only breakdowns - counts stay in the app.",
+                  "Jaise hi floor kisi machine ko band bataye, is phone par notification aa jayega. Sirf breakdown - piece ki ginti app mein hi rahegi.",
+                  "मशीन बंद होते ही इस फोन पर नोटिफिकेशन। सिर्फ ब्रेकडाउन।")}
+            </span>
+          </span>
+          <button className={"btn btn-sm press " + (pushOn ? "btn-grn" : "btn-ghost")} style={{ flexShrink: 0 }} disabled={pushBusy} onClick={togglePush}>
+            {pushOn ? tx("On", "Chalu", "चालू") : tx("Turn on", "Chalu karein", "चालू करें")}
+          </button>
         </div>
       </>)}
 
