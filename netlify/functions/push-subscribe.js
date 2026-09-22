@@ -8,6 +8,8 @@
    Rows are written with the service role - a browser can read its own rows
    (RLS) but never write someone else's. */
 
+import { sendToOwner } from "./push-send.js";
+
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json" } });
 
 async function requireUser(req) {
@@ -57,6 +59,15 @@ export default async (req) => {
   }
 
   if (req.method !== "POST") return json({ ok: false, error: "method not allowed" }, 405);
+
+  /* "does this phone actually buzz?" - answers it without breaking a machine */
+  if (body.test) {
+    const r = await sendToOwner(user.id, {
+      title: "TrackRakho", body: "Test - notification chalu hai", tag: "test", url: "/",
+    });
+    console.log("push-subscribe: test push ->", JSON.stringify(r));
+    return json({ ok: r.sent > 0, sent: r.sent, dropped: r.dropped });
+  }
 
   const sub = body.subscription || {};
   const endpoint = String(sub.endpoint || "");

@@ -63,11 +63,35 @@ export default async (req) => {
     note: String(body.note || "").slice(0, 300) || null,
     at: Date.now(),
   };
+  /* a floor-started job carries its whole definition, so the owner's app can
+     materialise it as a real job (with ETA maths) instead of a bare note */
+  if (kind === "start" && body.payload && typeof body.payload === "object") {
+    const p = body.payload;
+    row.payload = {
+      part: String(p.part || "").slice(0, 60),
+      customer: String(p.customer || "").slice(0, 40),
+      qty: num(p.qty) || 0,
+      cycleMin: num(p.cycleMin) || 0,
+      manualMin: num(p.manualMin) || 0,
+      units: Array.isArray(p.units) ? p.units.slice(0, 12).map((u) => String(u).slice(0, 60)) : [],
+    };
+  }
 
+  const insert = (body2) => fetch(url + "/rest/v1/floor_events", {
+    method: "POST", headers: { ...hdrs, prefer: "return=representation" }, body: JSON.stringify(body2),
+  });
   try {
-    const r = await fetch(url + "/rest/v1/floor_events", {
-      method: "POST", headers: { ...hdrs, prefer: "return=representation" }, body: JSON.stringify(row),
-    });
+    let r = await insert(row);
+    /* floor.sql adds `payload` later than the first release - if the column is
+       not there yet, save the event anyway rather than blocking the floor */
+    if (!r.ok && row.payload) {
+      const why = await r.text();
+      if (/payload/i.test(why)) {
+        console.warn("floor-event: payload column missing - re-run supabase/floor.sql. Saving without it.");
+        const { payload, ...rest } = row;
+        r = await insert(rest);
+      } else { console.error("floor-event: insert failed", r.status, why); return json({ ok: false, error: "could not save" }, 502); }
+    }
     if (!r.ok) { console.error("floor-event: insert failed", r.status, await r.text()); return json({ ok: false, error: "could not save" }, 502); }
     const saved = (await r.json())[0] || row;
     console.log("floor-event:", kind, row.machine_uid || "", row.reason || "", "for user", dev.user_id);

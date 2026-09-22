@@ -72,7 +72,7 @@ export default async (req) => {
     /* the floor's own log - the last three days is plenty for a shift */
     const since = Date.now() - 3 * 86400000;
     const e = await fetch(url + "/rest/v1/floor_events?user_id=eq." + dev.user_id + "&at=gte." + since +
-      "&select=id,kind,machine_uid,from_uid,job_id,qty,rej,reason,note,at&order=id.desc&limit=400", { headers: hdrs });
+      "&select=id,kind,machine_uid,from_uid,job_id,qty,rej,reason,note,payload,at&order=id.desc&limit=400", { headers: hdrs });
     const events = e.ok ? await e.json() : [];
 
     return json({ ok: true, device: { id: dev.id, name: dev.name }, ...slice, events });

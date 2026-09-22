@@ -1065,10 +1065,15 @@ function floorView(board) {
   evs.forEach((e) => {
     const m = e.machine_uid ? machines[e.machine_uid] : null;
     if (e.kind === "start") {
-      /* work the floor started itself: either one of the owner's jobs, or a
-         quick "doosra kaam" that only exists as this event */
-      if (!jobs[e.job_id]) jobs[e.job_id] = { id: e.job_id, part: e.note || "Kaam", customer: "", qty: Number(e.qty) || 0, pcs: 0, rej: 0, done: false, adhoc: true };
-      if (m && m.status !== "down") { m.status = "run"; m.job = e.job_id; m.since = e.at; }
+      /* work the floor started itself. With a payload it is a FULL job - part,
+         qty, cycle and handling time - which the owner's app materialises into
+         a real job, ETA maths and all. */
+      const p = e.payload || null;
+      if (!jobs[e.job_id]) jobs[e.job_id] = { id: e.job_id, part: (p && p.part) || e.note || "Kaam", customer: (p && p.customer) || "",
+        qty: (p && Number(p.qty)) || Number(e.qty) || 0, cycleMin: (p && Number(p.cycleMin)) || 0, manualMin: (p && Number(p.manualMin)) || 0,
+        pcs: 0, rej: 0, done: false, adhoc: true, units: (p && p.units) || (e.machine_uid ? [e.machine_uid] : []), startedAt: e.at };
+      const on = (p && p.units && p.units.length) ? p.units : (e.machine_uid ? [e.machine_uid] : []);
+      on.forEach((uid2) => { const mm = machines[uid2]; if (mm && mm.status !== "down") { mm.status = "run"; mm.job = e.job_id; mm.since = e.at; } });
     } else if (e.kind === "count") {
       if (jobs[e.job_id]) jobs[e.job_id].pcs += Number(e.qty) || 0;
       if (m) m.pcs += Number(e.qty) || 0;
@@ -1098,6 +1103,43 @@ function floorView(board) {
     todayRej: evs.filter((e) => e.kind === "done" && e.at >= startOfDay(Date.now())).reduce((n, e) => n + (Number(e.rej) || 0), 0),
   };
 }
+/* The day, added up. This is the part a WhatsApp message cannot give you:
+   how long each machine actually stood still, and which reason ate the hours.
+   Down time is measured from each `down` to its `up` (or to now, if it is
+   still stopped), so it is real clock time, not someone's memory. */
+function floorDay(events, from) {
+  const since = from == null ? startOfDay(Date.now()) : from;
+  const evs = [...(events || [])].filter((e) => e.at >= since).sort((a, b) => (a.at || 0) - (b.at || 0));
+  const now = Date.now();
+  const byMachine = {}, byReason = {};
+  const openDown = {};
+  let pcs = 0, rej = 0;
+  const get = (uid2) => (byMachine[uid2] = byMachine[uid2] || { downMin: 0, pcs: 0, rej: 0, stops: 0 });
+  evs.forEach((e) => {
+    if (e.kind === "count" || e.kind === "done") {
+      pcs += Number(e.qty) || 0; rej += Number(e.rej) || 0;
+      if (e.machine_uid) { const m = get(e.machine_uid); m.pcs += Number(e.qty) || 0; m.rej += Number(e.rej) || 0; }
+    } else if (e.kind === "down" && e.machine_uid) {
+      openDown[e.machine_uid] = { at: e.at, reason: e.reason || "breakdown" };
+      get(e.machine_uid).stops++;
+    } else if (e.kind === "up" && e.machine_uid && openDown[e.machine_uid]) {
+      const d = openDown[e.machine_uid], mins = Math.max(0, (e.at - d.at) / 60000);
+      get(e.machine_uid).downMin += mins;
+      byReason[d.reason] = (byReason[d.reason] || 0) + mins;
+      delete openDown[e.machine_uid];
+    }
+  });
+  /* machines still stopped keep counting against the day */
+  Object.keys(openDown).forEach((uid2) => {
+    const d = openDown[uid2], mins = Math.max(0, (now - d.at) / 60000);
+    get(uid2).downMin += mins;
+    byReason[d.reason] = (byReason[d.reason] || 0) + mins;
+  });
+  const downMin = Object.values(byMachine).reduce((n, m) => n + m.downMin, 0);
+  const top = Object.keys(byReason).sort((a, b) => byReason[b] - byReason[a])[0] || "";
+  return { pcs, rej, downMin, byMachine, byReason, topReason: top, topReasonMin: top ? byReason[top] : 0, stillDown: Object.keys(openDown).length };
+}
+
 /* one line per event, in the owner's feed and the worker's history */
 function floorLine(e, machines) {
   const label = (machines && machines[e.machine_uid] && machines[e.machine_uid].label) || e.machine_uid || "";
@@ -2265,7 +2307,7 @@ export default function App() {
     const pull = async () => {
       try {
         const since = Date.now() - 3 * DAY;
-        const r = await sb.from("floor_events").select("id,kind,machine_uid,from_uid,job_id,qty,rej,reason,note,at,seen")
+        const r = await sb.from("floor_events").select("id,kind,machine_uid,from_uid,job_id,qty,rej,reason,note,payload,at,seen")
           .gte("at", since).order("id", { ascending: false }).limit(300);
         if (alive && !r.error && r.data) setFloorEvents(r.data);
       } catch {}
@@ -2274,6 +2316,28 @@ export default function App() {
     pull();
     return () => { alive = false; clearTimeout(t); };
   }, [account ? account.uid : null]);
+
+  /* A job the floor started arrives as an event with the whole definition in
+     it. The owner's app is the only writer of shop_data, so THIS is where it
+     becomes a real job - with alloc, ETA and history like any other. Runs once
+     per job id; a job the owner deleted is not resurrected (deletedFloor). */
+  useEffect(() => {
+    if (!data || !floorEvents.length) return;
+    const have = new Set((data.jobs || []).map((j) => j.id));
+    const gone = new Set(data.deletedFloor || []);
+    const fresh = floorEvents.filter((e) => e.kind === "start" && e.payload && e.job_id && !have.has(e.job_id) && !gone.has(e.job_id));
+    if (!fresh.length) return;
+    const add = fresh.map((e) => {
+      const p = e.payload || {};
+      const units = (p.units && p.units.length ? p.units : [e.machine_uid]).filter(Boolean);
+      const q = Math.max(0, Math.floor(Number(p.qty) || 0));
+      const sh = jobShares({ qty: q, units });
+      return { id: e.job_id, part: p.part || "Kaam", customer: p.customer || "", cycleMin: Number(p.cycleMin) || 0,
+        manualMin: Number(p.manualMin) || 0, qty: q, units, startedAt: e.at, done: false, fromFloor: true,
+        alloc: units.map((u, i) => ({ uid: u, share: sh[i], startedAt: e.at, pausedMin: 0, pausedAt: null, stopped: false })) };
+    });
+    setData((d) => ({ ...d, jobs: [...add, ...(d.jobs || [])] }));
+  }, [floorEvents, data && data.jobs && data.jobs.length]);
 
   const markFloorSeen = async () => {
     const ids = floorEvents.filter((e) => !e.seen).map((e) => e.id);
@@ -3026,14 +3090,44 @@ function FloorApp({ onExit }) {
             <span style={{ display: "block", fontSize: 13, color: "var(--dim)", marginTop: 2 }}>{[j.customer, j.qty ? j.qty + " pcs" : ""].filter(Boolean).join(" \u00b7 ")}</span>
           </button>
         ))}
+        {/* a new job, with everything the ETA maths needs - the floor can
+            CREATE work, not only report on the owner's plan */}
         <div style={{ borderTop: "1px solid var(--line)", marginTop: 12, paddingTop: 14 }}>
-          <label className="lbl">{tx("Or something else", "Ya doosra kaam", "\u092F\u093E \u0926\u0942\u0938\u0930\u093E \u0915\u093E\u092E")}</label>
+          <label className="lbl">{tx("Or start a new job", "Ya naya kaam shuru karein", "\u092F\u093E \u0928\u092F\u093E \u0915\u093E\u092E")}</label>
           <input className="input" placeholder={tx("part name", "part ka naam", "\u092A\u093E\u0930\u094D\u091F \u0915\u093E \u0928\u093E\u092E")} value={f.part || ""} onChange={(e) => setF({ ...f, part: e.target.value })} />
-          <input className="input mono" type="number" inputMode="numeric" placeholder={tx("how many pieces", "kitne piece", "\u0915\u093F\u0924\u0928\u0947 \u092A\u0940\u0938")} value={f.qty || ""} onChange={(e) => setF({ ...f, qty: e.target.value })} style={{ marginTop: 10 }} />
-          <button className="btn btn-grn press" style={{ width: "100%", marginTop: 12, padding: 15 }} disabled={busy || !String(f.part || "").trim()}
-            onClick={() => post({ kind: "start", machineUid: machine.uid, jobId: "fl_" + uid(), qty: Number(f.qty) || 0, note: String(f.part || "").trim() }, tx("Started", "Shuru ho gaya", "\u0936\u0941\u0930\u0942"))}>
-            {tx("Start", "Shuru karein", "\u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902")}
+          <input className="input" placeholder={tx("customer (optional)", "customer (optional)", "\u0917\u094D\u0930\u093E\u0939\u0915 (\u0935\u0948\u0915\u0932\u094D\u092A\u093F\u0915)")} value={f.customer || ""} onChange={(e) => setF({ ...f, customer: e.target.value })} style={{ marginTop: 10 }} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
+            <div>
+              <label className="lbl" style={{ fontSize: 12.5 }}>{tx("How many pieces", "Kitne piece", "\u0915\u093F\u0924\u0928\u0947 \u092A\u0940\u0938")}</label>
+              <input className="input mono" type="number" inputMode="numeric" placeholder="200" value={f.qty || ""} onChange={(e) => setF({ ...f, qty: e.target.value })} />
+            </div>
+            <div>
+              <label className="lbl" style={{ fontSize: 12.5 }}>{tx("Minutes per piece", "Ek piece ka time (min)", "\u090F\u0915 \u092A\u0940\u0938 \u0915\u093E \u0938\u092E\u092F")}</label>
+              <input className="input mono" type="number" inputMode="decimal" placeholder="4.5" value={f.cycleMin || ""} onChange={(e) => setF({ ...f, cycleMin: e.target.value })} />
+            </div>
+          </div>
+          <label className="lbl" style={{ fontSize: 12.5, marginTop: 10 }}>{tx("Handling per piece (min)", "Har piece par haath ka time (min)", "\u0939\u093E\u0925 \u0915\u093E \u0938\u092E\u092F")}</label>
+          <input className="input mono" type="number" inputMode="decimal" placeholder="1" value={f.manualMin == null ? "1" : f.manualMin} onChange={(e) => setF({ ...f, manualMin: e.target.value })} />
+          {/* more than one machine on the same job, same as the owner's form */}
+          {view.free.filter((x) => x.uid !== machine.uid).length > 0 && (<>
+            <label className="lbl" style={{ fontSize: 12.5, marginTop: 12 }}>{tx("Also run it on (optional)", "Iske alawa in machines par bhi (optional)", "\u0907\u0928 \u092E\u0936\u0940\u0928\u094B\u0902 \u092A\u0930 \u092D\u0940")}</label>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {view.free.filter((x) => x.uid !== machine.uid).map((x) => (
+                <button key={x.uid} className={"fpill press " + ((f.extra || []).includes(x.uid) ? "on" : "")}
+                  onClick={() => setF({ ...f, extra: (f.extra || []).includes(x.uid) ? (f.extra || []).filter((y) => y !== x.uid) : [...(f.extra || []), x.uid] })}>
+                  {x.label}
+                </button>
+              ))}
+            </div>
+          </>)}
+          <button className="btn btn-grn press" style={{ width: "100%", marginTop: 12, padding: 15 }} disabled={busy || !String(f.part || "").trim() || !(Number(f.qty) > 0)}
+            onClick={() => post({ kind: "start", machineUid: machine.uid, jobId: "fl_" + uid(), qty: Number(f.qty) || 0, note: String(f.part || "").trim(),
+              payload: { part: String(f.part || "").trim(), customer: String(f.customer || "").trim(), qty: Number(f.qty) || 0,
+                cycleMin: Number(f.cycleMin) || 0, manualMin: f.manualMin == null ? 1 : Number(f.manualMin) || 0,
+                units: [machine.uid, ...(f.extra || [])] } }, tx("Started", "Shuru ho gaya", "\u0936\u0941\u0930\u0942"))}>
+            {tx("Start this job", "Ye kaam shuru karein", "\u092F\u0939 \u0915\u093E\u092E \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902")}
           </button>
+          <span className="hint">{tx("The owner's app turns this into a proper job with a finish time.", "Maalik ke app mein ye poora job ban jayega - khatam hone ka time ke saath.", "")}</span>
         </div>
       </>))}
 
@@ -5263,7 +5357,13 @@ function MachineFloor({ data, setData, ping, onBack, goSetup, draft, clearDraft,
     ping(tx("Plan updated", "Plan update ho gaya", "\u092A\u094D\u0932\u093E\u0928 \u0905\u092A\u0921\u0947\u091F"));
   };
   const markDone = (id) => { setData({ ...data, jobs: jobs.map((j) => j.id === id ? { ...j, done: true, doneAt: Date.now() } : j) }); ping(tx("Job complete!", "Job complete!", "काम पूरा हुआ!")); };
-  const delJob = (id) => { setData({ ...data, jobs: jobs.filter((j) => j.id !== id) }); ping(tx("Job removed", "Job hataya", "काम हटाया")); };
+  const delJob = (id) => {
+    /* a job the floor started lives in the event log too - remember the
+       deletion or the next poll would bring it straight back */
+    const wasFloor = (jobs.find((j) => j.id === id) || {}).fromFloor;
+    setData({ ...data, jobs: jobs.filter((j) => j.id !== id), deletedFloor: wasFloor ? [...(data.deletedFloor || []), id] : (data.deletedFloor || []) });
+    ping(tx("Job removed", "Job hataya", "काम हटाया"));
+  };
   /* setJob deep-copies the alloc so mutating inside fn is safe */
   const setJob = (id, fn) => setData({ ...data, jobs: jobs.map((j) => j.id === id ? fn({ ...j, alloc: jobAlloc(j).map((a) => ({ ...a })) }) : j) });
   const pauseUnit = (jobId, u) => { setJob(jobId, (j) => ({ ...j, alloc: j.alloc.map((a) => a.uid === u && !a.stopped ? { ...a, pausedAt: Date.now() } : a) })); ping(tx("Paused - the clock is stopped", "Pause ho gaya - time ruk gaya", "रोक दिया - समय रुक गया")); };
@@ -5523,6 +5623,37 @@ function MachineFloor({ data, setData, ping, onBack, goSetup, draft, clearDraft,
           </div>
         ))}
       </>)}
+
+      {/* the day, added up - the reason logging is worth the taps */}
+      {floorEvents.length > 0 && (() => {
+        const day = floorDay(floorEvents);
+        if (!day.pcs && !day.downMin && !day.rej) return null;
+        return (
+          <div className="card anim-in" style={{ padding: "15px 16px", marginTop: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <span className="eyebrow">{tx("Today on the floor", "Aaj floor par", "आज फ्लोर पर")}</span>
+              <span className="mono" style={{ fontSize: 10, letterSpacing: ".1em", color: "var(--faint)" }}>{new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short" }).toUpperCase()}</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 9 }}>
+              {[[tx("MADE", "BANE", "बने"), String(day.pcs), "var(--grn-d)"],
+                [tx("REJECT", "REJECT", "रिजेक्ट"), String(day.rej), day.rej > 0 ? "var(--red)" : "var(--ink)"],
+                [tx("STOPPED", "BAND RAHI", "बंद रही"), day.downMin >= 1 ? fmtDur(day.downMin) : "0", day.downMin >= 30 ? "var(--red)" : "var(--ink)"]].map(([l, v, c]) => (
+                <div key={l} style={{ background: "var(--soft)", border: "1px solid var(--line)", borderRadius: 14, padding: "11px 12px" }}>
+                  <div className="h-disp mono" style={{ fontSize: 19, fontWeight: 700, color: c, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{v}</div>
+                  <div className="mono" style={{ fontSize: 10, fontWeight: 600, color: "var(--faint)", letterSpacing: ".06em", marginTop: 2 }}>{l}</div>
+                </div>
+              ))}
+            </div>
+            {day.topReason && day.topReasonMin >= 1 && (
+              <div style={{ fontSize: 13, color: "var(--dim)", marginTop: 11, lineHeight: 1.5 }}>
+                {tx("Biggest loss today: ", "Sabse zyada time gaya: ", "सबसे ज़्यादा समय गया: ")}
+                <b style={{ color: "var(--ink)" }}>{reasonOf(day.topReason).emoji} {LANG === "en" ? reasonOf(day.topReason).en : reasonOf(day.topReason).hi}</b>
+                {" - " + fmtDur(day.topReasonMin)}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* everything the floor reported, newest first */}
       {floorEvents.length > 0 && (<>
@@ -7097,9 +7228,23 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
                   "मशीन बंद होते ही इस फोन पर नोटिफिकेशन। सिर्फ ब्रेकडाउन।")}
             </span>
           </span>
-          <button className={"btn btn-sm press " + (pushOn ? "btn-grn" : "btn-ghost")} style={{ flexShrink: 0 }} disabled={pushBusy} onClick={togglePush}>
-            {pushOn ? tx("On", "Chalu", "चालू") : tx("Turn on", "Chalu karein", "चालू करें")}
-          </button>
+          <span style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+            <button className={"btn btn-sm press " + (pushOn ? "btn-grn" : "btn-ghost")} disabled={pushBusy} onClick={togglePush}>
+              {pushOn ? tx("On", "Chalu", "चालू") : tx("Turn on", "Chalu karein", "चालू करें")}
+            </button>
+            {pushOn && (
+              <button className="btn btn-sm btn-soft press" disabled={pushBusy} onClick={async () => {
+                setPushBusy(true);
+                try {
+                  const r = await fetch(WA_API + "/push-subscribe", { method: "POST", headers: { "content-type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ test: true }) });
+                  const d = await r.json().catch(() => ({}));
+                  ping(d.ok ? tx("Sent - watch for it", "Bhej diya - dekhiye aata hai ya nahi", "भेज दिया - देखिए")
+                    : tx("This phone is not registered - turn it off and on again", "Ye phone registered nahi hai - band karke dobara chalu karein", "यह फोन रजिस्टर नहीं है"));
+                } catch { ping(tx("No internet", "Internet nahi hai", "इंटरनेट नहीं")); }
+                setPushBusy(false);
+              }}>{tx("Test", "Test karein", "टेस्ट")}</button>
+            )}
+          </span>
         </div>
       </>)}
 

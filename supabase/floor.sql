@@ -68,6 +68,12 @@ create table if not exists public.floor_events (
   seen        boolean not null default false,
   created_at  timestamptz default now()
 );
+-- payload carries whatever a kind needs beyond the columns above. A `start`
+-- from the floor carries the whole job (part, customer, qty, cycleMin,
+-- manualMin, units) so the owner's app can turn it into a REAL job with a real
+-- ETA - the floor is allowed to create work, not just report on it.
+alter table public.floor_events add column if not exists payload jsonb;
+
 create index if not exists floor_events_user_at on public.floor_events(user_id, id desc);
 
 alter table public.floor_events enable row level security;
