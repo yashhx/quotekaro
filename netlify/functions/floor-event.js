@@ -96,15 +96,32 @@ export default async (req) => {
     const saved = (await r.json())[0] || row;
     console.log("floor-event:", kind, row.machine_uid || "", row.reason || "", "for user", dev.user_id);
 
+    /* Which events are worth a buzz: a stopped machine, a finished job, and a
+       note the worker deliberately wrote to the owner. Piece counts stay
+       silent - a buzz per piece gets notifications muted within a day.
+
+       This MUST be awaited. A serverless container freezes the moment the
+       response is sent, so a floating promise here simply never ran - the
+       Test button worked (it awaits inside the handler) while real
+       breakdowns silently sent nothing. */
+    const label = String(body.machineLabel || row.machine_uid || "Machine").slice(0, 40);
+    let alert = null;
     if (kind === "down") {
-      /* machine label, not the internal uid - "VMC 850 #2 band ho gaya" */
-      const label = String(body.machineLabel || row.machine_uid || "Machine").slice(0, 40);
-      sendToOwner(dev.user_id, {
-        title: label + " band ho gaya",
+      alert = { title: label + " band ho gaya",
         body: (REASON_TEXT[reason] || reason) + (row.note ? " - " + row.note : ""),
-        tag: "floor-down-" + row.machine_uid,
-        url: "/?tab=floor",
-      }).catch((e) => console.warn("floor-event: push failed -", e && e.message));
+        tag: "floor-down-" + row.machine_uid };
+    } else if (kind === "done") {
+      alert = { title: label + ": kaam khatam",
+        body: (row.qty ? row.qty + " piece" : "Job poora") + (row.rej ? " - " + row.rej + " reject" : ""),
+        tag: "floor-done-" + row.job_id };
+    } else if (kind === "note") {
+      alert = { title: "Shop floor", body: row.note || "", tag: "floor-note-" + saved.id };
+    }
+    if (alert) {
+      try {
+        const res = await sendToOwner(dev.user_id, { ...alert, url: "/?tab=floor" });
+        console.log("floor-event: push", kind, "->", JSON.stringify(res));
+      } catch (e) { console.warn("floor-event: push failed -", e && e.message); }
     }
     return json({ ok: true, event: saved });
   } catch (e) {
