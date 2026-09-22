@@ -7265,9 +7265,9 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: "block", fontWeight: 700, fontSize: 15 }}>{tx("Tell me when a machine stops", "Machine band ho to batao", "मशीन बंद हो तो बताएं")}</span>
             <span style={{ display: "block", fontSize: 12.5, color: "var(--dim)", marginTop: 2, lineHeight: 1.5 }}>
-              {tx("A notification the moment the floor reports a stopped machine, finishes a job, or sends you a note. Piece counts stay silent - they would buzz all day.",
-                  "Machine band hone par, kaam khatam hone par, ya floor se note aane par notification aa jayega. Piece ki ginti par nahi - warna din bhar bajta rahega.",
-                  "मशीन बंद, काम खत्म या नोट आने पर नोटिफिकेशन। पीस की गिनती पर नहीं।")}
+              {tx("A notification for everything the floor does - job started or finished, work moved, a machine stopped or back up, a note for you. Only piece counts stay silent, or it would buzz all day.",
+                  "Floor par jo bhi ho - kaam shuru ya khatam, kaam doosri machine par, machine band ya wapas chalu, ya koi note - sab ka notification aayega. Sirf piece ki ginti par nahi, warna din bhar bajta rahega.",
+                  "फ्लोर पर जो भी हो - सबका नोटिफिकेशन। सिर्फ पीस की गिनती पर नहीं।")}
             </span>
           </span>
           <span style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>

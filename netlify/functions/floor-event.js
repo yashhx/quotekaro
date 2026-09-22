@@ -96,24 +96,37 @@ export default async (req) => {
     const saved = (await r.json())[0] || row;
     console.log("floor-event:", kind, row.machine_uid || "", row.reason || "", "for user", dev.user_id);
 
-    /* Which events are worth a buzz: a stopped machine, a finished job, and a
-       note the worker deliberately wrote to the owner. Piece counts stay
-       silent - a buzz per piece gets notifications muted within a day.
+    /* Everything the floor does buzzes EXCEPT piece counts: a job starting or
+       finishing, work moved to another machine, a machine stopping or coming
+       back, and a note written to the owner. Counts are the only high-frequency
+       event, and a buzz per piece gets notifications muted within a day.
 
        This MUST be awaited. A serverless container freezes the moment the
        response is sent, so a floating promise here simply never ran - the
        Test button worked (it awaits inside the handler) while real
        breakdowns silently sent nothing. */
     const label = String(body.machineLabel || row.machine_uid || "Machine").slice(0, 40);
+    const part = (row.payload && row.payload.part) || row.note || "Kaam";
+    const who = row.payload && row.payload.customer ? " - " + row.payload.customer : "";
     let alert = null;
     if (kind === "down") {
       alert = { title: label + " band ho gaya",
         body: (REASON_TEXT[reason] || reason) + (row.note ? " - " + row.note : ""),
         tag: "floor-down-" + row.machine_uid };
+    } else if (kind === "start") {
+      alert = { title: label + ": naya kaam shuru",
+        body: part + who + (row.qty ? " \u00b7 " + row.qty + " pcs" : ""),
+        tag: "floor-start-" + row.job_id };
     } else if (kind === "done") {
       alert = { title: label + ": kaam khatam",
         body: (row.qty ? row.qty + " piece" : "Job poora") + (row.rej ? " - " + row.rej + " reject" : ""),
         tag: "floor-done-" + row.job_id };
+    } else if (kind === "move") {
+      alert = { title: "Kaam doosri machine par",
+        body: (row.qty ? row.qty + " pcs " : "") + part + " \u2192 " + label,
+        tag: "floor-move-" + row.job_id };
+    } else if (kind === "up") {
+      alert = { title: label + " wapas chalu", body: "Machine phir se chal rahi hai", tag: "floor-up-" + row.machine_uid };
     } else if (kind === "note") {
       alert = { title: "Shop floor", body: row.note || "", tag: "floor-note-" + saved.id };
     }
