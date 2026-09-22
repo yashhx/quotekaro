@@ -1013,7 +1013,13 @@ async function pushEnable() {
   if (!pushSupported()) return { ok: false, why: "not supported on this phone" };
   try {
     const perm = await Notification.requestPermission();
-    if (perm !== "granted") return { ok: false, why: "permission refused" };
+    if (perm !== "granted") {
+      /* iOS shows the prompt ONCE - after a refusal the only way back is the
+         phone's own settings, so say so instead of "refused" */
+      return { ok: false, why: Notification.permission === "denied"
+        ? tx("blocked - iPhone Settings > TrackRakho > Notifications", "band hai - iPhone Settings > TrackRakho > Notifications se chalu karein", "बंद है - iPhone Settings से चालू करें")
+        : "permission refused" };
+    }
     const kr = await fetch(WA_API + "/push-subscribe");
     const kd = await kr.json().catch(() => ({}));
     if (!kd.key) return { ok: false, why: "not set up on the server" };
@@ -2998,6 +3004,13 @@ function FloorApp({ onExit }) {
           )}
         </div>
 
+        {/* always reachable - a busy floor has NO free machine to tap, and that
+            is exactly the moment a new job needs starting */}
+        <button className="btn btn-grn press" style={{ width: "100%", padding: 16, marginBottom: 14 }}
+          onClick={() => { setOpenM(""); setMode("start"); setF({ units: [] }); }}>
+          <I.plus style={{ width: 17 }} /> {tx("Start a new job", "Naya kaam shuru karein", "\u0928\u092F\u093E \u0915\u093E\u092E \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902")}
+        </button>
+
         {err && (
           <div className="card" style={{ padding: 16, marginBottom: 12, background: "var(--amber-bg)", borderColor: "#F0DCB8", fontSize: 13.5, color: "#7A5510", lineHeight: 1.5 }}>
             {err === "device not paired"
@@ -3040,19 +3053,30 @@ function FloorApp({ onExit }) {
           {"\u{1F4DD} " + tx("Shift note", "Shift note likhein", "\u0936\u093F\u092B\u094D\u091F \u0928\u094B\u091F")}
         </button>
 
-        {board && (board.events || []).length > 0 && (<>
-          <div style={{ margin: "22px 0 8px" }}><span className="eyebrow">{tx("Today", "Aaj", "\u0906\u091C")}</span></div>
-          {(board.events || []).slice(0, 12).map((e) => {
-            const l = floorLine(e, byUid);
-            return (
-              <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "9px 2px", borderBottom: "1px solid var(--line)" }}>
-                <span style={{ flexShrink: 0 }}>{l.icon}</span>
-                <span style={{ flex: 1, fontSize: 13.5, color: l.bad ? "var(--red)" : "var(--ink)", lineHeight: 1.45 }}>{l.text}</span>
-                <span className="mono" style={{ flexShrink: 0, fontSize: 11, color: "var(--faint)" }}>{new Date(e.at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}</span>
+        {/* grouped by day - the board carries three days, and labelling
+            yesterday's count "Aaj" is how a shift report starts lying */}
+        {board && (board.events || []).length > 0 && (() => {
+          const days = {};
+          (board.events || []).slice(0, 40).forEach((e) => { const d = startOfDay(e.at); (days[d] = days[d] || []).push(e); });
+          const today = startOfDay(Date.now());
+          return Object.keys(days).sort((a2, b2) => b2 - a2).map((d) => (
+            <div key={d}>
+              <div style={{ margin: "22px 0 8px" }}>
+                <span className="eyebrow">{Number(d) === today ? tx("Today", "Aaj", "\u0906\u091C") : Number(d) === today - DAY ? tx("Yesterday", "Kal", "\u0915\u0932") : fdateShort(Number(d))}</span>
               </div>
-            );
-          })}
-        </>)}
+              {days[d].map((e) => {
+                const l = floorLine(e, byUid);
+                return (
+                  <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "9px 2px", borderBottom: "1px solid var(--line)" }}>
+                    <span style={{ flexShrink: 0 }}>{l.icon}</span>
+                    <span style={{ flex: 1, fontSize: 13.5, color: l.bad ? "var(--red)" : "var(--ink)", lineHeight: 1.45 }}>{l.text}</span>
+                    <span className="mono" style={{ flexShrink: 0, fontSize: 11, color: "var(--faint)" }}>{new Date(e.at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ));
+        })()}
       </div></div>
 
       {/* ---------- machine sheet ---------- */}
@@ -3076,24 +3100,28 @@ function FloorApp({ onExit }) {
                 {bigBtn(tx("Work finished", "Kaam khatam", "\u0915\u093E\u092E \u0916\u0924\u094D\u092E"), "", () => { setMode("done"); setF({ good: String((job && job.pcs) || ""), rej: "" }); })}
                 {bigBtn(tx("Move to another machine", "Doosri machine par bhejein", "\u0926\u0942\u0938\u0930\u0940 \u092E\u0936\u0940\u0928 \u092A\u0930"), "", () => { setMode("move"); setF({}); })}
               </>)
-            : bigBtn(tx("Start work", "Kaam shuru karein", "\u0915\u093E\u092E \u0936\u0941\u0930\u0942"), "", () => { setMode("start"); setF({}); }, "grn")}
+            : bigBtn(tx("Start work", "Kaam shuru karein", "\u0915\u093E\u092E \u0936\u0941\u0930\u0942"), "", () => { setMode("start"); setF({ units: [machine.uid] }); }, "grn")}
           {bigBtn(tx("Machine stopped", "Machine band ho gayi", "\u092E\u0936\u0940\u0928 \u092C\u0902\u0926"), "", () => { setMode("down"); setF({}); }, "red")}
         </>)}
       </>))}
 
       {/* ---------- start work ---------- */}
-      {mode === "start" && machine && sheet(tx("What is running?", "Kya bana rahe hain?", "\u0915\u094D\u092F\u093E \u092C\u0928 \u0930\u0939\u093E \u0939\u0948?"), (<>
+      {mode === "start" && sheet(tx("What is running?", "Kya bana rahe hain?", "\u0915\u094D\u092F\u093E \u092C\u0928 \u0930\u0939\u093E \u0939\u0948?"), (<>
+        {/* the owner's open jobs, if he planned any */}
         {Object.values(view.jobs).filter((j) => !j.done).map((j) => (
-          <button key={j.id} className="press" onClick={() => post({ kind: "start", machineUid: machine.uid, jobId: j.id, qty: j.qty, note: j.part }, tx("Started", "Shuru ho gaya", "\u0936\u0941\u0930\u0942"))}
-            style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", padding: "14px 15px", marginBottom: 9, borderRadius: 16, border: "1.5px solid var(--line2)", background: "#fff" }}>
+          <button key={j.id} className="press" onClick={() => post({ kind: "start", machineUid: (f.units || [])[0] || (machine && machine.uid), jobId: j.id, qty: j.qty, note: j.part,
+              payload: { part: j.part, customer: j.customer || "", qty: j.qty || 0, cycleMin: j.cycleMin || 0, manualMin: j.manualMin || 0, units: (f.units || []).length ? f.units : [machine && machine.uid].filter(Boolean) } }, tx("Started", "Shuru ho gaya", "\u0936\u0941\u0930\u0942"))}
+            disabled={!((f.units || []).length || machine)}
+            style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", padding: "14px 15px", marginBottom: 9, borderRadius: 16, border: "1.5px solid var(--line2)", background: "#fff", opacity: ((f.units || []).length || machine) ? 1 : 0.5 }}>
             <span style={{ display: "block", fontWeight: 700, fontSize: 16 }}>{j.part}</span>
             <span style={{ display: "block", fontSize: 13, color: "var(--dim)", marginTop: 2 }}>{[j.customer, j.qty ? j.qty + " pcs" : ""].filter(Boolean).join(" \u00b7 ")}</span>
           </button>
         ))}
+
         {/* a new job, with everything the ETA maths needs - the floor can
             CREATE work, not only report on the owner's plan */}
-        <div style={{ borderTop: "1px solid var(--line)", marginTop: 12, paddingTop: 14 }}>
-          <label className="lbl">{tx("Or start a new job", "Ya naya kaam shuru karein", "\u092F\u093E \u0928\u092F\u093E \u0915\u093E\u092E")}</label>
+        <div style={{ borderTop: Object.keys(view.jobs).length ? "1px solid var(--line)" : "none", marginTop: Object.keys(view.jobs).length ? 12 : 0, paddingTop: Object.keys(view.jobs).length ? 14 : 0 }}>
+          <label className="lbl">{tx("New job", "Naya kaam", "\u0928\u092F\u093E \u0915\u093E\u092E")}</label>
           <input className="input" placeholder={tx("part name", "part ka naam", "\u092A\u093E\u0930\u094D\u091F \u0915\u093E \u0928\u093E\u092E")} value={f.part || ""} onChange={(e) => setF({ ...f, part: e.target.value })} />
           <input className="input" placeholder={tx("customer (optional)", "customer (optional)", "\u0917\u094D\u0930\u093E\u0939\u0915 (\u0935\u0948\u0915\u0932\u094D\u092A\u093F\u0915)")} value={f.customer || ""} onChange={(e) => setF({ ...f, customer: e.target.value })} style={{ marginTop: 10 }} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
@@ -3108,23 +3136,37 @@ function FloorApp({ onExit }) {
           </div>
           <label className="lbl" style={{ fontSize: 12.5, marginTop: 10 }}>{tx("Handling per piece (min)", "Har piece par haath ka time (min)", "\u0939\u093E\u0925 \u0915\u093E \u0938\u092E\u092F")}</label>
           <input className="input mono" type="number" inputMode="decimal" placeholder="1" value={f.manualMin == null ? "1" : f.manualMin} onChange={(e) => setF({ ...f, manualMin: e.target.value })} />
-          {/* more than one machine on the same job, same as the owner's form */}
-          {view.free.filter((x) => x.uid !== machine.uid).length > 0 && (<>
-            <label className="lbl" style={{ fontSize: 12.5, marginTop: 12 }}>{tx("Also run it on (optional)", "Iske alawa in machines par bhi (optional)", "\u0907\u0928 \u092E\u0936\u0940\u0928\u094B\u0902 \u092A\u0930 \u092D\u0940")}</label>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {view.free.filter((x) => x.uid !== machine.uid).map((x) => (
-                <button key={x.uid} className={"fpill press " + ((f.extra || []).includes(x.uid) ? "on" : "")}
-                  onClick={() => setF({ ...f, extra: (f.extra || []).includes(x.uid) ? (f.extra || []).filter((y) => y !== x.uid) : [...(f.extra || []), x.uid] })}>
-                  {x.label}
+
+          {/* WHICH MACHINES - the same picker the owner has */}
+          <label className="lbl" style={{ fontSize: 12.5, marginTop: 12 }}>{tx("Which machines will run it?", "Kaun si machine par chalega?", "\u0915\u094C\u0928 \u0938\u0940 \u092E\u0936\u0940\u0928 \u092A\u0930?")}</label>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {view.machines.map((x) => {
+              const bad = x.status === "down" || (x.status === "run" && !(f.units || []).includes(x.uid));
+              const on = (f.units || []).includes(x.uid);
+              return (
+                <button key={x.uid} disabled={bad} className={"fpill press " + (on ? "on" : "")} style={bad ? { opacity: 0.45 } : undefined}
+                  onClick={() => setF({ ...f, units: on ? (f.units || []).filter((y) => y !== x.uid) : [...(f.units || []), x.uid] })}>
+                  {x.label}{x.status === "down" ? tx(" - band", " - band", " - \u092C\u0902\u0926") : x.status === "run" && !on ? tx(" - busy", " - busy", " - \u0935\u094D\u092F\u0938\u094D\u0924") : ""}
                 </button>
-              ))}
-            </div>
-          </>)}
-          <button className="btn btn-grn press" style={{ width: "100%", marginTop: 12, padding: 15 }} disabled={busy || !String(f.part || "").trim() || !(Number(f.qty) > 0)}
-            onClick={() => post({ kind: "start", machineUid: machine.uid, jobId: "fl_" + uid(), qty: Number(f.qty) || 0, note: String(f.part || "").trim(),
+              );
+            })}
+          </div>
+          {!(f.units || []).length && (
+            <span className="hint">
+              {view.free.length === 0
+                ? tx("Every machine is busy or stopped. Finish the work on one first (tap it, then Kaam khatam), or move that job to another machine.",
+                     "Saari machine busy ya band hain. Pehle kisi machine ka kaam khatam karein (machine dabao, phir 'Kaam khatam'), ya us job ko doosri machine par bhej dein.",
+                     "\u0938\u093E\u0930\u0940 \u092E\u0936\u0940\u0928 \u0935\u094D\u092F\u0938\u094D\u0924 \u092F\u093E \u092C\u0902\u0926 \u0939\u0948\u0902\u0964")
+                : tx("Pick at least one machine.", "Kam se kam ek machine chuniye.", "\u0915\u092E \u0938\u0947 \u0915\u092E \u090F\u0915 \u092E\u0936\u0940\u0928 \u091A\u0941\u0928\u0947\u0902\u0964")}
+            </span>
+          )}
+
+          <button className="btn btn-grn press" style={{ width: "100%", marginTop: 12, padding: 15 }}
+            disabled={busy || !String(f.part || "").trim() || !(Number(f.qty) > 0) || !(f.units || []).length}
+            onClick={() => post({ kind: "start", machineUid: (f.units || [])[0], jobId: "fl_" + uid(), qty: Number(f.qty) || 0, note: String(f.part || "").trim(),
               payload: { part: String(f.part || "").trim(), customer: String(f.customer || "").trim(), qty: Number(f.qty) || 0,
                 cycleMin: Number(f.cycleMin) || 0, manualMin: f.manualMin == null ? 1 : Number(f.manualMin) || 0,
-                units: [machine.uid, ...(f.extra || [])] } }, tx("Started", "Shuru ho gaya", "\u0936\u0941\u0930\u0942"))}>
+                units: f.units || [] } }, tx("Started", "Shuru ho gaya", "\u0936\u0941\u0930\u0942"))}>
             {tx("Start this job", "Ye kaam shuru karein", "\u092F\u0939 \u0915\u093E\u092E \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902")}
           </button>
           <span className="hint">{tx("The owner's app turns this into a proper job with a finish time.", "Maalik ke app mein ye poora job ban jayega - khatam hone ka time ke saath.", "")}</span>
@@ -7238,8 +7280,8 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
                 try {
                   const r = await fetch(WA_API + "/push-subscribe", { method: "POST", headers: { "content-type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ test: true }) });
                   const d = await r.json().catch(() => ({}));
-                  ping(d.ok ? tx("Sent - watch for it", "Bhej diya - dekhiye aata hai ya nahi", "भेज दिया - देखिए")
-                    : tx("This phone is not registered - turn it off and on again", "Ye phone registered nahi hai - band karke dobara chalu karein", "यह फोन रजिस्टर नहीं है"));
+                  ping(d.ok ? (d.sent || 1) + tx(" phone notified - watch for it", " phone par bheja - dekhiye", " फोन पर भेजा")
+                    : tx("0 phones registered - switch it off and on again", "0 phone registered - band karke dobara chalu karein", "0 फोन रजिस्टर - बंद करके फिर चालू करें"));
                 } catch { ping(tx("No internet", "Internet nahi hai", "इंटरनेट नहीं")); }
                 setPushBusy(false);
               }}>{tx("Test", "Test karein", "टेस्ट")}</button>
