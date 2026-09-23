@@ -726,30 +726,64 @@ const fmtEta = (t) => {
   return dd === 0 ? tx("today ", "aaj ", "आज ") + hm : dd === 1 ? tx("tomorrow ", "kal ", "कल ") + hm : d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }) + ", " + hm;
 };
 
-const seedData = () => {
-  const now = Date.now(), day = 86400000;
+/* A BRAND NEW ACCOUNT STARTS EMPTY. It used to open on "Sharma Precision
+   Works" with eight invented quotes and plausible-looking mobile numbers -
+   a new customer's first impression was somebody else's business sitting in
+   his account, which is exactly how trust dies on day one. Nothing in here
+   belongs to a person: the material rates are commodity reference figures
+   the owner edits, and everything else is his own from the first tap.
+   The demo pipeline still exists - see `demoShop()` - but only when someone
+   explicitly asks for it, and it is labelled SAMPLE wherever it shows. */
+const seedData = () => ({
+  shopName: "",            /* asked on the welcome screen */
+  settings: { overheadPct: 18, marginPct: 25, labourRate: 80, validityDays: 7, gstPct: 18, lang: "hi-en" },
+  machines: [],            /* his machines, with his own true hourly rate */
+  jobs: [],
+  trucks: [],
+  trips: [],
+  stock: { open: {}, ins: [], outs: [], counts: [] },
+  materials: [
+    { id: "a", name: "MS (EN8)", rate: 85 }, { id: "b", name: "SS 304", rate: 250 },
+    { id: "c", name: "Alu 6061", rate: 300 }, { id: "d", name: "Brass", rate: 560 },
+  ],
+  quotes: [],
+});
+
+/* The demo shop, on request only. Every quote carries `seed: true`, which is
+   what puts the SAMPLE chip on the card and the "remove the example data"
+   bar on Home. Phone numbers are deliberately unusable (9000000001+) so that
+   nobody ever WhatsApps a stranger from a demo row. */
+const demoShop = (key) => {
+  const base = seedData();
+  const quotes = buildSampleQuotes(key) || [];
   return {
-    shopName: "Sharma Precision Works",
-    settings: { overheadPct: 18, marginPct: 25, labourRate: 80, validityDays: 7, gstPct: 18, lang: "hi-en" },
-    machines: [{ id: "m1", name: "VMC 850", rate: 366, count: 2 }],
-    jobs: [],
-    trucks: [],
-    trips: [],
-    stock: { open: {}, ins: [], outs: [], counts: [] },
-    materials: [
-      { id: "a", name: "MS (EN8)", rate: 85 }, { id: "b", name: "SS 304", rate: 250 },
-      { id: "c", name: "Alu 6061", rate: 300 }, { id: "d", name: "Brass", rate: 560 },
-    ],
-    quotes: [
-      { id: uid(), at: now - 2 * day, status: "won", customer: "Apex Hydraulics", phone: "9810012345", part: "Gland Nut - 60mm", qty: 200, pricePc: 174.39, total: 34878, followUp: null, source: "wizard" },
-      { id: uid(), at: now - 0.2 * day, status: "pending", customer: "Krishna Pumps", phone: "9829098290", part: "Bush Ø42", qty: 500, pricePc: 61.2, total: 30600, followUp: now + 2 * day, source: "wizard" },
-      { id: uid(), at: now - 6 * day, status: "lost", customer: "Om Forgings", phone: "", part: 'Flange 6"', qty: 120, pricePc: 412.5, total: 49500, followUp: null, source: "wizard" },
-      { id: uid(), at: now - 4 * day, status: "pending", customer: "Bharat Traders", phone: "9911223344", part: "MS Hex Bar lot", qty: 0, pricePc: 0, total: 128000, followUp: now - 1 * day, source: "logged" },
-      { id: uid(), at: now - 9 * day, status: "won", customer: "Singh Auto Parts", phone: "9876500011", part: "Spacer Ø18 (repeat)", qty: 1000, pricePc: 22.5, total: 22500, followUp: null, source: "logged" },
-      { id: uid(), at: now - 13 * day, status: "pending", customer: "Verma Enterprises", phone: "9700011122", part: "SS 304 fittings", qty: 0, pricePc: 0, total: 76500, followUp: now, source: "excel" },
-      { id: uid(), at: now - 40 * day, status: "won", customer: "Apex Hydraulics", phone: "9810012345", part: "End Cap - batch", qty: 300, pricePc: 96, total: 28800, followUp: null, source: "wizard" },
-      { id: uid(), at: now - 52 * day, status: "lost", customer: "Om Forgings", phone: "", part: "Shaft turning job", qty: 60, pricePc: 780, total: 46800, followUp: null, source: "logged" },
-    ].map((q) => ({ ...q, seed: true })),
+    ...base,
+    machines: key === "machining" ? [{ id: "m1", name: "VMC 850", rate: 366, count: 2, seed: true }] : [],
+    quotes: quotes.map((q, i) => ({ ...q, seed: true, phone: q.phone ? "90000000" + String(10 + i).slice(-2) : "" })),
+  };
+};
+
+/* Everything the demo put in carries `seed: true`. One tap takes all of it
+   back out - a demo the owner cannot remove is just somebody else's data. */
+const hasDemo = (d) => !!d && (
+  (d.quotes || []).some((q) => q.seed) || (d.trips || []).some((t) => t.seed) ||
+  (d.machines || []).some((m) => m.seed) ||
+  (((d.stock || {}).ins || []).some((x) => x.seed)) || (((d.stock || {}).outs || []).some((x) => x.seed)) ||
+  (((d.stock || {}).counts || []).some((x) => x.seed))
+);
+const stripDemo = (d) => {
+  const st = d.stock || {};
+  const jobs = (d.jobs || []).filter((j) => !j.seed);
+  /* a demo machine is only removed when nothing real is running on it */
+  const used = new Set(jobs.flatMap((j) => (j.units || []).concat((j.alloc || []).map((a) => a.uid))));
+  return {
+    ...d,
+    quotes: (d.quotes || []).filter((q) => !q.seed),
+    jobs,
+    machines: (d.machines || []).filter((m) => !m.seed || [...used].some((u) => String(u).split("#")[0] === m.id)),
+    trucks: (d.trucks || []).filter((t) => !t.seed),
+    trips: (d.trips || []).filter((t) => !t.seed),
+    stock: { ...st, open: {}, ins: (st.ins || []).filter((x) => !x.seed), outs: (st.outs || []).filter((x) => !x.seed), counts: (st.counts || []).filter((x) => !x.seed) },
   };
 };
 
@@ -1785,20 +1819,30 @@ function Subscribe({ account, onSubscribe, onBack }) {
 
 /* ================================================================ */
 /* one-time trade chooser shown to a fresh account (changeable later in Setup) */
+/* ================= WELCOME (first run) =================
+   Two questions, in this order: what do you do, and what is your shop called.
+   The name matters more than it looks - until it was asked, every new account
+   opened on somebody else's business name with somebody else's quotes in it.
+   The demo pipeline is offered here as a clearly-labelled choice, never as
+   the default. */
 function IndustryPicker({ onPick }) {
-  return (
+  const [key, setKey] = useState("");
+  const [name, setName] = useState("");
+  const ind = key ? INDUSTRIES[key] : null;
+
+  if (!key) return (
     <div className="qk-root"><style>{CSS}</style>
       <div className="app"><div className="scr"><div className="pagepad" style={{ paddingTop: 44 }}>
         <div className="microlbl">WELCOME</div>
-        <div className="h-disp" style={{ fontSize: 27, fontWeight: 700, margin: "4px 0 6px" }}>What do you make?</div>
-        <div style={{ color: "var(--dim)", fontSize: 15, marginBottom: 22, lineHeight: 1.55 }}>Pick your trade so the app speaks your language and shows the right examples. You can change it anytime in Setup.</div>
-        {LIVE_TRADES.map((k) => INDUSTRIES[k]).map((ind, i) => (
-          <button key={ind.key} className={"card press anim-in st" + (i + 1)} onClick={() => onPick(ind.key)}
+        <div className="h-disp" style={{ fontSize: 27, fontWeight: 700, margin: "4px 0 6px" }}>{tx("What do you make?", "Aap kya kaam karte hain?", "आप क्या काम करते हैं?")}</div>
+        <div style={{ color: "var(--dim)", fontSize: 15, marginBottom: 22, lineHeight: 1.55 }}>{tx("Pick your trade so the app speaks your language. You can change it anytime in Setup.", "Apna kaam chuniye taaki app aapki bhasha bole. Setup mein kabhi bhi badal sakte hain.", "अपना काम चुनें ताकि ऐप आपकी भाषा बोले।")}</div>
+        {LIVE_TRADES.map((k) => INDUSTRIES[k]).map((x, i) => (
+          <button key={x.key} className={"card press anim-in st" + (i + 1)} onClick={() => setKey(x.key)}
             style={{ display: "flex", alignItems: "center", gap: 15, width: "100%", textAlign: "left", padding: "18px 16px", marginBottom: 12, border: "1.5px solid var(--line2)", background: "#fff", cursor: "pointer" }}>
-            <span style={{ width: 52, height: 52, borderRadius: 15, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 27, flexShrink: 0 }}>{ind.emoji}</span>
+            <span style={{ width: 52, height: 52, borderRadius: 15, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 27, flexShrink: 0 }}>{x.emoji}</span>
             <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: "block", fontWeight: 700, fontSize: 17 }}>{ind.label}</span>
-              <span style={{ display: "block", fontSize: 13, color: "var(--dim)", marginTop: 2 }}>{ind.tag}</span>
+              <span style={{ display: "block", fontWeight: 700, fontSize: 17 }}>{x.label}</span>
+              <span style={{ display: "block", fontSize: 13, color: "var(--dim)", marginTop: 2 }}>{x.tag}</span>
             </span>
             <I.chev style={{ color: "var(--faint)" }} />
           </button>
@@ -1806,7 +1850,42 @@ function IndustryPicker({ onPick }) {
       </div></div></div>
     </div>
   );
+
+  return (
+    <div className="qk-root"><style>{CSS}</style>
+      <div className="app"><div className="scr"><div className="pagepad" style={{ paddingTop: 44 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
+          <button className="iconbtn press" onClick={() => setKey("")}><I.back /></button>
+          <div>
+            <div className="microlbl">{ind.emoji} {ind.label}</div>
+            <div className="h-disp" style={{ fontSize: 25, fontWeight: 700 }}>{tx("Your shop's name?", "Aapki shop ka naam?", "आपकी दुकान का नाम?")}</div>
+          </div>
+        </div>
+        <input className="input" autoFocus placeholder={tx("e.g. Sharma Precision Works", "jaise Sharma Precision Works", "जैसे शर्मा प्रिसिजन वर्क्स")}
+          value={name} onChange={(e) => setName(e.target.value)} style={{ fontSize: 17 }} />
+        <span className="hint">{tx("It goes on your quotations and PDFs. Change it anytime in Setup.", "Ye aapke quotation aur PDF par chhapta hai. Setup mein kabhi bhi badal sakte hain.", "यह आपके कोटेशन और PDF पर छपता है।")}</span>
+
+        <button className="btn btn-grn press" style={{ width: "100%", marginTop: 20, padding: 16 }}
+          disabled={!name.trim()} onClick={() => onPick(key, { name: name.trim(), demo: false })}>
+          {tx("Start", "Shuru karein", "शुरू करें")}
+        </button>
+
+        <div className="card" style={{ padding: 16, marginTop: 24, background: "var(--soft)" }}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>{tx("Just looking around?", "Pehle dekhna chahte hain?", "पहले देखना चाहते हैं?")}</div>
+          <div style={{ fontSize: 13.5, color: "var(--dim)", lineHeight: 1.55, margin: "4px 0 12px" }}>
+            {tx("Fill the app with example quotes so you can see how it works. Every example is marked SAMPLE and removed with one tap.",
+                "App ko example quotes se bhar dein taaki aap dekh sakein ye kaam kaise karta hai. Har example par SAMPLE likha hoga aur ek tap mein hat jayega.",
+                "उदाहरण कोटेशन भर दें ताकि आप देख सकें। हर उदाहरण पर SAMPLE लिखा होगा और एक टैप में हट जाएगा।")}
+          </div>
+          <button className="btn btn-ghost press" style={{ width: "100%" }} onClick={() => onPick(key, { name: name.trim(), demo: true })}>
+            {tx("Show me example data", "Example data dikhaiye", "उदाहरण दिखाएं")}
+          </button>
+        </div>
+      </div></div></div>
+    </div>
+  );
 }
+
 
 /* ================= GUIDED TUTORIALS ================= */
 /* Pipedrive-style coach marks: a dark card anchored to a [data-tut] element
@@ -2427,10 +2506,18 @@ export default function App() {
   /* first run: pick the trade. If the pipeline is still untouched seed/sample
      data, swap in this trade's examples; real data is never overwritten. */
   if (!data.industry)
-    return <IndustryPicker onPick={(key) => setData((d) => {
+    return <IndustryPicker onPick={(key, opts = {}) => setData((d) => {
+      /* the demo pipeline arrives ONLY when it was asked for, and never
+         overwrites anything the owner has already typed */
       const untouched = !d.quotes.length || d.quotes.every((q) => q.seed);
-      const sq = buildSampleQuotes(key);
-      return { ...d, industry: key, quotes: untouched && sq ? sq : d.quotes };
+      const demo = opts.demo && untouched ? demoShop(key) : null;
+      return {
+        ...d,
+        industry: key,
+        shopName: opts.name || d.shopName || "",
+        machines: demo && !(d.machines || []).length ? demo.machines : d.machines,
+        quotes: demo ? demo.quotes : d.quotes,
+      };
     })} />;
 
   const startQuote = () => {
@@ -2514,7 +2601,7 @@ export default function App() {
         {toast && <div className="toast">{toast}</div>}
         {tut && <TutOverlay flow={tut.flow} step={tut.step} tick={fabOpen ? 1 : 0} onNext={tutNext} onBack={tutBack} onClose={tutClose} />}
 
-        {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} openClient={(n) => { setClient(n); setTab("client"); }} tallyRows={tallyRows} tallyBal={tallyBal} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} openCo={() => setCoOpen(true)} startTut={startTut} dismissTut={() => setData({ ...data, settings: { ...data.settings, tutHomeDone: true } })} />}
+        {tab === "home" && <Home data={data} account={accountView} onNew={startQuote} onLog={startLog} goQuotes={goQuotes} openAnalytics={() => setTab("analytics")} openClient={(n) => { setClient(n); setTab("client"); }} tallyRows={tallyRows} tallyBal={tallyBal} goSetup={() => setTab("setup")} goSubscribe={() => setTab("subscribe")} openCo={() => setCoOpen(true)} clearDemo={() => { setData((d) => stripDemo(d)); ping(tx("Example data removed", "Example data hata diya", "उदाहरण डेटा हटा दिया")); }} startTut={startTut} dismissTut={() => setData({ ...data, settings: { ...data.settings, tutHomeDone: true } })} />}
         {tab === "quotes" && <Quotes data={data} setStatus={setStatus} updateQuote={updateQuote} delQuote={delQuote} importQuotes={importQuotes} ping={ping} filter={quotesFilter} setFilter={setQuotesFilter} cat={quotesCat} setCat={setQuotesCat} onLog={startLog} enquiries={enquiries} logEnquiry={logEnquiry} dismissEnquiry={dismissEnquiry} waOn={waOn} refreshEnquiries={refreshEnquiries} tallyBal={tallyBal} sendToFloor={sendToFloor} startTut={startTut} />}
         {tab === "log" && <QuickLog data={data} onSave={saveLogged} onExit={() => setTab("home")} ping={ping} startTut={startTut} />}
         {tab === "setup" && <Setup data={data} setData={setData} ping={ping} account={accountView} sync={sync} goSubscribe={() => setTab("subscribe")} onLogout={logout} />}
@@ -3260,7 +3347,7 @@ function FloorApp({ onExit }) {
 }
 
 /* ================= HOME ================= */
-function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openClient, tallyRows = null, tallyBal = null, goSetup, goSubscribe, openCo, startTut, dismissTut }) {
+function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openClient, tallyRows = null, tallyBal = null, goSetup, goSubscribe, openCo, startTut, dismissTut, clearDemo }) {
   const ind = industryOf(data);
   const isMach = ind.key === "machining";
   const h = new Date().getHours();
@@ -3317,6 +3404,54 @@ function Home({ data, account, onNew, onLog, goQuotes, openAnalytics, openClient
           {data.shopName.split(" ").map((w) => w[0]).slice(0, 2).join("")}
         </button>
       </div>
+
+      {/* Example data is never allowed to pass itself off as the owner's own
+          work - it says so, and it leaves in one tap. */}
+      {hasDemo(data) && (
+        <div className="card anim-in" style={{ padding: "13px 15px", marginBottom: 12, background: "var(--amber-bg)", borderColor: "#F0DCB8", display: "flex", alignItems: "center", gap: 11 }}>
+          <span style={{ fontSize: 19, flexShrink: 0 }} aria-hidden="true">{"\u{1F441}\uFE0F"}</span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", fontWeight: 700, fontSize: 14, color: "#7A5510" }}>{tx("This is example data", "Ye example data hai", "\u092F\u0939 \u0909\u0926\u093E\u0939\u0930\u0923 \u0921\u0947\u091F\u093E \u0939\u0948")}</span>
+            <span style={{ display: "block", fontSize: 12.5, color: "#7A5510", marginTop: 1, lineHeight: 1.45 }}>
+              {tx("Not your customers. Remove it when you are ready to start.", "Ye aapke customer nahi hain. Apna kaam shuru karte waqt hata dijiye.", "\u092F\u0939 \u0906\u092A\u0915\u0947 \u0917\u094D\u0930\u093E\u0939\u0915 \u0928\u0939\u0940\u0902 \u0939\u0948\u0902\u0964")}
+            </span>
+          </span>
+          {clearDemo && <button className="btn btn-sm btn-soft press" style={{ flexShrink: 0 }} onClick={clearDemo}>{tx("Remove", "Hata dein", "\u0939\u091F\u093E\u090F\u0902")}</button>}
+        </div>
+      )}
+
+      {/* An empty app is not a broken app - but it must say what to do next.
+          Three steps, each one tap away, gone the moment they are done. */}
+      {(() => {
+        const steps = [
+          { k: "name", done: !!String(data.shopName || "").trim(), t: tx("Add your shop name", "Apni shop ka naam likhein", "\u0905\u092A\u0928\u0940 \u0926\u0941\u0915\u093E\u0928 \u0915\u093E \u0928\u093E\u092E"), go: goSetup },
+          { k: "quote", done: (data.quotes || []).some((q) => !q.seed), t: tx("Log your first quote - 30 seconds", "Pehla quote likhein - 30 second", "\u092A\u0939\u0932\u093E \u0915\u094B\u091F\u0947\u0936\u0928 - 30 \u0938\u0947\u0915\u0902\u0921"), go: onLog },
+          isMach
+            ? { k: "mach", done: (data.machines || []).length > 0, t: tx("Add a machine and its hourly rate", "Apni machine aur uska rate jodein", "\u092E\u0936\u0940\u0928 \u0914\u0930 \u0930\u0947\u091F \u091C\u094B\u0921\u093C\u0947\u0902"), go: goSetup }
+            : { k: "truck", done: (data.trucks || []).length > 0, t: tx("Add your trucks", "Apni gaadiyan jodein", "\u0905\u092A\u0928\u0940 \u0917\u093E\u0921\u093C\u093F\u092F\u093E\u0902 \u091C\u094B\u0921\u093C\u0947\u0902"), go: goSetup },
+        ];
+        const left = steps.filter((x) => !x.done).length;
+        if (!left) return null;
+        return (
+          <div className="card anim-in st1" style={{ padding: "15px 16px", marginBottom: 12, border: "1.5px solid #CFE9D1", background: "#F7FCF8" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+              <span className="eyebrow">{tx("Get started", "Shuru karein", "\u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902")}</span>
+              <span className="mono" style={{ fontSize: 11, color: "var(--grn-d)", fontWeight: 600 }}>{steps.length - left}/{steps.length}</span>
+            </div>
+            {steps.map((x) => (
+              <button key={x.k} className="press" onClick={x.done ? undefined : x.go} disabled={x.done}
+                style={{ all: "unset", boxSizing: "border-box", cursor: x.done ? "default" : "pointer", width: "100%", display: "flex", alignItems: "center", gap: 11, padding: "9px 0" }}>
+                <span style={{ width: 24, height: 24, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", fontSize: 13, fontWeight: 700,
+                  background: x.done ? "var(--grn-100)" : "#fff", border: "1.5px solid " + (x.done ? "#CFE9D1" : "var(--line2)"), color: x.done ? "var(--grn-d)" : "var(--faint)" }}>
+                  {x.done ? "\u2713" : ""}
+                </span>
+                <span style={{ flex: 1, fontSize: 14.5, fontWeight: x.done ? 400 : 600, color: x.done ? "var(--faint)" : "var(--ink)", textDecoration: x.done ? "line-through" : "none" }}>{x.t}</span>
+                {!x.done && <I.chev style={{ color: "var(--faint)", flexShrink: 0 }} />}
+              </button>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* at a glance - same KPI language as Analytics */}
       <div className="card anim-in st1" style={{ padding: "16px 16px 12px", marginBottom: 12 }}>
@@ -4033,7 +4168,10 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
                 <span style={{ width: 62, height: 62, borderRadius: 14, background: "var(--grn-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>{catMeta(ind, catOf(q, ind)).emoji}</span>
               )}
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 15.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.customer}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                  <span style={{ fontWeight: 600, fontSize: 15.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.customer}</span>
+                  {q.seed && <span className="mono" style={{ flexShrink: 0, fontSize: 9, fontWeight: 700, letterSpacing: ".08em", color: "var(--amber)", background: "var(--amber-bg)", padding: "2px 6px", borderRadius: 999 }}>SAMPLE</span>}
+                </div>
                 <div style={{ fontSize: 13.5, color: "var(--dim)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.part}{q.qty ? " · " + fmtQty(q.qty) + " " + (ind.unit || "pcs") : ""} · {fdate(q.at)}</div>
                 {q.spec && (
                   <div className="mono" style={{ fontSize: 11.5, color: "var(--grn-d)", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.spec}</div>
@@ -7314,10 +7452,10 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
       </div>
       <div className="anim-in st6" style={{ margin: "18px 0 10px" }}><span className="eyebrow">Data</span></div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 8 }}>
-        <button className="btn btn-ghost btn-sm press" onClick={() => { const base = seedData(); const sq = buildSampleQuotes(ind.key); setData({ ...base, industry: ind.key, quotes: sq || base.quotes }); ping("Sample data loaded"); }}>Load sample</button>
+        <button className="btn btn-ghost btn-sm press" onClick={() => { const demo = demoShop(ind.key); setData({ ...data, machines: (data.machines || []).length ? data.machines : demo.machines, quotes: [...demo.quotes, ...(data.quotes || []).filter((q) => !q.seed)] }); ping(tx("Example data loaded - marked SAMPLE", "Example data aa gaya - SAMPLE likha hai", "उदाहरण डेटा आया - SAMPLE लिखा है")); }}>Load sample</button>
         <button className="btn btn-ghost btn-sm press" style={{ color: "var(--red)" }} onClick={() => {
           if (!confirmClear) { setConfirmClear(true); setTimeout(() => setConfirmClear(false), 2500); return; }
-          const d = seedData(); d.quotes = []; d.machines = []; d.jobs = []; d.trucks = []; d.trips = []; d.stock = { open: {}, ins: [], outs: [], counts: [] }; d.shopName = "My Shop"; setData(d); setConfirmClear(false); ping("Cleared");
+          const d = seedData(); d.quotes = []; d.machines = []; d.jobs = []; d.trucks = []; d.trips = []; d.stock = { open: {}, ins: [], outs: [], counts: [] }; d.shopName = ""; setData(d); setConfirmClear(false); ping("Cleared");
         }}>{confirmClear ? "Tap again to confirm" : "Clear everything"}</button>
       </div>
       <button className="btn btn-ghost btn-sm press" style={{ width: "100%", marginTop: 14, color: "var(--dim)" }} onClick={onLogout}><I.logout /> Log out</button>
