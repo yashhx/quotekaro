@@ -279,6 +279,12 @@ body{overflow:hidden; overscroll-behavior:none;}
 .selpill select:focus-visible{border-color:var(--grn); box-shadow:0 0 0 4px rgba(34,139,34,.12);}
 .selpill.on select{background:var(--grn-100); border-color:#CFE9D1; color:var(--grn-d);}
 .selpill svg{position:absolute; right:14px; top:50%; transform:translateY(-50%) rotate(90deg); pointer-events:none; color:var(--faint);}
+/* Empty-state preview: the SHAPE of the real screen, never fake numbers.
+   It shows a new owner what the page becomes without pretending he has data. */
+.ghost{background:var(--line); border-radius:6px; animation:ghostPulse 2.2s ease-in-out infinite;}
+@keyframes ghostPulse{0%,100%{opacity:.55;} 50%{opacity:.3;}}
+.ghost-card{background:#fff; border:1px solid var(--line); border-radius:22px; padding:16px; margin-bottom:10px;
+  display:flex; align-items:center; gap:12px; box-shadow:var(--sh-s);}
 .cat-scroll{-ms-overflow-style:none; scrollbar-width:none;}
 .cat-scroll::-webkit-scrollbar{display:none;}
 .cat-tile:active{transform:scale(.98);}
@@ -1522,7 +1528,10 @@ function CountUp({ value, d = 0, dur = 700, prefix = "₹" }) {
 function Auth({ onAuthed, authError }) {
   const [mode, setMode] = useState("otp"); // otp | password
   const [stage, setStage] = useState("enter"); // enter | code (for otp)
-  const [busy, setBusy] = useState(false); // cloud: opening Google
+  /* WHICH action is running, not merely "something is": one shared boolean
+     made the Google button say "Opening Google..." while the phone code was
+     being sent. "" | "code" | "verify" | "google" */
+  const [busy, setBusy] = useState("");
   const [authErr, setAuthErr] = useState("");
   /* surface OAuth errors that come back in the URL instead of looping silently */
   useEffect(() => {
@@ -1591,9 +1600,9 @@ function Auth({ onAuthed, authError }) {
       if (phone.replace(/\D/g, "").length !== 10) {
         setErr(tx("Enter a valid 10-digit number", "Poora 10 digit ka number daalein", "\u092A\u0942\u0930\u093E 10 \u0905\u0902\u0915\u094B\u0902 \u0915\u093E \u0928\u0902\u092C\u0930 \u0921\u093E\u0932\u0947\u0902")); return;
       }
-      setErr(""); setBusy(true);
+      setErr(""); setBusy("code");
       const { error } = await sb.auth.signInWithOtp({ phone: e164() });
-      setBusy(false);
+      setBusy("");
       if (error) { setErr(say(error)); return; }
       setOtp(blankOtp()); setStage("code"); setCool(45);
       setTimeout(() => otpRefs.current[0]?.focus(), 100);
@@ -1603,16 +1612,16 @@ function Auth({ onAuthed, authError }) {
       if (code.length < OTP_LEN) {
         setErr(tx("Enter the 6-digit code", "6 digit ka code daalein", "6 \u0905\u0902\u0915\u094B\u0902 \u0915\u093E \u0915\u094B\u0921 \u0921\u093E\u0932\u0947\u0902")); return;
       }
-      setErr(""); setBusy(true);
+      setErr(""); setBusy("verify");
       const { error } = await sb.auth.verifyOtp({ phone: e164(), token: code, type: "sms" });
-      setBusy(false);
+      setBusy("");
       /* on success onAuthStateChange takes over and the app opens itself */
       if (error) setErr(say(error));
     };
     const google = async () => {
-      setBusy(true);
+      setBusy("google");
       try { await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } }); }
-      catch { setBusy(false); }
+      catch { setBusy(""); }
     };
     return (
       <div className="auth">
@@ -1639,7 +1648,7 @@ function Auth({ onAuthed, authError }) {
               </div>
               {err && <div style={{ color: "var(--red)", fontSize: 13, marginTop: 10 }}>{err}</div>}
               <button className="btn btn-grn press" style={{ width: "100%", marginTop: 18 }} onClick={sendCode} disabled={busy}>
-                <I.phone2 /> {busy ? tx("Sending...", "Bhej rahe hain...", "\u092D\u0947\u091C \u0930\u0939\u0947 \u0939\u0948\u0902...") : tx("Send code", "Code bhejein", "\u0915\u094B\u0921 \u092D\u0947\u091C\u0947\u0902")}
+                <I.phone2 /> {busy === "code" ? tx("Sending...", "Sending...", "\u092D\u0947\u091C \u0930\u0939\u0947 \u0939\u0948\u0902...") : tx("Send code", "Send code", "\u0915\u094B\u0921 \u092D\u0947\u091C\u0947\u0902")}
               </button>
 
               <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 14px" }}>
@@ -1649,7 +1658,7 @@ function Auth({ onAuthed, authError }) {
               </div>
               <button className="btn btn-ghost press" style={{ width: "100%", gap: 12 }} onClick={google} disabled={busy}>
                 <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.7 1.22 9.19 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-                {busy ? "Opening Google..." : "Continue with Google"}
+                {busy === "google" ? "Opening Google..." : "Continue with Google"}
               </button>
               <div className="auth-note">{tx("Already used Google here? Sign in with Google once, then add your number in Setup - both will open the same account.", "Pehle Google se aate the? Ek baar Google se aayein, phir Setup mein apna number jodein - dono se wahi account khulega.", "\u092A\u0939\u0932\u0947 Google \u0938\u0947 \u0906\u0924\u0947 \u0925\u0947? \u090F\u0915 \u092C\u093E\u0930 Google \u0938\u0947 \u0906\u090F\u0902, \u092B\u093F\u0930 Setup \u092E\u0947\u0902 \u0905\u092A\u0928\u093E \u0928\u0902\u092C\u0930 \u091C\u094B\u0921\u093C\u0947\u0902 - \u0926\u094B\u0928\u094B\u0902 \u0938\u0947 \u0935\u0939\u0940 \u0905\u0915\u093E\u0909\u0902\u091F \u0916\u0941\u0932\u0947\u0917\u093E\u0964")}</div>
             </div>
@@ -1668,12 +1677,12 @@ function Auth({ onAuthed, authError }) {
               </div>
               {err && <div style={{ color: "var(--red)", fontSize: 13, marginTop: 10 }}>{err}</div>}
               <button className="btn btn-grn press" style={{ width: "100%", marginTop: 18 }} onClick={verifyCode} disabled={busy}>
-                <I.lock /> {busy ? tx("Checking...", "Check kar rahe hain...", "\u091C\u093E\u0901\u091A \u0930\u0939\u0947 \u0939\u0948\u0902...") : tx("Verify & continue", "Verify karke aage badhein", "\u0935\u0947\u0930\u093F\u092B\u093E\u0908 \u0915\u0930\u0915\u0947 \u0906\u0917\u0947 \u092C\u0922\u093C\u0947\u0902")}
+                <I.lock /> {busy === "verify" ? tx("Checking...", "Checking...", "\u091C\u093E\u0901\u091A \u0930\u0939\u0947 \u0939\u0948\u0902...") : tx("Verify & continue", "Verify karein", "\u0935\u0947\u0930\u093F\u092B\u093E\u0908 \u0915\u0930\u0947\u0902")}
               </button>
               <div className="auth-note">
                 {cool > 0
-                  ? tx("Resend in ", "Dobara bhejein ", "\u0926\u094B\u092C\u093E\u0930\u093E \u092D\u0947\u091C\u0947\u0902 ") + "0:" + String(cool).padStart(2, "0")
-                  : <button onClick={sendCode} disabled={busy} style={{ border: "none", background: "none", color: "var(--grn-d)", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>{tx("Send the code again", "Code dobara bhejein", "\u0915\u094B\u0921 \u0926\u094B\u092C\u093E\u0930\u093E \u092D\u0947\u091C\u0947\u0902")}</button>}
+                  ? tx("Resend in ", "Resend in ", "\u0926\u094B\u092C\u093E\u0930\u093E \u092D\u0947\u091C\u0947\u0902 ") + "0:" + String(cool).padStart(2, "0")
+                  : <button onClick={sendCode} disabled={busy} style={{ border: "none", background: "none", color: "var(--grn-d)", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>{tx("Send code again", "Send code again", "\u0915\u094B\u0921 \u0926\u094B\u092C\u093E\u0930\u093E \u092D\u0947\u091C\u0947\u0902")}</button>}
               </div>
             </div>
           )}
@@ -1819,6 +1828,35 @@ function Subscribe({ account, onSubscribe, onBack }) {
 
 /* ================================================================ */
 /* one-time trade chooser shown to a fresh account (changeable later in Setup) */
+/* A greyed ghost of the page once it has data. Deliberately shows no numbers
+   and no names - an empty screen should teach the layout, not invent a shop. */
+function GhostPreview({ rows = 2, caption, tile = true }) {
+  return (
+    <div style={{ marginTop: 6 }}>
+      {caption && (
+        <div className="mono" style={{ fontSize: 10.5, letterSpacing: ".1em", color: "var(--faint)", textAlign: "center", margin: "0 0 10px" }}>
+          {caption}
+        </div>
+      )}
+      <div aria-hidden="true" style={{ opacity: .9, pointerEvents: "none" }}>
+        {Array.from({ length: rows }).map((_, i) => (
+          <div key={i} className="ghost-card" style={{ opacity: 1 - i * 0.28 }}>
+            {tile && <span className="ghost" style={{ width: 52, height: 52, borderRadius: 14, flexShrink: 0 }} />}
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span className="ghost" style={{ display: "block", height: 12, width: "58%", marginBottom: 8 }} />
+              <span className="ghost" style={{ display: "block", height: 10, width: "80%" }} />
+            </span>
+            <span style={{ textAlign: "right", flexShrink: 0 }}>
+              <span className="ghost" style={{ display: "block", height: 13, width: 62, marginBottom: 8 }} />
+              <span className="ghost" style={{ display: "block", height: 10, width: 40, marginLeft: "auto" }} />
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ================= WELCOME (first run) =================
    Two questions, in this order: what do you do, and what is your shop called.
    The name matters more than it looks - until it was asked, every new account
@@ -2984,7 +3022,7 @@ function FloorPair({ onPaired, onBack }) {
             style={{ fontSize: 30, letterSpacing: ".3em", textAlign: "center", padding: "16px 0" }} />
           {err && <div style={{ color: "var(--red)", fontSize: 13.5, marginTop: 12, lineHeight: 1.5 }}>{err}</div>}
           <button className="btn btn-grn press" style={{ width: "100%", marginTop: 16, padding: 16 }} disabled={busy} onClick={go}>
-            {busy ? tx("Connecting...", "Jud raha hai...", "\u091C\u0941\u0921\u093C \u0930\u0939\u093E \u0939\u0948...") : tx("Connect", "Jodein", "\u091C\u094B\u0921\u093C\u0947\u0902")}
+            {busy ? tx("Connecting...", "Connect ho raha hai...", "\u091C\u0941\u0921\u093C \u0930\u0939\u093E \u0939\u0948...") : tx("Connect", "Jodein", "\u091C\u094B\u0921\u093C\u0947\u0902")}
           </button>
           <div className="hint" style={{ marginTop: 12, textAlign: "center" }}>
             {tx("This phone will only show the machines and the work - no rates, no money.", "Is phone par sirf machine aur kaam dikhega - rate ya paisa kuch nahi.", "\u0907\u0938 \u092B\u094B\u0928 \u092A\u0930 \u0938\u093F\u0930\u094D\u092B \u092E\u0936\u0940\u0928 \u0914\u0930 \u0915\u093E\u092E \u0926\u093F\u0916\u0947\u0917\u093E\u0964")}
@@ -3336,7 +3374,7 @@ function FloorApp({ onExit }) {
         <div onClick={() => setMenu(false)} style={{ position: "absolute", inset: 0, zIndex: 80, background: "rgba(16,26,20,.45)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
           <div className="anim-in" onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: "26px 26px 0 0", padding: "18px 18px calc(18px + env(safe-area-inset-bottom))" }}>
             <div style={{ width: 40, height: 4, borderRadius: 3, background: "var(--line2)", margin: "0 auto 16px" }} />
-            <button className="btn btn-ghost press" style={{ width: "100%", marginBottom: 10 }} onClick={() => { setMenu(false); load(); }}>{tx("Refresh", "Refresh karein", "\u0930\u093F\u092B\u094D\u0930\u0947\u0936")}</button>
+            <button className="btn btn-ghost press" style={{ width: "100%", marginBottom: 10 }} onClick={() => { setMenu(false); load(); }}>{tx("Refresh", "Refresh", "\u0930\u093F\u092B\u094D\u0930\u0947\u0936")}</button>
             <button className="btn btn-ghost press" style={{ width: "100%", color: "var(--red)" }} onClick={() => { floorSave(null); onExit(); }}>{tx("Remove this phone from the shop", "Is phone ko shop se hatayein", "\u0907\u0938 \u092B\u094B\u0928 \u0915\u094B \u0939\u091F\u093E\u090F\u0902")}</button>
             <div className="hint" style={{ textAlign: "center", marginTop: 12 }}>{tx("Nothing from the shop is stored on this phone.", "Is phone par shop ka koi data nahi rakha jaata.", "\u0907\u0938 \u092B\u094B\u0928 \u092A\u0930 \u0936\u0949\u092A \u0915\u093E \u0921\u0947\u091F\u093E \u0928\u0939\u0940\u0902 \u0930\u0939\u0924\u093E\u0964")}</div>
           </div>
@@ -4146,9 +4184,46 @@ function Quotes({ data, setStatus, updateQuote, delQuote, importQuotes, ping, fi
         <span className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>{list.length}</span>
       </div>
 
-      {list.length === 0 && (
+      {/* Filtered-empty and truly-empty are different problems: one needs a
+          different filter, the other needs a first quote. */}
+      {list.length === 0 && (term || filter !== "all" || data.quotes.length > 0) && (
         <div className="card-tint anim-in st2" style={{ padding: 28, textAlign: "center", color: "var(--dim)", fontSize: 14.5 }}>
-          {term || filter !== "all" ? "No quotes match." : <>Nothing here yet.<br /><button className="btn btn-soft btn-sm press" style={{ marginTop: 14 }} onClick={onLog}><I.bolt /> Log your first quote</button></>}
+          {tx("No quotes match.", "Is filter mein kuch nahi hai.", "इस फ़िल्टर में कुछ नहीं है।")}
+        </div>
+      )}
+
+      {/* A brand-new pipeline: the fastest route to a REAL first row is doing
+          it once with the app guiding the hand, so that is the hero. Below it,
+          the shape of the page - never invented numbers. */}
+      {data.quotes.length === 0 && !term && (
+        <div className="anim-in st2">
+          {startTut && (
+            <button className="press" onClick={() => startTut("walog")}
+              style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", gap: 14, padding: 18, borderRadius: 20, background: "linear-gradient(135deg,#1B7A20,#2E9E33)", color: "#fff", boxShadow: "var(--sh-m)", marginBottom: 10 }}>
+              <span style={{ fontSize: 26, flexShrink: 0 }} aria-hidden="true">{"\u{1F393}"}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontWeight: 700, fontSize: 16.5 }}>{tx("Show me how - 2 minutes", "2 minute mein seekhein", "2 मिनट में सीखें")}</span>
+                <span style={{ display: "block", fontSize: 13, color: "rgba(255,255,255,.88)", marginTop: 2, lineHeight: 1.45 }}>
+                  {tx("A real WhatsApp enquiry becomes your first quote, step by step.", "Ek asli WhatsApp enquiry se aapka pehla quote banega - step by step.", "एक असली WhatsApp एन्क्वायरी से आपका पहला कोटेशन बनेगा।")}
+                </span>
+              </span>
+              <I.chev />
+            </button>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <button className="btn btn-soft press" style={{ padding: 14, justifyContent: "center" }} onClick={onLog}>
+              <I.bolt /> {tx("Log a quote", "Quote likhein", "कोटेशन लिखें")}
+            </button>
+            <button className="btn btn-ghost press" style={{ padding: 14, justifyContent: "center" }} onClick={() => setXlOpen(true)}>
+              <I.sheet style={{ width: 16, height: 16 }} /> {tx("Bring from Excel", "Excel se laayein", "Excel से लाएं")}
+            </button>
+          </div>
+          <div className="hint" style={{ textAlign: "center", marginTop: 10 }}>
+            {tx("Already keep your quotes in a sheet? Bring them in and the pipeline fills itself.", "Excel mein pehle se quotes hain? Wahi le aayein - pipeline apne aap bhar jayegi.", "Excel में पहले से कोटेशन हैं? वही ले आएं।")}
+          </div>
+          <div style={{ marginTop: 22 }}>
+            <GhostPreview rows={3} caption={tx("HOW IT WILL LOOK", "PEHLA QUOTE AATE HI AISA DIKHEGA", "पहला कोटेशन आते ही ऐसा दिखेगा")} />
+          </div>
         </div>
       )}
 
@@ -4663,7 +4738,12 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
   const [led, setLed] = useState(null);   // ledger rows | null while loading
   const [vch, setVch] = useState(null);   // voucher rows
   const [bills, setBills] = useState([]); // bill-wise outstandings (tally_bills; [] when not synced)
-  const [demo, setDemo] = useState(!sb);  // sample mode (no cloud / nothing synced)
+  const [demo, setDemo] = useState(!sb);  // no cloud rows: nothing real to show
+  /* A brand-new owner must NOT open Money onto somebody's 7,08,700 receivable.
+     The sample runs only when he asked for example data (or taps to see it);
+     otherwise the page shows its own shape and says where real numbers come
+     from. Same rule as the pipeline. */
+  const [showSample, setShowSample] = useState(false);
   const [view, setView] = useState(null); // null overview | "recv" | "pay" | "sent" | "bills" drill-down
   const [knowHow, setKnowHow] = useState(false); // planner "how it works" panel
   const [plannerOpen, setPlannerOpen] = useState(false); // dispatch planner collapsed by default (first-look clutter)
@@ -4744,8 +4824,9 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
 
   /* pick the data source: real rows or the labelled sample */
   const now = Date.now();
-  const L = demo ? TALLY_SAMPLE.ledgers : (led || []);
-  const V = demo
+  const sample = demo && (hasDemo(data) || showSample);
+  const L = sample ? TALLY_SAMPLE.ledgers : (led || []);
+  const V = sample
     ? TALLY_SAMPLE.vouchers.map((x) => ({ ...x, vdate: now - x.d * DAY }))
     : (vch || []);
   const loading = !demo && led === null;
@@ -4771,7 +4852,7 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
   /* ---- bill-wise aging (Tally's Bills Receivable / F6 age-wise logic:
           age counts from the DUE date, falling back to the bill date when
           the accountant never set a credit period) ---- */
-  const B = (demo
+  const B = (sample
     ? TALLY_SAMPLE.bills.map((x) => ({ ...x, bdate: now - x.d * DAY, due: x.dueIn == null ? null : now + x.dueIn * DAY }))
     : bills
   ).filter((x) => Number(x.pending) > 0);
@@ -4816,7 +4897,7 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
   );
 
   /* ---- open orders for the dispatch planner ---- */
-  const orders = demo
+  const orders = sample
     ? TALLY_SAMPLE.progress.map((p, i) => ({
         qid: "demo" + i, customer: p.customer, item: p.item, ordered: p.ordered, unit: p.unit,
         shipped: p.shipped, remaining: Math.max(0, p.ordered - p.shipped),
@@ -4876,6 +4957,32 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
   }).sort((a, b) => b.score - a.score);
 
   const asOf = !demo && led && led.length ? led[0].as_of : null;
+
+  /* No Tally, no example data: show what this page IS rather than what some
+     other shop's ledger says. Every hook above has already run, so this early
+     return is safe (Rules of Hooks). */
+  if (demo && !sample && !loading) return (
+    <div className="scr"><div className="pagepad">
+      <div className="anim-in" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+        <div style={{ flex: 1 }}>
+          <div className="microlbl">{tx("MONEY", "PAISA", "\u092A\u0948\u0938\u093E")}</div>
+          <div className="h-disp" style={{ fontSize: 24, fontWeight: 700 }}>{tx("Who owes you what", "Kiska kitna baki hai", "\u0915\u093F\u0938\u0915\u093E \u0915\u093F\u0924\u0928\u093E \u092C\u093E\u0915\u0940")}</div>
+        </div>
+      </div>
+      <div style={{ fontSize: 14, color: "var(--dim)", lineHeight: 1.6, margin: "4px 0 16px" }}>
+        {tx("This page reads your accountant's Tally - bill by bill, who is late and by how many days. Nothing is typed twice, and nothing is written back unless you allow it.",
+            "Ye page aapke accountant ke Tally se aata hai - bill-wise, kiska payment kitne din late hai. Dobara kuch type nahi karna padta.",
+            "\u092F\u0939 \u092A\u0947\u091C \u0906\u092A\u0915\u0947 Tally \u0938\u0947 \u0906\u0924\u093E \u0939\u0948 - \u092C\u093F\u0932-\u0935\u093E\u0930\u0964")}
+      </div>
+      <GhostPreview rows={2} caption={tx("TALLY CONNECTS AND THIS FILLS ITSELF", "TALLY JUDTE HI YE APNE AAP BHAR JAYEGA", "TALLY \u091C\u0941\u0921\u093C\u0924\u0947 \u0939\u0940 \u092F\u0939 \u092D\u0930 \u091C\u093E\u090F\u0917\u093E")} />
+      <button className="btn btn-ghost press" style={{ width: "100%", marginTop: 18 }} onClick={() => setShowSample(true)}>
+        {tx("Show me an example", "Example dekhein", "\u0909\u0926\u093E\u0939\u0930\u0923 \u0926\u0947\u0916\u0947\u0902")}
+      </button>
+      <div className="hint" style={{ textAlign: "center", marginTop: 10 }}>
+        {tx("Connect Tally from Setup when you are ready - it only reads at first.", "Tally Setup se jodein jab taiyaar hon - pehle wo sirf padhta hai, likhta kuch nahi.", "Tally \u0915\u094B Setup \u0938\u0947 \u091C\u094B\u0921\u093C\u0947\u0902\u0964")}
+      </div>
+    </div></div>
+  );
   const chipStyle = (c) => ({
     display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 600, fontFamily: "var(--mono)",
     padding: "3px 9px", borderRadius: 12, marginRight: 6, marginTop: 6, lineHeight: 1.45, maxWidth: "100%",
@@ -4900,7 +5007,7 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
             <div className="microlbl">{tx("SENT THIS MONTH", "MAAL GAYA IS MAHINE", "इस महीने गया माल")}</div>
             <div className="h-disp" style={{ fontSize: 24, fontWeight: 700 }}>{tx("Where it went", "Kahan kitna gaya", "कहां कितना गया")}</div>
           </div>
-          {demo && <span className="demo-ribbon">SAMPLE</span>}
+          {sample && <span className="demo-ribbon">SAMPLE</span>}
         </div>
         <div className="card anim-in st1" style={{ padding: "16px 16px", margin: "12px 0 16px", background: "#F3FBF4", borderColor: "#CFE9D1", display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
           <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--dim)" }}>{monthSales.length} dispatch{monthSales.length === 1 ? "" : "es"} · {inr(monthValue)}</span>
@@ -4991,7 +5098,7 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
             <div className="microlbl">{tx("BILL-WISE PENDING", "BILL-WISE BAKI", "बिल के हिसाब से बाकी")}</div>
             <div className="h-disp" style={{ fontSize: 24, fontWeight: 700 }}>{tx("Every bill, tracked", "Har bill ka hisaab", "हर बिल का हिसाब")}</div>
           </div>
-          {demo && <span className="demo-ribbon">SAMPLE</span>}
+          {sample && <span className="demo-ribbon">SAMPLE</span>}
         </div>
 
         <div className="card anim-in st1" style={{ padding: "16px 16px", margin: "12px 0 14px" }}>
@@ -5110,7 +5217,7 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
             <div className="microlbl">{isRecv ? "AANE WALE PAISE" : "DENE WALE PAISE"}</div>
             <div className="h-disp" style={{ fontSize: 24, fontWeight: 700 }}>{isRecv ? "Kis-kis se lena hai" : "Kis-kis ko dena hai"}</div>
           </div>
-          {demo && <span className="demo-ribbon">SAMPLE</span>}
+          {sample && <span className="demo-ribbon">SAMPLE</span>}
         </div>
         <div className="card anim-in st1" style={{ padding: "16px 16px", margin: "12px 0 16px", background: isRecv ? "#F3FBF4" : "#FFFBF2", borderColor: isRecv ? "#CFE9D1" : "#F0DCB8", display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: "var(--dim)" }}>Total {isRecv ? "aayega" : "dena hai"}</span>
@@ -5178,10 +5285,10 @@ function TallyInsights({ data, updateQuote, ping, onBack }) {
           <div className="microlbl">TALLY · SEEDHA HISAAB</div>
           <div className="h-disp" style={{ fontSize: 24, fontWeight: 700 }}>Business at a glance</div>
         </div>
-        {demo && <span className="demo-ribbon">SAMPLE</span>}
+        {sample && <span className="demo-ribbon">SAMPLE</span>}
       </div>
       <div style={{ fontSize: 12.5, color: "var(--faint)", margin: "0 0 16px 46px" }}>
-        {demo ? "Connect Tally in Setup to see your real numbers here." : asOf ? "From your Tally, updated " + new Date(asOf).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "From your Tally."}
+        {sample ? "Example numbers - connect Tally in Setup to see your own." : asOf ? "From your Tally, updated " + new Date(asOf).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "From your Tally."}
       </div>
 
       {loading && <div className="mono" style={{ color: "var(--faint)", fontSize: 12, letterSpacing: ".2em", textAlign: "center", padding: 30 }}>LOADING...</div>}
@@ -5590,15 +5697,18 @@ function MachineFloor({ data, setData, ping, onBack, goSetup, draft, clearDraft,
         {units.length > 0 && <button className="btn btn-sm btn-grn press" onClick={() => setFormOpen(!formOpen)}>{formOpen ? tx("Close", "Close", "बंद करें") : tx("+ New job", "+ Naya job", "+ नया काम")}</button>}
       </div>
       <div style={{ fontSize: 13.5, color: "var(--dim)", margin: "2px 0 16px" }}>
-        {active.length ? active.length + tx(" running - ", " job chal rahe - ", " काम चालू - ") + Object.keys(busy).length + "/" + units.length + tx(" machines busy", " machines busy", " मशीनें व्यस्त") : units.length ? tx("All machines are free", "Sab machines free hain", "सब मशीनें खाली हैं") : tx("Add your machines first", "Pehle machines jodo", "पहले मशीनें जोड़ें")}
+        {active.length ? active.length + tx(" running - ", " job chal rahe - ", " काम चालू - ") + Object.keys(busy).length + "/" + units.length + tx(" machines busy", " machines busy", " मशीनें व्यस्त") : units.length ? tx("All machines are free", "Sab machines free hain", "सब मशीनें खाली हैं") : tx("Add your machines first", "Pehle machines jodein", "पहले मशीनें जोड़ें")}
       </div>
 
       {!units.length && (
         <div className="card anim-in" style={{ padding: 22, textAlign: "center" }}>
           <div style={{ fontSize: 34, marginBottom: 8 }}>🛠️</div>
-          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{tx("Add your machines first", "Pehle apni machines jodo", "पहले अपनी मशीनें जोड़ें")}</div>
-          <div style={{ fontSize: 13.5, color: "var(--dim)", lineHeight: 1.55, marginBottom: 14 }}>{tx("Add machines in Setup - VMC, lathe, press, as many as you have. Then this page shows live what is running where.", "Setup me machine add karo - VMC, lathe, press, kitni bhi. Phir yahan live dikhega kaun si machine par kya chal raha hai.", "सेटअप में मशीन जोड़ें - VMC, लेथ, प्रेस, जितनी भी हों। फिर यहां लाइव दिखेगा कौन सी मशीन पर क्या चल रहा है।")}</div>
-          <button className="btn btn-grn press" onClick={goSetup}>{tx("Open Setup", "Setup kholo", "सेटअप खोलें")}</button>
+          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 6 }}>{tx("Add your machines first", "Pehle apni machines jodein", "पहले अपनी मशीनें जोड़ें")}</div>
+          <div style={{ fontSize: 13.5, color: "var(--dim)", lineHeight: 1.55, marginBottom: 14 }}>{tx("Add machines in Setup - VMC, lathe, press, as many as you have. Then this page shows live what is running where.", "Setup me machine add karein - VMC, lathe, press, kitni bhi. Phir yahan live dikhega kaun si machine par kya chal raha hai.", "सेटअप में मशीन जोड़ें - VMC, लेथ, प्रेस, जितनी भी हों। फिर यहां लाइव दिखेगा कौन सी मशीन पर क्या चल रहा है।")}</div>
+          <button className="btn btn-grn press" onClick={goSetup}>{tx("Open Setup", "Setup kholein", "सेटअप खोलें")}</button>
+          <div style={{ marginTop: 18, textAlign: "left" }}>
+            <GhostPreview rows={2} tile={false} caption={tx("HOW THE BOARD WILL LOOK", "MACHINE JUDTE HI AISA DIKHEGA", "मशीन जुड़ते ही ऐसा दिखेगा")} />
+          </div>
         </div>
       )}
 
@@ -6826,13 +6936,13 @@ function LoginMethods({ account, ping }) {
               {tx("A 6-digit code will come to that number.", "Us number par 6 digit ka code aayega.", "उस नंबर पर 6 अंकों का कोड आएगा।")}
             </div>
             <button className="btn btn-grn btn-sm press" style={{ width: "100%", marginTop: 11 }} onClick={sendCode} disabled={busy}>
-              {busy ? tx("Sending...", "Bhej rahe hain...", "भेज रहे हैं...") : tx("Send code", "Code bhejein", "कोड भेजें")}
+              {busy ? tx("Sending...", "Sending...", "भेज रहे हैं...") : tx("Send code", "Send code", "कोड भेजें")}
             </button>
           </>) : (<>
             <input className="input" inputMode="numeric" maxLength={6} placeholder="6 digit code" value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} style={{ fontFamily: "var(--mono)", letterSpacing: ".2em", textAlign: "center" }} />
             <button className="btn btn-grn btn-sm press" style={{ width: "100%", marginTop: 11 }} onClick={confirmCode} disabled={busy}>
-              {busy ? tx("Checking...", "Check kar rahe hain...", "जाँच रहे हैं...") : tx("Confirm number", "Number pakka karein", "नंबर पक्का करें")}
+              {busy ? tx("Checking...", "Checking...", "जाँच रहे हैं...") : tx("Confirm number", "Number confirm karein", "नंबर पक्का करें")}
             </button>
             <button className="btn btn-ghost btn-sm press" style={{ width: "100%", marginTop: 8 }} onClick={() => { setStage("enter"); setCode(""); setErr(""); }}>
               {tx("Change number", "Number badlein", "नंबर बदलें")}
@@ -7422,7 +7532,7 @@ function Setup({ data, setData, ping, account, sync, goSubscribe, onLogout }) {
                     : tx("0 phones registered - switch it off and on again", "0 phone registered - band karke dobara chalu karein", "0 फोन रजिस्टर - बंद करके फिर चालू करें"));
                 } catch { ping(tx("No internet", "Internet nahi hai", "इंटरनेट नहीं")); }
                 setPushBusy(false);
-              }}>{tx("Test", "Test karein", "टेस्ट")}</button>
+              }}>{tx("Test", "Test", "टेस्ट")}</button>
             )}
           </span>
         </div>
